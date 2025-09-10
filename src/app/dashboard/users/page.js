@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Typography, Chip } from "@mui/material";
-import { Block } from "@mui/icons-material";
+import { Box, Typography, Chip, Button } from "@mui/material";
+import { Add, Block } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
@@ -72,9 +72,17 @@ export default function UsersPage() {
     return (
         <Layout>
             <Box>
-                <Typography variant="h4" fontWeight="bold" gutterBottom>
-                    مدیریت کاربران
-                </Typography>
+                <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Box>
+                        <Typography variant="h4" fontWeight="bold">
+                            مدیریت کاربران
+                        </Typography>
+                    </Box>
+
+                    <Button variant="contained" startIcon={<Add />} onClick={handleAdd} size="large">
+                        کاربر جدید
+                    </Button>
+                </Box>
 
                 <DataTable
                     title="لیست کاربران"

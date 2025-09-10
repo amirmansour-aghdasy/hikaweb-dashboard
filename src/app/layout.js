@@ -13,7 +13,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
     return (
         <html lang="fa" dir="rtl">
-            <body className={iranSanse.className}>
+            <body className={iranSanse.className} suppressHydrationWarning={true}>
                 <Providers>{children}</Providers>
             </body>
         </html>

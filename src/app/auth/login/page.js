@@ -1,7 +1,7 @@
 "use client";
 import { Box, Card, CardContent, TextField, Button, Typography, Alert, CircularProgress, Container, Paper } from "@mui/material";
 import { useState } from "react";
-import { useAuth } from "../../../lib/auth";
+import { useAuth } from "@/lib/auth";
 import { validateEmail } from "../../../lib/utils";
 
 export default function LoginPage() {
@@ -47,27 +47,6 @@ export default function LoginPage() {
 
         return newErrors;
     };
-
-    // const handleSubmit = async (e) => {
-    //     e.preventDefault();
-
-    //     const validationErrors = validateForm();
-    //     if (Object.keys(validationErrors).length > 0) {
-    //         setErrors(validationErrors);
-    //         return;
-    //     }
-
-    //     setLoading(true);
-    //     setMessage("");
-
-    //     const result = await login(formData.email, formData.password);
-
-    //     if (!result.success) {
-    //         setMessage(result.message);
-    //     }
-
-    //     setLoading(false);
-    // };
 
     const handleSubmit = async (e) => {
         e.preventDefault();

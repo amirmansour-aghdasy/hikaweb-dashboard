@@ -232,7 +232,7 @@ export default function DataTable({
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            data.map((row) => (
+                            (data || []).map((row) => (
                                 <TableRow key={row._id} hover selected={selected.indexOf(row._id) !== -1}>
                                     {enableSelection && (
                                         <TableCell padding="checkbox">

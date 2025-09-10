@@ -1,108 +1,192 @@
 "use client";
 import {
     Box,
-    Grid,
     TextField,
+    Button,
+    Grid,
+    Switch,
+    FormControlLabel,
+    Typography,
+    Divider,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    IconButton,
+    Stack,
+    Card,
+    CardContent,
+    Slider,
     FormControl,
     InputLabel,
     Select,
     MenuItem,
-    FormHelperText,
-    Switch,
-    FormControlLabel,
-    Button,
-    Typography,
-    Paper,
-    Divider,
-    Chip,
-    Autocomplete,
-    InputAdornment,
 } from "@mui/material";
-import { Save, Cancel, Add, Delete } from "@mui/icons-material";
+import { Save, Cancel, ExpandMore, Add, Delete, DragIndicator, BusinessCenter, MonetizationOn, Schedule, Star, Layers } from "@mui/icons-material";
 import { useState, useEffect } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
-import dynamic from "next/dynamic";
+import MultiLangTextField from "./MultiLangTextField";
+import MultiLangEditor from "./MultiLangEditor";
+import CategorySelector from "./CategorySelector";
+import TagInput from "./TagInput";
+import MediaUploader from "../media/MediaUploader";
+import GalleryManager from "../media/GalleryManager";
+import PriceInput from "./PriceInput";
 import { useApi } from "../../hooks/useApi";
-
-const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
+import toast from "react-hot-toast";
 
 export default function ServiceForm({ service, onSave, onCancel }) {
     const [loading, setLoading] = useState(false);
-    const { useFetchData, useCreateData, useUpdateData } = useApi();
+
+    const { useCreateData, useUpdateData } = useApi();
+
+    const createService = useCreateData("/api/v1/services");
+    const updateService = useUpdateData("/api/v1/services");
 
     const {
         control,
         handleSubmit,
-        formState: { errors },
         watch,
         setValue,
+        formState: { errors, isDirty },
         reset,
     } = useForm({
         defaultValues: {
             name: { fa: "", en: "" },
             slug: { fa: "", en: "" },
+            description: { fa: "", en: "" },
             shortDescription: { fa: "", en: "" },
-            fullDescription: { fa: "", en: "" },
-            features: { fa: [], en: [] },
+            icon: "",
+            featuredImage: "",
+            gallery: [],
+            categories: [],
+            processSteps: [],
+            features: [],
             pricing: {
-                type: "custom", // fixed, hourly, custom
-                basePrice: 0,
+                startingPrice: "",
                 currency: "IRR",
+                isCustom: false,
+                packages: [],
+            },
+            technologies: [],
+            deliverables: [],
+            duration: {
+                min: "",
+                max: "",
                 description: { fa: "", en: "" },
             },
-            processSteps: [],
-            deliverables: { fa: [], en: [] },
-            duration: "",
-            category: "",
-            tags: [],
-            gallery: [],
-            icon: "",
-            status: "active",
-            featured: false,
-            popular: false,
-            seoTitle: { fa: "", en: "" },
-            seoDescription: { fa: "", en: "" },
-            seoKeywords: { fa: "", en: "" },
+            orderIndex: 0,
+            isPopular: false,
+            seo: {
+                metaTitle: { fa: "", en: "" },
+                metaDescription: { fa: "", en: "" },
+                metaKeywords: { fa: [], en: [] },
+            },
         },
     });
 
-    // Field array for process steps
+    // Field Arrays
     const {
-        fields: processFields,
-        append: appendProcess,
-        remove: removeProcess,
+        fields: processStepsFields,
+        append: appendProcessStep,
+        remove: removeProcessStep,
     } = useFieldArray({
         control,
         name: "processSteps",
     });
 
-    // Mutations
-    const createService = useCreateData("/api/v1/services", {
-        updateStore: true,
-        storeKey: "services",
-        successMessage: "خدمت با موفقیت ایجاد شد",
+    const {
+        fields: featuresFields,
+        append: appendFeature,
+        remove: removeFeature,
+    } = useFieldArray({
+        control,
+        name: "features",
     });
 
-    const updateService = useUpdateData("/api/v1/services", {
-        updateStore: true,
-        storeKey: "services",
-        successMessage: "خدمت با موفقیت به‌روزرسانی شد",
+    const {
+        fields: packagesFields,
+        append: appendPackage,
+        remove: removePackage,
+    } = useFieldArray({
+        control,
+        name: "pricing.packages",
     });
+
+    const {
+        fields: technologiesFields,
+        append: appendTechnology,
+        remove: removeTechnology,
+    } = useFieldArray({
+        control,
+        name: "technologies",
+    });
+
+    const {
+        fields: deliverablesFields,
+        append: appendDeliverable,
+        remove: removeDeliverable,
+    } = useFieldArray({
+        control,
+        name: "deliverables",
+    });
+
+    const watchedName = watch("name");
 
     useEffect(() => {
         if (service) {
-            reset(service);
+            reset({
+                name: service.name || { fa: "", en: "" },
+                slug: service.slug || { fa: "", en: "" },
+                description: service.description || { fa: "", en: "" },
+                shortDescription: service.shortDescription || { fa: "", en: "" },
+                icon: service.icon || "",
+                featuredImage: service.featuredImage || "",
+                gallery: service.gallery || [],
+                categories: service.categories || [],
+                processSteps: service.processSteps || [],
+                features: service.features || [],
+                pricing: service.pricing || {
+                    startingPrice: "",
+                    currency: "IRR",
+                    isCustom: false,
+                    packages: [],
+                },
+                technologies: service.technologies || [],
+                deliverables: service.deliverables || [],
+                duration: service.duration || {
+                    min: "",
+                    max: "",
+                    description: { fa: "", en: "" },
+                },
+                orderIndex: service.orderIndex || 0,
+                isPopular: service.isPopular || false,
+                seo: service.seo || {
+                    metaTitle: { fa: "", en: "" },
+                    metaDescription: { fa: "", en: "" },
+                    metaKeywords: { fa: [], en: [] },
+                },
+            });
         }
     }, [service, reset]);
 
-    const generateSlug = (name, lang) => {
-        const slug = name
+    // Auto-generate slug from name
+    useEffect(() => {
+        if (watchedName?.fa && !service) {
+            const slug = {
+                fa: generateSlug(watchedName.fa),
+                en: watchedName.en ? generateSlug(watchedName.en) : "",
+            };
+            setValue("slug", slug);
+        }
+    }, [watchedName, setValue, service]);
+
+    const generateSlug = (title) => {
+        return title
             .toLowerCase()
+            .trim()
             .replace(/[^\w\s-]/g, "")
             .replace(/[\s_-]+/g, "-")
             .replace(/^-+|-+$/g, "");
-
-        setValue(`slug.${lang}`, slug);
     };
 
     const onSubmit = async (data) => {
@@ -110,343 +194,353 @@ export default function ServiceForm({ service, onSave, onCancel }) {
 
         try {
             if (service) {
-                await updateService.mutateAsync({ id: service._id, data });
+                await updateService.mutateAsync({
+                    id: service._id,
+                    data,
+                });
             } else {
                 await createService.mutateAsync(data);
             }
 
-            if (onSave) onSave();
+            toast.success(service ? "خدمت با موفقیت ویرایش شد" : "خدمت با موفقیت ایجاد شد");
+            onSave();
         } catch (error) {
             console.error("Error saving service:", error);
+            toast.error("خطا در ذخیره خدمت");
         } finally {
             setLoading(false);
         }
     };
 
-    const addProcessStep = () => {
-        appendProcess({
-            title: { fa: "", en: "" },
-            description: { fa: "", en: "" },
-            order: processFields.length + 1,
-        });
+    const handleIconUpload = (images) => {
+        if (images.length > 0) {
+            setValue("icon", images[0].url);
+        }
+    };
+
+    const handleFeaturedImageUpload = (images) => {
+        if (images.length > 0) {
+            setValue("featuredImage", images[0].url);
+        }
     };
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)}>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                {/* Header */}
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Typography variant="h6">{service ? "ویرایش خدمت" : "خدمت جدید"}</Typography>
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                        <Button variant="contained" type="submit" startIcon={<Save />} disabled={loading}>
-                            {loading ? "در حال ذخیره..." : "ذخیره"}
-                        </Button>
-                        <Button variant="outlined" startIcon={<Cancel />} onClick={onCancel} disabled={loading}>
-                            انصراف
-                        </Button>
-                    </Box>
-                </Box>
-
-                <Grid container spacing={3}>
-                    {/* Main Content */}
-                    <Grid item xs={12} md={8}>
-                        <Paper sx={{ p: 3 }}>
-                            {/* Basic Information */}
-                            <Typography variant="h6" gutterBottom>
-                                اطلاعات پایه
-                            </Typography>
-
-                            <Grid container spacing={2}>
-                                <Grid item xs={12} md={6}>
-                                    <Controller
-                                        name="name.fa"
-                                        control={control}
-                                        rules={{ required: "نام فارسی الزامی است" }}
-                                        render={({ field }) => (
-                                            <TextField
-                                                {...field}
-                                                fullWidth
-                                                label="نام خدمت (فارسی)"
-                                                error={!!errors.name?.fa}
-                                                helperText={errors.name?.fa?.message}
-                                                onChange={(e) => {
-                                                    field.onChange(e);
-                                                    generateSlug(e.target.value, "fa");
-                                                }}
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-
-                                <Grid item xs={12} md={6}>
-                                    <Controller
-                                        name="name.en"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <TextField
-                                                {...field}
-                                                fullWidth
-                                                label="Service Name (English)"
-                                                onChange={(e) => {
-                                                    field.onChange(e);
-                                                    generateSlug(e.target.value, "en");
-                                                }}
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-
-                                <Grid item xs={12} md={6}>
-                                    <Controller
-                                        name="slug.fa"
-                                        control={control}
-                                        rules={{ required: "نامک فارسی الزامی است" }}
-                                        render={({ field }) => <TextField {...field} fullWidth label="نامک فارسی (URL)" error={!!errors.slug?.fa} helperText={errors.slug?.fa?.message} />}
-                                    />
-                                </Grid>
-
-                                <Grid item xs={12} md={6}>
-                                    <Controller name="slug.en" control={control} render={({ field }) => <TextField {...field} fullWidth label="English Slug (URL)" />} />
-                                </Grid>
-
-                                <Grid item xs={12}>
-                                    <Controller
-                                        name="shortDescription.fa"
-                                        control={control}
-                                        rules={{ required: "توضیح کوتاه فارسی الزامی است" }}
-                                        render={({ field }) => (
-                                            <TextField
-                                                {...field}
-                                                fullWidth
-                                                multiline
-                                                rows={3}
-                                                label="توضیح کوتاه (فارسی)"
-                                                error={!!errors.shortDescription?.fa}
-                                                helperText={errors.shortDescription?.fa?.message}
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-
-                                <Grid item xs={12}>
-                                    <Controller
-                                        name="shortDescription.en"
-                                        control={control}
-                                        render={({ field }) => <TextField {...field} fullWidth multiline rows={3} label="Short Description (English)" />}
-                                    />
-                                </Grid>
-                            </Grid>
-
-                            <Divider sx={{ my: 3 }} />
-
-                            {/* Full Description */}
-                            <Typography variant="h6" gutterBottom>
-                                توضیحات کامل
+        <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+            <Grid container spacing={3}>
+                {/* Main Content */}
+                <Grid item xs={12} lg={8}>
+                    <Stack spacing={3}>
+                        {/* Basic Information */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <BusinessCenter /> اطلاعات پایه
                             </Typography>
 
                             <Grid container spacing={2}>
                                 <Grid item xs={12}>
                                     <Controller
-                                        name="fullDescription.fa"
+                                        name="name"
                                         control={control}
-                                        render={({ field }) => (
-                                            <Box>
-                                                <Typography variant="body2" gutterBottom>
-                                                    توضیحات کامل فارسی
-                                                </Typography>
-                                                <ReactQuill {...field} style={{ height: 300, marginBottom: 50 }} placeholder="توضیحات کامل خدمت را وارد کنید..." />
-                                            </Box>
-                                        )}
+                                        rules={{
+                                            validate: {
+                                                faRequired: (value) => value.fa?.trim() || "نام فارسی الزامی است",
+                                                enRequired: (value) => value.en?.trim() || "نام انگلیسی الزامی است",
+                                            },
+                                        }}
+                                        render={({ field }) => <MultiLangTextField {...field} label="نام خدمت" required error={errors.name} />}
                                     />
                                 </Grid>
 
                                 <Grid item xs={12}>
-                                    <Controller
-                                        name="fullDescription.en"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Box>
-                                                <Typography variant="body2" gutterBottom>
-                                                    Full Description (English)
-                                                </Typography>
-                                                <MDEditor value={field.value} onChange={field.onChange} preview="edit" height={300} data-color-mode="light" />
-                                            </Box>
-                                        )}
-                                    />
+                                    <Controller name="slug" control={control} render={({ field }) => <MultiLangTextField {...field} label="نامک (URL Slug)" />} />
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <Controller name="shortDescription" control={control} render={({ field }) => <MultiLangTextField {...field} label="توضیحات کوتاه" multiline rows={2} />} />
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <Controller name="description" control={control} render={({ field }) => <MultiLangEditor {...field} label="توضیحات کامل" height={300} />} />
                                 </Grid>
                             </Grid>
+                        </Box>
 
-                            <Divider sx={{ my: 3 }} />
-
-                            {/* Process Steps */}
-                            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
+                        {/* Process Steps */}
+                        <Accordion>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
                                 <Typography variant="h6">مراحل انجام کار</Typography>
-                                <Button variant="outlined" startIcon={<Add />} onClick={addProcessStep} size="small">
-                                    افزودن مرحله
-                                </Button>
-                            </Box>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <Stack spacing={2}>
+                                    {processStepsFields.map((field, index) => (
+                                        <Card key={field.id} variant="outlined">
+                                            <CardContent>
+                                                <Box sx={{ display: "flex", justifyContent: "between", mb: 2 }}>
+                                                    <Typography variant="subtitle1">مرحله {index + 1}</Typography>
+                                                    <IconButton onClick={() => removeProcessStep(index)} size="small">
+                                                        <Delete />
+                                                    </IconButton>
+                                                </Box>
 
-                            {processFields.map((field, index) => (
-                                <Paper key={field.id} sx={{ p: 2, mb: 2, bgcolor: "grey.50" }}>
-                                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-                                        <Typography variant="subtitle2">مرحله {index + 1}</Typography>
-                                        <Button size="small" color="error" onClick={() => removeProcess(index)}>
-                                            <Delete />
-                                        </Button>
-                                    </Box>
+                                                <Grid container spacing={2}>
+                                                    <Grid item xs={12} md={6}>
+                                                        <Controller
+                                                            name={`processSteps.${index}.title`}
+                                                            control={control}
+                                                            render={({ field }) => <MultiLangTextField {...field} label="عنوان مرحله" size="small" />}
+                                                        />
+                                                    </Grid>
 
-                                    <Grid container spacing={2}>
-                                        <Grid item xs={12} md={6}>
-                                            <Controller
-                                                name={`processSteps.${index}.title.fa`}
-                                                control={control}
-                                                render={({ field }) => <TextField {...field} fullWidth label="عنوان مرحله (فارسی)" size="small" />}
-                                            />
-                                        </Grid>
+                                                    <Grid item xs={12} md={6}>
+                                                        <Controller
+                                                            name={`processSteps.${index}.icon`}
+                                                            control={control}
+                                                            render={({ field }) => <TextField {...field} label="آیکون" size="small" fullWidth />}
+                                                        />
+                                                    </Grid>
 
-                                        <Grid item xs={12} md={6}>
-                                            <Controller
-                                                name={`processSteps.${index}.title.en`}
-                                                control={control}
-                                                render={({ field }) => <TextField {...field} fullWidth label="Step Title (English)" size="small" />}
-                                            />
-                                        </Grid>
+                                                    <Grid item xs={12}>
+                                                        <Controller
+                                                            name={`processSteps.${index}.description`}
+                                                            control={control}
+                                                            render={({ field }) => <MultiLangTextField {...field} label="توضیحات" multiline rows={2} size="small" />}
+                                                        />
+                                                    </Grid>
 
-                                        <Grid item xs={12}>
-                                            <Controller
-                                                name={`processSteps.${index}.description.fa`}
-                                                control={control}
-                                                render={({ field }) => <TextField {...field} fullWidth multiline rows={2} label="توضیحات مرحله (فارسی)" size="small" />}
-                                            />
-                                        </Grid>
-                                    </Grid>
-                                </Paper>
-                            ))}
-                        </Paper>
-                    </Grid>
+                                                    <Grid item xs={12} md={6}>
+                                                        <Controller
+                                                            name={`processSteps.${index}.order`}
+                                                            control={control}
+                                                            render={({ field }) => <TextField {...field} label="ترتیب" type="number" size="small" fullWidth />}
+                                                        />
+                                                    </Grid>
+                                                </Grid>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
 
-                    {/* Sidebar */}
-                    <Grid item xs={12} md={4}>
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                            {/* Status & Settings */}
-                            <Paper sx={{ p: 3 }}>
-                                <Typography variant="h6" gutterBottom>
-                                    تنظیمات
-                                </Typography>
+                                    <Button
+                                        startIcon={<Add />}
+                                        onClick={() =>
+                                            appendProcessStep({
+                                                title: { fa: "", en: "" },
+                                                description: { fa: "", en: "" },
+                                                icon: "",
+                                                order: processStepsFields.length + 1,
+                                            })
+                                        }
+                                        variant="outlined"
+                                    >
+                                        افزودن مرحله
+                                    </Button>
+                                </Stack>
+                            </AccordionDetails>
+                        </Accordion>
 
-                                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                                    <Controller
-                                        name="status"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <FormControl fullWidth>
-                                                <InputLabel>وضعیت</InputLabel>
-                                                <Select {...field} label="وضعیت">
-                                                    <MenuItem value="active">فعال</MenuItem>
-                                                    <MenuItem value="inactive">غیرفعال</MenuItem>
-                                                    <MenuItem value="archived">بایگانی</MenuItem>
-                                                </Select>
-                                            </FormControl>
-                                        )}
+                        {/* Features */}
+                        <Accordion>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
+                                <Typography variant="h6">ویژگی‌ها</Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <Stack spacing={2}>
+                                    {featuresFields.map((field, index) => (
+                                        <Card key={field.id} variant="outlined">
+                                            <CardContent>
+                                                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                                                    <Typography variant="subtitle1">ویژگی {index + 1}</Typography>
+                                                    <IconButton onClick={() => removeFeature(index)} size="small">
+                                                        <Delete />
+                                                    </IconButton>
+                                                </Box>
+
+                                                <Grid container spacing={2}>
+                                                    <Grid item xs={12} md={6}>
+                                                        <Controller
+                                                            name={`features.${index}.title`}
+                                                            control={control}
+                                                            render={({ field }) => <MultiLangTextField {...field} label="عنوان ویژگی" size="small" />}
+                                                        />
+                                                    </Grid>
+
+                                                    <Grid item xs={12} md={6}>
+                                                        <Controller
+                                                            name={`features.${index}.icon`}
+                                                            control={control}
+                                                            render={({ field }) => <TextField {...field} label="آیکون" size="small" fullWidth />}
+                                                        />
+                                                    </Grid>
+
+                                                    <Grid item xs={12}>
+                                                        <Controller
+                                                            name={`features.${index}.description`}
+                                                            control={control}
+                                                            render={({ field }) => <MultiLangTextField {...field} label="توضیحات" multiline rows={2} size="small" />}
+                                                        />
+                                                    </Grid>
+                                                </Grid>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+
+                                    <Button
+                                        startIcon={<Add />}
+                                        onClick={() =>
+                                            appendFeature({
+                                                title: { fa: "", en: "" },
+                                                description: { fa: "", en: "" },
+                                                icon: "",
+                                            })
+                                        }
+                                        variant="outlined"
+                                    >
+                                        افزودن ویژگی
+                                    </Button>
+                                </Stack>
+                            </AccordionDetails>
+                        </Accordion>
+                    </Stack>
+                </Grid>
+
+                {/* Sidebar */}
+                <Grid item xs={12} lg={4}>
+                    <Stack spacing={3}>
+                        {/* Settings */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom>
+                                تنظیمات
+                            </Typography>
+
+                            <Stack spacing={2}>
+                                <Controller name="isPopular" control={control} render={({ field }) => <FormControlLabel control={<Switch {...field} checked={field.value} />} label="خدمت محبوب" />} />
+
+                                <Controller name="orderIndex" control={control} render={({ field }) => <TextField {...field} label="ترتیب نمایش" type="number" size="small" fullWidth />} />
+                            </Stack>
+                        </Box>
+
+                        {/* Images */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom>
+                                آیکون خدمت
+                            </Typography>
+                            <Controller
+                                name="icon"
+                                control={control}
+                                render={({ field }) => (
+                                    <MediaUploader value={field.value ? [{ url: field.value, type: "image/*" }] : []} onChange={handleIconUpload} single acceptedTypes={["image/*"]} maxSizeInMB={1} />
+                                )}
+                            />
+                        </Box>
+
+                        <Box>
+                            <Typography variant="h6" gutterBottom>
+                                تصویر شاخص
+                            </Typography>
+                            <Controller
+                                name="featuredImage"
+                                control={control}
+                                render={({ field }) => (
+                                    <MediaUploader
+                                        value={field.value ? [{ url: field.value, type: "image/*" }] : []}
+                                        onChange={handleFeaturedImageUpload}
+                                        single
+                                        acceptedTypes={["image/*"]}
+                                        maxSizeInMB={2}
                                     />
+                                )}
+                            />
+                        </Box>
 
-                                    <Controller
-                                        name="featured"
-                                        control={control}
-                                        render={({ field }) => <FormControlLabel control={<Switch {...field} checked={field.value} />} label="خدمت ویژه" />}
-                                    />
+                        {/* Gallery */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom>
+                                گالری تصاویر
+                            </Typography>
+                            <Controller name="gallery" control={control} render={({ field }) => <GalleryManager {...field} showAltText showCaptions />} />
+                        </Box>
 
-                                    <Controller
-                                        name="popular"
-                                        control={control}
-                                        render={({ field }) => <FormControlLabel control={<Switch {...field} checked={field.value} />} label="خدمت محبوب" />}
-                                    />
-                                </Box>
-                            </Paper>
+                        {/* Categories */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom>
+                                دسته‌بندی
+                            </Typography>
+                            <Controller name="categories" control={control} render={({ field }) => <CategorySelector {...field} type="service" label="انتخاب دسته‌بندی" />} />
+                        </Box>
 
-                            {/* Pricing */}
-                            <Paper sx={{ p: 3 }}>
-                                <Typography variant="h6" gutterBottom>
-                                    قیمت‌گذاری
-                                </Typography>
+                        {/* Duration */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Schedule /> مدت زمان انجام
+                            </Typography>
 
-                                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                                    <Controller
-                                        name="pricing.type"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <FormControl fullWidth>
-                                                <InputLabel>نوع قیمت‌گذاری</InputLabel>
-                                                <Select {...field} label="نوع قیمت‌گذاری">
-                                                    <MenuItem value="fixed">قیمت ثابت</MenuItem>
-                                                    <MenuItem value="hourly">ساعتی</MenuItem>
-                                                    <MenuItem value="custom">سفارشی</MenuItem>
-                                                </Select>
-                                            </FormControl>
-                                        )}
-                                    />
+                            <Grid container spacing={2}>
+                                <Grid item xs={6}>
+                                    <Controller name="duration.min" control={control} render={({ field }) => <TextField {...field} label="حداقل (روز)" type="number" size="small" fullWidth />} />
+                                </Grid>
 
-                                    {watch("pricing.type") !== "custom" && (
+                                <Grid item xs={6}>
+                                    <Controller name="duration.max" control={control} render={({ field }) => <TextField {...field} label="حداکثر (روز)" type="number" size="small" fullWidth />} />
+                                </Grid>
+
+                                <Grid item xs={12}>
+                                    <Controller name="duration.description" control={control} render={({ field }) => <MultiLangTextField {...field} label="توضیحات مدت زمان" size="small" />} />
+                                </Grid>
+                            </Grid>
+                        </Box>
+
+                        {/* Pricing */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <MonetizationOn /> قیمت‌گذاری
+                            </Typography>
+
+                            <Stack spacing={2}>
+                                <Controller
+                                    name="pricing.isCustom"
+                                    control={control}
+                                    render={({ field }) => <FormControlLabel control={<Switch {...field} checked={field.value} />} label="قیمت سفارشی" />}
+                                />
+
+                                {!watch("pricing.isCustom") && (
+                                    <>
                                         <Controller
-                                            name="pricing.basePrice"
+                                            name="pricing.startingPrice"
+                                            control={control}
+                                            render={({ field }) => <TextField {...field} label="قیمت شروع" type="number" size="small" fullWidth />}
+                                        />
+
+                                        <Controller
+                                            name="pricing.currency"
                                             control={control}
                                             render={({ field }) => (
-                                                <TextField
-                                                    {...field}
-                                                    fullWidth
-                                                    type="number"
-                                                    label="قیمت پایه"
-                                                    InputProps={{
-                                                        endAdornment: <InputAdornment position="end">تومان</InputAdornment>,
-                                                    }}
-                                                />
+                                                <FormControl size="small" fullWidth>
+                                                    <InputLabel>واحد پول</InputLabel>
+                                                    <Select {...field} label="واحد پول">
+                                                        <MenuItem value="IRR">ریال</MenuItem>
+                                                        <MenuItem value="USD">دلار</MenuItem>
+                                                        <MenuItem value="EUR">یورو</MenuItem>
+                                                    </Select>
+                                                </FormControl>
                                             )}
                                         />
-                                    )}
-
-                                    <Controller name="pricing.description.fa" control={control} render={({ field }) => <TextField {...field} fullWidth multiline rows={3} label="توضیحات قیمت" />} />
-                                </Box>
-                            </Paper>
-
-                            {/* Duration */}
-                            <Paper sx={{ p: 3 }}>
-                                <Typography variant="h6" gutterBottom>
-                                    مدت زمان انجام
-                                </Typography>
-
-                                <Controller
-                                    name="duration"
-                                    control={control}
-                                    render={({ field }) => <TextField {...field} fullWidth label="مدت زمان" placeholder="مثلاً: ۱-۲ هفته" helperText="مدت زمان تقریبی انجام کار" />}
-                                />
-                            </Paper>
-
-                            {/* Tags */}
-                            <Paper sx={{ p: 3 }}>
-                                <Typography variant="h6" gutterBottom>
-                                    برچسب‌ها
-                                </Typography>
-
-                                <Controller
-                                    name="tags"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <Autocomplete
-                                            {...field}
-                                            multiple
-                                            freeSolo
-                                            options={[]}
-                                            renderTags={(value, getTagProps) => value.map((option, index) => <Chip variant="outlined" label={option} {...getTagProps({ index })} />)}
-                                            renderInput={(params) => <TextField {...params} label="برچسب‌ها" helperText="برچسب‌ها را تایپ کرده و Enter بزنید" />}
-                                            onChange={(_, value) => field.onChange(value)}
-                                        />
-                                    )}
-                                />
-                            </Paper>
+                                    </>
+                                )}
+                            </Stack>
                         </Box>
-                    </Grid>
+                    </Stack>
                 </Grid>
+            </Grid>
+
+            {/* Action Buttons */}
+            <Box sx={{ mt: 4, display: "flex", gap: 2, justifyContent: "flex-end" }}>
+                <Button variant="outlined" onClick={onCancel} disabled={loading} startIcon={<Cancel />}>
+                    انصراف
+                </Button>
+
+                <Button type="submit" variant="contained" disabled={loading} startIcon={<Save />}>
+                    {loading ? "در حال ذخیره..." : service ? "ویرایش خدمت" : "ایجاد خدمت"}
+                </Button>
             </Box>
-        </form>
+        </Box>
     );
 }
