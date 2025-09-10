@@ -228,7 +228,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
-                <Grid item xs={12} lg={8}>
+                <Grid item size={{ xs: 12, lg: 8 }}>
                     <Stack spacing={3}>
                         {/* Basic Information */}
                         <Box>
@@ -237,7 +237,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller
                                         name="name"
                                         control={control}
@@ -251,15 +251,15 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller name="slug" control={control} render={({ field }) => <MultiLangTextField {...field} label="نامک (URL Slug)" />} />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller name="shortDescription" control={control} render={({ field }) => <MultiLangTextField {...field} label="توضیحات کوتاه" multiline rows={2} />} />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller name="description" control={control} render={({ field }) => <MultiLangEditor {...field} label="توضیحات کامل" height={300} />} />
                                 </Grid>
                             </Grid>
@@ -283,7 +283,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                                 </Box>
 
                                                 <Grid container spacing={2}>
-                                                    <Grid item xs={12} md={6}>
+                                                    <Grid item size={{ xs: 12, md: 6 }}>
                                                         <Controller
                                                             name={`processSteps.${index}.title`}
                                                             control={control}
@@ -291,7 +291,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                                         />
                                                     </Grid>
 
-                                                    <Grid item xs={12} md={6}>
+                                                    <Grid item size={{ xs: 12, md: 6 }}>
                                                         <Controller
                                                             name={`processSteps.${index}.icon`}
                                                             control={control}
@@ -299,7 +299,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                                         />
                                                     </Grid>
 
-                                                    <Grid item xs={12}>
+                                                    <Grid item size={{ xs: 12 }}>
                                                         <Controller
                                                             name={`processSteps.${index}.description`}
                                                             control={control}
@@ -307,7 +307,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                                         />
                                                     </Grid>
 
-                                                    <Grid item xs={12} md={6}>
+                                                    <Grid item size={{ xs: 12, md: 6 }}>
                                                         <Controller
                                                             name={`processSteps.${index}.order`}
                                                             control={control}
@@ -355,7 +355,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                                 </Box>
 
                                                 <Grid container spacing={2}>
-                                                    <Grid item xs={12} md={6}>
+                                                    <Grid item size={{ xs: 12, md: 6 }}>
                                                         <Controller
                                                             name={`features.${index}.title`}
                                                             control={control}
@@ -363,7 +363,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                                         />
                                                     </Grid>
 
-                                                    <Grid item xs={12} md={6}>
+                                                    <Grid item size={{ xs: 12, md: 6 }}>
                                                         <Controller
                                                             name={`features.${index}.icon`}
                                                             control={control}
@@ -371,7 +371,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                                         />
                                                     </Grid>
 
-                                                    <Grid item xs={12}>
+                                                    <Grid item size={{ xs: 12 }}>
                                                         <Controller
                                                             name={`features.${index}.description`}
                                                             control={control}
@@ -403,7 +403,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                 </Grid>
 
                 {/* Sidebar */}
-                <Grid item xs={12} lg={4}>
+                <Grid item size={{ xs: 12, lg: 4 }}>
                     <Stack spacing={3}>
                         {/* Settings */}
                         <Box>
@@ -474,15 +474,15 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item xs={6}>
+                                <Grid item size={{ xs: 6 }}>
                                     <Controller name="duration.min" control={control} render={({ field }) => <TextField {...field} label="حداقل (روز)" type="number" size="small" fullWidth />} />
                                 </Grid>
 
-                                <Grid item xs={6}>
+                                <Grid item size={{ xs: 6 }}>
                                     <Controller name="duration.max" control={control} render={({ field }) => <TextField {...field} label="حداکثر (روز)" type="number" size="small" fullWidth />} />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller name="duration.description" control={control} render={({ field }) => <MultiLangTextField {...field} label="توضیحات مدت زمان" size="small" />} />
                                 </Grid>
                             </Grid>

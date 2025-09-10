@@ -376,7 +376,7 @@ export default function MediaPage() {
                 </Menu>
 
                 {/* Upload Dialog */}
-                <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="md" fullWidth>
+                <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="lg" fullWidth>
                     <DialogTitle>آپلود فایل جدید</DialogTitle>
                     <DialogContent>
                         <MediaUploader

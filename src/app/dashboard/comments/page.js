@@ -237,7 +237,7 @@ export default function CommentsPage() {
                 />
 
                 {/* Reply Dialog */}
-                <Dialog open={replyDialogOpen} onClose={() => setReplyDialogOpen(false)} maxWidth="md" fullWidth>
+                <Dialog open={replyDialogOpen} onClose={() => setReplyDialogOpen(false)} maxWidth="lg" fullWidth>
                     <DialogTitle>پاسخ به نظر</DialogTitle>
                     <DialogContent>
                         {selectedComment && (

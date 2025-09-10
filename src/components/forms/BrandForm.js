@@ -151,7 +151,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
-                <Grid item xs={12} md={8}>
+                <Grid item size={{ xs: 12, md: 8 }}>
                     <Stack spacing={3}>
                         {/* Basic Information */}
                         <Box>
@@ -160,7 +160,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller
                                         name="name"
                                         control={control}
@@ -169,7 +169,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller
                                         name="description"
                                         control={control}
@@ -177,7 +177,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="website"
                                         control={control}
@@ -195,7 +195,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="foundedYear"
                                         control={control}
@@ -203,7 +203,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="industry"
                                         control={control}
@@ -222,7 +222,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="companySize"
                                         control={control}
@@ -241,7 +241,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller
                                         name="address"
                                         control={control}
@@ -258,7 +258,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="contactPerson"
                                         control={control}
@@ -275,7 +275,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="email"
                                         control={control}
@@ -301,7 +301,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="phone"
                                         control={control}
@@ -327,7 +327,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="socialMedia.linkedin"
                                         control={control}
@@ -335,7 +335,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="socialMedia.twitter"
                                         control={control}
@@ -343,7 +343,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="socialMedia.instagram"
                                         control={control}
@@ -351,7 +351,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="socialMedia.facebook"
                                         control={control}
@@ -359,7 +359,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller
                                         name="socialMedia.youtube"
                                         control={control}
@@ -385,7 +385,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                 </Grid>
 
                 {/* Sidebar */}
-                <Grid item xs={12} md={4}>
+                <Grid item size={{ xs: 12, md: 4 }}>
                     <Stack spacing={3}>
                         {/* Logo */}
                         <Box>

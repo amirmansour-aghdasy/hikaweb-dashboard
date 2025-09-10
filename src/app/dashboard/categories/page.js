@@ -338,7 +338,7 @@ export default function CategoriesPage() {
                 )}
 
                 {/* Category Form Modal */}
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCategory ? "ویرایش دسته‌بندی" : "ایجاد دسته‌بندی جدید"} maxWidth="md" fullWidth>
+                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCategory ? "ویرایش دسته‌بندی" : "ایجاد دسته‌بندی جدید"} maxWidth="lg" fullWidth>
                     <CategoryForm category={editingCategory} onSave={handleSaveCategory} onCancel={() => setIsModalOpen(false)} />
                 </Modal>
             </Box>

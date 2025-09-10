@@ -278,7 +278,7 @@ export default function MediaUploader({ value = [], onChange, maxFiles = 10, acc
             )}
 
             {/* Preview Dialog */}
-            <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="md" fullWidth>
+            <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
                 <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     {previewFile?.name}
                     <IconButton onClick={() => setPreviewOpen(false)}>

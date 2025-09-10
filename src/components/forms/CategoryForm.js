@@ -131,7 +131,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
-                <Grid item xs={12} md={8}>
+                <Grid item size={{xs:12, md:8}}>
                     <Stack spacing={3}>
                         {/* Basic Information */}
                         <Box>
@@ -140,7 +140,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item xs={12}>
+                                <Grid item size={{xs:12}}>
                                     <Controller
                                         name="name"
                                         control={control}
@@ -154,11 +154,11 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{xs:12}}>
                                     <Controller name="slug" control={control} render={({ field }) => <MultiLangTextField {...field} label="نامک (URL Slug)" />} />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{xs:12}}>
                                     <Controller name="description" control={control} render={({ field }) => <MultiLangTextField {...field} label="توضیحات" multiline rows={3} />} />
                                 </Grid>
                             </Grid>
@@ -171,11 +171,11 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item xs={12}>
+                                <Grid item size={{xs:12}}>
                                     <Controller name="metaTitle" control={control} render={({ field }) => <MultiLangTextField {...field} label="عنوان Meta" maxLength={60} />} />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{xs:12}}>
                                     <Controller
                                         name="metaDescription"
                                         control={control}
@@ -188,7 +188,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                 </Grid>
 
                 {/* Sidebar */}
-                <Grid item xs={12} md={4}>
+                <Grid item size={{xs:12, md:4}}>
                     <Stack spacing={3}>
                         {/* Category Settings */}
                         <Box>

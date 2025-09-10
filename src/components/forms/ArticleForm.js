@@ -130,7 +130,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
-                <Grid item xs={12} lg={8}>
+                <Grid item size={{ xs: 12, lg: 8 }}>
                     <Stack spacing={3}>
                         {/* Title Section */}
                         <Box>
@@ -225,7 +225,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                 </Grid>
 
                 {/* Sidebar */}
-                <Grid item xs={12} lg={4}>
+                <Grid item size={{xs:12, lg:4}}>
                     <Stack spacing={3}>
                         {/* Publication Settings */}
                         <Box>

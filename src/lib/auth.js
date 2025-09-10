@@ -77,7 +77,7 @@ export function AuthProvider({ children }) {
             Cookies.remove("token");
             setUser(null);
             router.push("/auth/login");
-            toast.info("با موفقیت خارج شدید");
+            toast.success("با موفقیت خارج شدید");
         }
     };
 

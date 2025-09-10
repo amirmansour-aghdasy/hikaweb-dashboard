@@ -356,7 +356,7 @@ export default function TeamPage() {
                 )}
 
                 {/* Team Member Form Modal */}
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingMember ? "ویرایش عضو تیم" : "اضافه کردن عضو جدید"} maxWidth="md" fullWidth>
+                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingMember ? "ویرایش عضو تیم" : "اضافه کردن عضو جدید"} maxWidth="lg" fullWidth>
                     <TeamMemberForm member={editingMember} onSave={handleSaveMember} onCancel={() => setIsModalOpen(false)} />
                 </Modal>
             </Box>

@@ -427,7 +427,7 @@ export default function BrandsPage() {
                 )}
 
                 {/* Brand Form Modal */}
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingBrand ? "ویرایش برند" : "افزودن برند جدید"} maxWidth="md" fullWidth>
+                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingBrand ? "ویرایش برند" : "افزودن برند جدید"} maxWidth="lg" fullWidth>
                     <BrandForm brand={editingBrand} onSave={handleSaveBrand} onCancel={() => setIsModalOpen(false)} />
                 </Modal>
             </Box>

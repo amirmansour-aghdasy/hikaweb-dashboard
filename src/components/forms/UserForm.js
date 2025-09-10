@@ -3,14 +3,14 @@ import { Box, Grid, TextField, FormControl, InputLabel, Select, MenuItem, FormHe
 import { Save, Cancel, PhotoCamera } from "@mui/icons-material";
 import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
-import { useApi } from "../../hooks/useApi";
+import { useApi } from "@/hooks/useApi";
 
 export default function UserForm({ user, onSave, onCancel }) {
     const [loading, setLoading] = useState(false);
     const { useFetchData, useCreateData, useUpdateData } = useApi();
 
     // Fetch roles for dropdown
-    const { data: rolesData } = useFetchData("roles", "/api/v1/roles");
+    const { data: rolesData } = useFetchData("roles", "/roles");
 
     const {
         control,
@@ -35,13 +35,13 @@ export default function UserForm({ user, onSave, onCancel }) {
     });
 
     // Mutations
-    const createUser = useCreateData("/api/v1/users", {
+    const createUser = useCreateData("/users", {
         updateStore: true,
         storeKey: "users",
         successMessage: "کاربر با موفقیت ایجاد شد",
     });
 
-    const updateUser = useUpdateData("/api/v1/users", {
+    const updateUser = useUpdateData("/users", {
         updateStore: true,
         storeKey: "users",
         successMessage: "کاربر با موفقیت به‌روزرسانی شد",
@@ -101,7 +101,7 @@ export default function UserForm({ user, onSave, onCancel }) {
 
                 <Grid container spacing={3}>
                     {/* Avatar Section */}
-                    <Grid item xs={12} md={4}>
+                    <Grid item size={{ xs: 12, md: 4 }}>
                         <Paper sx={{ p: 3, textAlign: "center" }}>
                             <Typography variant="h6" gutterBottom>
                                 تصویر پروفایل
@@ -123,14 +123,14 @@ export default function UserForm({ user, onSave, onCancel }) {
                     </Grid>
 
                     {/* Form Fields */}
-                    <Grid item xs={12} md={8}>
+                    <Grid item size={{ xs: 12, md: 8 }}>
                         <Paper sx={{ p: 3 }}>
                             <Typography variant="h6" gutterBottom>
                                 اطلاعات کاربر
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="name"
                                         control={control}
@@ -139,7 +139,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="email"
                                         control={control}
@@ -154,7 +154,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="phone"
                                         control={control}
@@ -170,7 +170,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="role"
                                         control={control}
@@ -192,7 +192,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                 </Grid>
 
                                 {/* Password Fields (only for new users or when updating password) */}
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="password"
                                         control={control}
@@ -216,7 +216,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="confirmPassword"
                                         control={control}
@@ -238,7 +238,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller
                                         name="bio"
                                         control={control}
@@ -246,7 +246,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={4}>
+                                <Grid item size={{ xs: 12, md: 4 }}>
                                     <Controller
                                         name="status"
                                         control={control}
@@ -263,7 +263,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={4}>
+                                <Grid item size={{ xs: 12, md: 4 }}>
                                     <Controller
                                         name="emailVerified"
                                         control={control}
@@ -271,7 +271,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={4}>
+                                <Grid item size={{ xs: 12, md: 4 }}>
                                     <Controller
                                         name="phoneVerified"
                                         control={control}

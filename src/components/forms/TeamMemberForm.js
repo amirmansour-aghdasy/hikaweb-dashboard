@@ -116,7 +116,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={3}>
                 {/* Personal Information */}
-                <Grid item xs={12} md={8}>
+                <Grid item size={{ xs: 12, md: 8 }}>
                     <Stack spacing={3}>
                         <Box>
                             <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -124,7 +124,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="name"
                                         control={control}
@@ -133,7 +133,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="email"
                                         control={control}
@@ -148,11 +148,11 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller name="phone" control={control} render={({ field }) => <TextField {...field} label="شماره تماس" fullWidth />} />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller name="experience" control={control} render={({ field }) => <TextField {...field} label="سابقه کار (سال)" type="number" fullWidth />} />
                                 </Grid>
                             </Grid>
@@ -165,7 +165,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller
                                         name="position"
                                         control={control}
@@ -178,7 +178,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="department"
                                         control={control}
@@ -198,15 +198,15 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item size={{ xs: 12, md: 6 }}>
                                     <Controller name="order" control={control} render={({ field }) => <TextField {...field} label="ترتیب نمایش" type="number" fullWidth />} />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller name="bio" control={control} render={({ field }) => <MultiLangTextField {...field} label="بیوگرافی" multiline rows={4} />} />
                                 </Grid>
 
-                                <Grid item xs={12}>
+                                <Grid item size={{ xs: 12 }}>
                                     <Controller name="skills" control={control} render={({ field }) => <TagInput {...field} label="مهارت‌ها و تخصص‌ها" placeholder="مهارت جدید اضافه کنید..." />} />
                                 </Grid>
                             </Grid>
@@ -230,7 +230,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
                                             </Box>
 
                                             <Grid container spacing={2}>
-                                                <Grid item xs={12} md={6}>
+                                                <Grid item size={{ xs: 12, md: 6 }}>
                                                     <Controller
                                                         name={`education.${index}.degree`}
                                                         control={control}
@@ -238,7 +238,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
                                                     />
                                                 </Grid>
 
-                                                <Grid item xs={12} md={6}>
+                                                <Grid item size={{ xs: 12, md: 6 }}>
                                                     <Controller
                                                         name={`education.${index}.field`}
                                                         control={control}
@@ -246,7 +246,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
                                                     />
                                                 </Grid>
 
-                                                <Grid item xs={12} md={6}>
+                                                <Grid item size={{ xs: 12, md: 6 }}>
                                                     <Controller
                                                         name={`education.${index}.university`}
                                                         control={control}
@@ -254,7 +254,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
                                                     />
                                                 </Grid>
 
-                                                <Grid item xs={12} md={6}>
+                                                <Grid item size={{ xs: 12, md: 6 }}>
                                                     <Controller
                                                         name={`education.${index}.year`}
                                                         control={control}
@@ -286,7 +286,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
                 </Grid>
 
                 {/* Sidebar */}
-                <Grid item xs={12} md={4}>
+                <Grid item size={{ xs: 12, md: 4 }}>
                     <Stack spacing={3}>
                         {/* Avatar */}
                         <Box>

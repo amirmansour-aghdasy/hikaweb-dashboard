@@ -130,7 +130,7 @@ export default function FAQForm({ faq, onSave, onCancel }) {
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
-                <Grid item xs={12} md={8}>
+                <Grid item size={{xs:12, md:8}}>
                     <Stack spacing={3}>
                         {/* Question */}
                         <Box>
@@ -247,7 +247,7 @@ export default function FAQForm({ faq, onSave, onCancel }) {
                 </Grid>
 
                 {/* Sidebar */}
-                <Grid item xs={12} md={4}>
+                <Grid item size={{xs:12, md:4}}>
                     <Stack spacing={3}>
                         {/* Settings */}
                         <Box>

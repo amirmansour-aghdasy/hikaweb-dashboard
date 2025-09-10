@@ -2,7 +2,7 @@
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, IconButton, Typography, Box } from "@mui/material";
 import { Close } from "@mui/icons-material";
 
-export default function Modal({ open, onClose, title, children, actions, maxWidth = "md", fullWidth = true, showCloseButton = true }) {
+export default function Modal({ open, onClose, title, children, actions, maxWidth = "lg", fullWidth = true, showCloseButton = true }) {
     return (
         <Dialog
             open={open}

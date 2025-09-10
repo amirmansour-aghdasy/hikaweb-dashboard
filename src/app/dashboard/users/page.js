@@ -104,7 +104,7 @@ export default function UsersPage() {
                     ]}
                 />
 
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingUser ? "ویرایش کاربر" : "افزودن کاربر جدید"} maxWidth="md">
+                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingUser ? "ویرایش کاربر" : "افزودن کاربر جدید"} maxWidth="lg">
                     <UserForm
                         user={editingUser}
                         onSave={() => {
