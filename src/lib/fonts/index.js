@@ -1,0 +1,1 @@
+export { iranSanse } from "./iranSans";
