@@ -221,15 +221,15 @@ function GeneralSettings({ settings, onChange }) {
             </Typography>
 
             <Grid container spacing={3}>
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <MultiLangTextField label="نام وب‌سایت" value={formData.siteName} onChange={(value) => handleChange("siteName", value)} required />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <MultiLangTextField label="توضیحات وب‌سایت" value={formData.description} onChange={(value) => handleChange("description", value)} multiline rows={3} />
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth select label="منطقه زمانی" value={formData.timezone} onChange={(e) => handleChange("timezone", e.target.value)}>
                         <MenuItem value="Asia/Tehran">تهران</MenuItem>
                         <MenuItem value="Asia/Dubai">دبی</MenuItem>
@@ -237,18 +237,18 @@ function GeneralSettings({ settings, onChange }) {
                     </TextField>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth select label="زبان پیش‌فرض" value={formData.defaultLanguage} onChange={(e) => handleChange("defaultLanguage", e.target.value)}>
                         <MenuItem value="fa">فارسی</MenuItem>
                         <MenuItem value="en">انگلیسی</MenuItem>
                     </TextField>
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <FormControlLabel control={<Switch checked={formData.enableMultiLanguage} onChange={(e) => handleChange("enableMultiLanguage", e.target.checked)} />} label="فعال‌سازی چندزبانه" />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <FormControlLabel control={<Switch checked={formData.maintenanceMode} onChange={(e) => handleChange("maintenanceMode", e.target.checked)} />} label="حالت تعمیر و نگهداری" />
                 </Grid>
             </Grid>
@@ -261,7 +261,7 @@ function ContactSettings({ settings, onChange }) {
     const [formData, setFormData] = useState({
         email: "",
         phone: "",
-        mobile: "",
+        phoneNumber: "",
         address: { fa: "", en: "" },
         socialMedia: {
             instagram: "",
@@ -294,37 +294,37 @@ function ContactSettings({ settings, onChange }) {
             </Typography>
 
             <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth type="email" label="ایمیل اصلی" value={formData.email} onChange={(e) => handleChange("email", e.target.value)} />
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth label="تلفن ثابت" value={formData.phone} onChange={(e) => handleChange("phone", e.target.value)} />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <MultiLangTextField label="آدرس" value={formData.address} onChange={(value) => handleChange("address", value)} multiline rows={3} />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
                         شبکه‌های اجتماعی
                     </Typography>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth label="Instagram" value={formData.socialMedia.instagram} onChange={(e) => handleSocialMediaChange("instagram", e.target.value)} placeholder="@username" />
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth label="Telegram" value={formData.socialMedia.telegram} onChange={(e) => handleSocialMediaChange("telegram", e.target.value)} placeholder="@username" />
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth label="LinkedIn" value={formData.socialMedia.linkedin} onChange={(e) => handleSocialMediaChange("linkedin", e.target.value)} />
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth label="YouTube" value={formData.socialMedia.youtube} onChange={(e) => handleSocialMediaChange("youtube", e.target.value)} />
                 </Grid>
             </Grid>
@@ -374,36 +374,36 @@ function EmailSettings({ settings, onChange }) {
             </Typography>
 
             <Grid container spacing={3}>
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <Typography variant="subtitle1" gutterBottom>
                         تنظیمات SMTP
                     </Typography>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth label="هاست SMTP" value={formData.smtp.host} onChange={(e) => handleSmtpChange("host", e.target.value)} placeholder="smtp.gmail.com" />
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth type="number" label="پورت" value={formData.smtp.port} onChange={(e) => handleSmtpChange("port", parseInt(e.target.value))} />
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth label="نام کاربری" value={formData.smtp.user} onChange={(e) => handleSmtpChange("user", e.target.value)} />
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField fullWidth type="password" label="رمز عبور" value={formData.smtp.password} onChange={(e) => handleSmtpChange("password", e.target.value)} />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <Divider sx={{ my: 2 }} />
                     <Typography variant="subtitle1" gutterBottom>
                         اعلان‌های ایمیل
                     </Typography>
                 </Grid>
 
-                <Grid item xs={12} md={4}>
+                <Grid item size={{ xs: 12, md: 4 }}>
                     <FormControlLabel
                         control={
                             <Switch
@@ -418,7 +418,7 @@ function EmailSettings({ settings, onChange }) {
                     />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
+                <Grid item size={{ xs: 12, md: 4 }}>
                     <FormControlLabel
                         control={
                             <Switch
@@ -433,7 +433,7 @@ function EmailSettings({ settings, onChange }) {
                     />
                 </Grid>
 
-                <Grid item xs={12} md={4}>
+                <Grid item size={{ xs: 12, md: 4 }}>
                     <FormControlLabel
                         control={
                             <Switch
@@ -491,14 +491,14 @@ function SecuritySettings({ settings, onChange }) {
             </Alert>
 
             <Grid container spacing={3}>
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <Paper sx={{ p: 3 }}>
                         <Typography variant="subtitle1" gutterBottom>
                             محدودیت نرخ درخواست
                         </Typography>
 
                         <Grid container spacing={2}>
-                            <Grid item xs={12}>
+                            <Grid item size={{ xs: 12 }}>
                                 <FormControlLabel
                                     control={
                                         <Switch
@@ -513,7 +513,7 @@ function SecuritySettings({ settings, onChange }) {
                                 />
                             </Grid>
 
-                            <Grid item xs={12} md={6}>
+                            <Grid item size={{ xs: 12, md: 6 }}>
                                 <TextField
                                     fullWidth
                                     type="number"
@@ -530,14 +530,14 @@ function SecuritySettings({ settings, onChange }) {
                     </Paper>
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <Paper sx={{ p: 3 }}>
                         <Typography variant="subtitle1" gutterBottom>
                             خط‌مشی رمز عبور
                         </Typography>
 
                         <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
+                            <Grid item size={{ xs: 12, md: 6 }}>
                                 <Typography gutterBottom>حداقل طول رمز عبور: {formData.password.minLength}</Typography>
                                 <Slider
                                     value={formData.password.minLength}
@@ -552,7 +552,7 @@ function SecuritySettings({ settings, onChange }) {
                                 />
                             </Grid>
 
-                            <Grid item xs={12} md={6}>
+                            <Grid item size={{ xs: 12, md: 6 }}>
                                 <FormControlLabel
                                     control={
                                         <Switch
@@ -614,7 +614,7 @@ function MediaSettings({ settings, onChange }) {
             </Typography>
 
             <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField
                         fullWidth
                         select
@@ -631,7 +631,7 @@ function MediaSettings({ settings, onChange }) {
                     </TextField>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid item size={{ xs: 12, md: 6 }}>
                     <TextField
                         fullWidth
                         type="number"
@@ -681,13 +681,13 @@ function NotificationSettings({ settings, onChange }) {
             </Typography>
 
             <Grid container spacing={3}>
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <Typography variant="subtitle1" gutterBottom>
                         تلگرام
                     </Typography>
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <FormControlLabel
                         control={
                             <Switch
@@ -704,7 +704,7 @@ function NotificationSettings({ settings, onChange }) {
 
                 {formData.telegram.enabled && (
                     <>
-                        <Grid item xs={12} md={6}>
+                        <Grid item size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 label="Bot Token"
@@ -717,7 +717,7 @@ function NotificationSettings({ settings, onChange }) {
                             />
                         </Grid>
 
-                        <Grid item xs={12} md={6}>
+                        <Grid item size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 label="Chat ID"
@@ -731,14 +731,14 @@ function NotificationSettings({ settings, onChange }) {
                     </>
                 )}
 
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <Divider sx={{ my: 2 }} />
                     <Typography variant="subtitle1" gutterBottom>
                         پیامک
                     </Typography>
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <FormControlLabel
                         control={
                             <Switch
@@ -755,7 +755,7 @@ function NotificationSettings({ settings, onChange }) {
 
                 {formData.sms.enabled && (
                     <>
-                        <Grid item xs={12} md={6}>
+                        <Grid item size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 label="API Key"
@@ -768,7 +768,7 @@ function NotificationSettings({ settings, onChange }) {
                             />
                         </Grid>
 
-                        <Grid item xs={12} md={6}>
+                        <Grid item size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 label="شماره فرستنده"
@@ -849,22 +849,22 @@ function ThemeSettings({ settings, onChange }) {
 
             <Grid container spacing={3}>
                 {/* Colors */}
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <Paper sx={{ p: 3, mb: 3 }}>
                         <Typography variant="subtitle1" gutterBottom>
                             رنگ‌های سیستم
                         </Typography>
 
                         <Grid container spacing={2}>
-                            <Grid item xs={12} md={4}>
+                            <Grid item size={{ xs: 12, md: 4 }}>
                                 <TextField fullWidth type="color" label="رنگ اصلی" value={formData.colors.primary} onChange={(e) => handleColorChange("primary", e.target.value)} />
                             </Grid>
 
-                            <Grid item xs={12} md={4}>
+                            <Grid item size={{ xs: 12, md: 4 }}>
                                 <TextField fullWidth type="color" label="رنگ ثانویه" value={formData.colors.secondary} onChange={(e) => handleColorChange("secondary", e.target.value)} />
                             </Grid>
 
-                            <Grid item xs={12} md={4}>
+                            <Grid item size={{ xs: 12, md: 4 }}>
                                 <TextField fullWidth type="color" label="رنگ پس‌زمینه" value={formData.colors.background} onChange={(e) => handleColorChange("background", e.target.value)} />
                             </Grid>
                         </Grid>
@@ -872,14 +872,14 @@ function ThemeSettings({ settings, onChange }) {
                 </Grid>
 
                 {/* Typography */}
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <Paper sx={{ p: 3, mb: 3 }}>
                         <Typography variant="subtitle1" gutterBottom>
                             تایپوگرافی
                         </Typography>
 
                         <Grid container spacing={2}>
-                            <Grid item xs={12} md={6}>
+                            <Grid item size={{ xs: 12, md: 6 }}>
                                 <TextField
                                     fullWidth
                                     label="فونت اصلی"
@@ -891,7 +891,7 @@ function ThemeSettings({ settings, onChange }) {
                                 />
                             </Grid>
 
-                            <Grid item xs={12} md={6}>
+                            <Grid item size={{ xs: 12, md: 6 }}>
                                 <Typography gutterBottom>اندازه فونت: {formData.typography.fontSize}px</Typography>
                                 <Slider
                                     value={formData.typography.fontSize}
@@ -910,14 +910,14 @@ function ThemeSettings({ settings, onChange }) {
                 </Grid>
 
                 {/* Features */}
-                <Grid item xs={12}>
+                <Grid item size={{ xs: 12 }}>
                     <Paper sx={{ p: 3 }}>
                         <Typography variant="subtitle1" gutterBottom>
                             ویژگی‌ها
                         </Typography>
 
                         <Grid container spacing={2}>
-                            <Grid item xs={12} md={4}>
+                            <Grid item size={{ xs: 12, md: 4 }}>
                                 <FormControlLabel
                                     control={
                                         <Switch
@@ -932,7 +932,7 @@ function ThemeSettings({ settings, onChange }) {
                                 />
                             </Grid>
 
-                            <Grid item xs={12} md={4}>
+                            <Grid item size={{ xs: 12, md: 4 }}>
                                 <FormControlLabel
                                     control={
                                         <Switch
@@ -947,7 +947,7 @@ function ThemeSettings({ settings, onChange }) {
                                 />
                             </Grid>
 
-                            <Grid item xs={12} md={4}>
+                            <Grid item size={{ xs: 12, md: 4 }}>
                                 <FormControlLabel
                                     control={
                                         <Switch

@@ -59,12 +59,12 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
 
     const { useCreateData, useUpdateData, useFetchData } = useApi();
 
-    const createTicket = useCreateData("/api/v1/tickets");
-    const updateTicket = useUpdateData("/api/v1/tickets");
-    const createResponse = useCreateData("/api/v1/tickets/responses");
+    const createTicket = useCreateData("/tickets");
+    const updateTicket = useUpdateData("/tickets");
+    const createResponse = useCreateData("/tickets/responses");
 
     // Fetch users for assignment
-    const { data: usersData } = useFetchData("support-users", "/api/v1/users?role=admin,support");
+    const { data: usersData } = useFetchData("support-users", "/users?role=admin,support");
 
     const {
         control,
@@ -253,13 +253,13 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                 <Card sx={{ mb: 3, bgcolor: "grey.50" }}>
                     <CardContent>
                         <Grid container spacing={2} alignItems="center">
-                            <Grid item size={{ xs: 12, md: 6 }}>
+                            <Grid size={{ xs: 12, md: 6 }}>
                                 <Typography variant="h6">تیکت #{ticket.ticketNumber}</Typography>
                                 <Typography variant="body2" color="text.secondary">
                                     ایجاد شده: {formatDate(ticket.createdAt)}
                                 </Typography>
                             </Grid>
-                            <Grid item size={{ xs: 12, md: 6 }}>
+                            <Grid size={{ xs: 12, md: 6 }}>
                                 <Stack direction="row" spacing={1} justifyContent="flex-end">
                                     <Chip
                                         label={PRIORITY_OPTIONS.find((p) => p.value === ticket.priority)?.label}
@@ -279,7 +279,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
 
             <Grid container spacing={3}>
                 {/* Main Content */}
-                <Grid item size={{ xs: 12, lg: 8 }}>
+                <Grid size={{ xs: 12, lg: 8 }}>
                     <Stack spacing={3}>
                         {/* Response Section (if editing) */}
                         {responseMode && (
@@ -290,7 +290,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                     </Typography>
 
                                     <Grid container spacing={2}>
-                                        <Grid item size={{ xs: 12 }}>
+                                        <Grid size={{ xs: 12 }}>
                                             <Controller
                                                 name="responseText"
                                                 control={control}
@@ -311,7 +311,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                             />
                                         </Grid>
 
-                                        <Grid item size={{ xs: 12, md: 6 }}>
+                                        <Grid size={{ xs: 12, md: 6 }}>
                                             <Controller
                                                 name="responseType"
                                                 control={control}
@@ -327,7 +327,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                             />
                                         </Grid>
 
-                                        <Grid item size={{ xs: 12 }}>
+                                        <Grid size={{ xs: 12 }}>
                                             <Typography variant="subtitle2" gutterBottom>
                                                 فایل‌های ضمیمه پاسخ
                                             </Typography>
@@ -359,7 +359,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                     </Typography>
 
                                     <Grid container spacing={2}>
-                                        <Grid item size={{ xs: 12 }}>
+                                        <Grid size={{ xs: 12 }}>
                                             <Controller
                                                 name="subject"
                                                 control={control}
@@ -368,7 +368,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                             />
                                         </Grid>
 
-                                        <Grid item size={{ xs: 12 }}>
+                                        <Grid size={{ xs: 12 }}>
                                             <Controller
                                                 name="description"
                                                 control={control}
@@ -402,7 +402,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                     </Typography>
 
                                     <Grid container spacing={2}>
-                                        <Grid item size={{ xs: 12, md: 6 }}>
+                                        <Grid size={{ xs: 12, md: 6 }}>
                                             <Controller
                                                 name="customerName"
                                                 control={control}
@@ -413,7 +413,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                             />
                                         </Grid>
 
-                                        <Grid item size={{ xs: 12, md: 6 }}>
+                                        <Grid size={{ xs: 12, md: 6 }}>
                                             <Controller
                                                 name="customerEmail"
                                                 control={control}
@@ -438,7 +438,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                             />
                                         </Grid>
 
-                                        <Grid item size={{ xs: 12, md: 6 }}>
+                                        <Grid size={{ xs: 12, md: 6 }}>
                                             <Controller name="customerPhone" control={control} render={({ field }) => <TextField {...field} label="تلفن مشتری" fullWidth />} />
                                         </Grid>
                                     </Grid>
@@ -473,7 +473,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                 </Grid>
 
                 {/* Sidebar */}
-                <Grid item size={{ xs: 12, lg: 4 }}>
+                <Grid size={{ xs: 12, lg: 4 }}>
                     <Stack spacing={3}>
                         {/* Status & Priority */}
                         <Card>

@@ -1,9 +1,11 @@
 "use client";
-import { AppBar, Toolbar, IconButton, Typography, Box, Badge, Menu, MenuItem, Avatar, Divider, Button, useTheme, useMediaQuery } from "@mui/material";
-import { Menu as MenuIcon, Notifications, AccountCircle, Logout, Settings, Person, Language } from "@mui/icons-material";
+import { AppBar, Toolbar, IconButton, Typography, Box, Menu, MenuItem, Avatar, Divider, Button, useTheme, useMediaQuery } from "@mui/material";
+import { Menu as MenuIcon, AccountCircle, Logout, Settings, Person, Language } from "@mui/icons-material";
 import { useState } from "react";
 import { useAuth } from "../../lib/auth";
 import { useRouter } from "next/navigation";
+import NotificationButton from "./NotificationButton";
+import NotificationsMenu from "./NotificationsMenu";
 
 export default function Header({ onMenuClick, sidebarOpen }) {
     const theme = useTheme();
@@ -71,11 +73,7 @@ export default function Header({ onMenuClick, sidebarOpen }) {
                         </IconButton>
 
                         {/* Notifications */}
-                        <IconButton color="inherit" onClick={handleNotificationOpen}>
-                            <Badge badgeContent={3} color="error">
-                                <Notifications />
-                            </Badge>
-                        </IconButton>
+                        <NotificationButton onOpen={handleNotificationOpen} />
 
                         {/* Profile Menu */}
                         <IconButton onClick={handleProfileMenuOpen} sx={{ p: 0.5 }}>
@@ -137,55 +135,11 @@ export default function Header({ onMenuClick, sidebarOpen }) {
             </Menu>
 
             {/* Notifications Menu */}
-            <Menu
+            <NotificationsMenu
                 anchorEl={notificationAnchor}
                 open={Boolean(notificationAnchor)}
                 onClose={handleNotificationClose}
-                PaperProps={{
-                    elevation: 3,
-                    sx: {
-                        mt: 1.5,
-                        minWidth: 300,
-                        maxHeight: 400,
-                    },
-                }}
-            >
-                <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                        اعلان‌ها
-                    </Typography>
-                </Box>
-                <MenuItem>
-                    <Box>
-                        <Typography variant="body2">نظر جدیدی ثبت شد</Typography>
-                        <Typography variant="caption" color="textSecondary">
-                            ۵ دقیقه پیش
-                        </Typography>
-                    </Box>
-                </MenuItem>
-                <MenuItem>
-                    <Box>
-                        <Typography variant="body2">تیکت جدید دریافت شد</Typography>
-                        <Typography variant="caption" color="textSecondary">
-                            ۱۰ دقیقه پیش
-                        </Typography>
-                    </Box>
-                </MenuItem>
-                <MenuItem>
-                    <Box>
-                        <Typography variant="body2">درخواست مشاوره جدید</Typography>
-                        <Typography variant="caption" color="textSecondary">
-                            ۱۵ دقیقه پیش
-                        </Typography>
-                    </Box>
-                </MenuItem>
-                <Divider />
-                <MenuItem sx={{ justifyContent: "center" }}>
-                    <Button size="small" variant="outlined">
-                        مشاهده همه
-                    </Button>
-                </MenuItem>
-            </Menu>
+            />
         </>
     );
 }

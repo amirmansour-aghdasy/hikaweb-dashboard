@@ -51,7 +51,7 @@ export default function CommentsPage() {
     });
 
     // Reply to comment
-    const replyToComment = useCreateData("/api/v1/comments", {
+    const replyToComment = useCreateData("/comments", {
         successMessage: "پاسخ با موفقیت ارسال شد",
     });
 

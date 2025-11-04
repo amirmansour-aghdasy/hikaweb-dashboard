@@ -63,16 +63,21 @@ export default function TagInput({ value = [], onChange, label = "برچسب‌�
             renderTags={(tagValue, getTagProps) =>
                 tagValue.map((option, index) => <Chip {...getTagProps({ index })} key={index} label={getOptionLabel(option)} size="small" color="primary" variant="outlined" />)
             }
-            renderInput={(params) => (
-                <TextField
-                    {...params}
-                    label={label}
-                    placeholder={value.length === 0 ? placeholder : ""}
-                    error={!!error}
-                    helperText={error || helperText || `${value.length}/${maxTags} برچسب`}
-                    disabled={disabled}
-                />
-            )}
+            renderInput={(params) => {
+                // Clone params to avoid readonly issues
+                const inputParams = { ...params };
+                inputParams.inputProps = params.inputProps ? { ...params.inputProps } : {};
+                return (
+                    <TextField
+                        {...inputParams}
+                        label={label}
+                        placeholder={value.length === 0 ? placeholder : ""}
+                        error={!!error}
+                        helperText={error || helperText || `${value.length}/${maxTags} برچسب`}
+                        disabled={disabled}
+                    />
+                );
+            }}
             disabled={disabled || value.length >= maxTags}
         />
     );

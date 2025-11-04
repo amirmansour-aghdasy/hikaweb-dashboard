@@ -32,8 +32,8 @@ export default function FAQForm({ faq, onSave, onCancel }) {
 
     const { useCreateData, useUpdateData } = useApi();
 
-    const createFAQ = useCreateData("/api/v1/faq");
-    const updateFAQ = useUpdateData("/api/v1/faq");
+    const createFAQ = useCreateData("/faq");
+    const updateFAQ = useUpdateData("/faq");
 
     const {
         control,
@@ -67,10 +67,15 @@ export default function FAQForm({ faq, onSave, onCancel }) {
 
     useEffect(() => {
         if (faq) {
+            // Handle category - it might be populated object or just ObjectId
+            const categoryValue = typeof faq.category === 'object' && faq.category?._id 
+                ? faq.category._id 
+                : (faq.category || "");
+            
             reset({
                 question: faq.question || { fa: "", en: "" },
                 answer: faq.answer || { fa: "", en: "" },
-                category: faq.category?._id || "",
+                category: categoryValue,
                 tags: faq.tags || { fa: [], en: [] },
                 order: faq.order || 0,
                 isActive: faq.status === "active",
@@ -130,7 +135,7 @@ export default function FAQForm({ faq, onSave, onCancel }) {
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
-                <Grid item size={{xs:12, md:8}}>
+                <Grid size={{xs:12, md:8}}>
                     <Stack spacing={3}>
                         {/* Question */}
                         <Box>
@@ -247,7 +252,7 @@ export default function FAQForm({ faq, onSave, onCancel }) {
                 </Grid>
 
                 {/* Sidebar */}
-                <Grid item size={{xs:12, md:4}}>
+                <Grid size={{xs:12, md:4}}>
                     <Stack spacing={3}>
                         {/* Settings */}
                         <Box>

@@ -20,11 +20,17 @@ export default function CategorySelector({
 
     const { useFetchData } = useApi();
 
-    const { data: categoriesData, isLoading } = useFetchData(["categories", type], `/api/v1/categories?type=${type}&status=active`);
+    const { data: categoriesData, isLoading } = useFetchData(["categories", type], `/categories?type=${type}&status=active`);
 
     useEffect(() => {
         if (categoriesData?.data) {
-            setCategories(categoriesData.data);
+            // Ensure data is an array
+            const categoriesArray = Array.isArray(categoriesData.data) 
+                ? categoriesData.data 
+                : (categoriesData.data.categories || []);
+            setCategories(categoriesArray);
+        } else {
+            setCategories([]);
         }
     }, [categoriesData]);
 
@@ -74,21 +80,40 @@ export default function CategorySelector({
             />
         ));
 
+    // Ensure options is always an array
+    const safeOptions = Array.isArray(categories) ? categories : [];
+
     return (
         <Autocomplete
             multiple={multiple}
-            value={value}
+            value={value || (multiple ? [] : null)}
             onChange={handleChange}
-            options={categories}
+            options={safeOptions}
             loading={isLoading}
             getOptionLabel={getOptionLabel}
-            isOptionEqualToValue={(option, value) => option._id === value._id}
+            isOptionEqualToValue={(option, value) => {
+                if (!option || !value) return false;
+                return option._id === value._id || option._id === value;
+            }}
             renderOption={renderOption}
             renderTags={multiple ? renderTags : undefined}
-            renderInput={(params) => <TextField {...params} label={label} error={!!error} helperText={error || helperText} required={required} disabled={disabled} />}
+            renderInput={(params) => {
+                // Clone params to avoid readonly issues
+                const inputParams = { ...params };
+                inputParams.inputProps = params.inputProps ? { ...params.inputProps } : {};
+                return <TextField {...inputParams} label={label} error={!!error} helperText={error || helperText} required={required} disabled={disabled} />;
+            }}
             PaperComponent={({ children, ...props }) => (
                 <Paper {...props} sx={{ mt: 1 }}>
-                    {children}
+                    {safeOptions.length === 0 && !isLoading ? (
+                        <Box sx={{ p: 2, textAlign: "center" }}>
+                            <Typography variant="body2" color="text.secondary">
+                                دسته‌بندی‌ای یافت نشد
+                            </Typography>
+                        </Box>
+                    ) : (
+                        children
+                    )}
                 </Paper>
             )}
         />

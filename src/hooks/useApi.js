@@ -1,25 +1,34 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 import { useDataStore } from "../store/useDataStore";
-import { useUIStore } from "../store/useUIStore";
+import toast from "react-hot-toast";
 
 export const useApi = () => {
     const queryClient = useQueryClient();
-    const { setData, updateItem, addItem, removeItem } = useDataStore();
-    const { showSnackbar } = useUIStore();
+    const { setData, updateItem, addItem, removeItem, invalidateCache } = useDataStore();
 
     const useFetchData = (key, endpoint, options = {}) => {
         return useQuery({
             queryKey: Array.isArray(key) ? key : [key],
             queryFn: async () => {
-                const response = await api.get(endpoint);
+                // Create a new params object to avoid readonly issues
+                const params = options.params ? { ...options.params } : {};
+                const response = await api.get(endpoint, {
+                    params,
+                });
                 return response.data;
             },
             retry: 3,
-            staleTime: 5 * 60 * 1000,
+            staleTime: options.staleTime || 5 * 60 * 1000,
+            refetchOnWindowFocus: false,
+            enabled: options.enabled !== false,
             onError: (error) => {
-                showSnackbar("خطا در دریافت اطلاعات", "error");
+                // Error toast is handled by api interceptor
+                if (options.onError) {
+                    options.onError(error);
+                }
             },
+            ...options,
         });
     };
 
@@ -29,13 +38,32 @@ export const useApi = () => {
                 const response = await api.put(`${endpoint}/${id}`, data);
                 return response.data;
             },
-            onSuccess: () => {
-                // Invalidate همه queries مرتبط
-                queryClient.invalidateQueries({ queryKey: ['users'] });
-                showSnackbar(options.successMessage || "با موفقیت به‌روزرسانی شد", "success");
+            onSuccess: (data, variables) => {
+                // Invalidate related queries
+                const queryKey = options.queryKey || endpoint.split("/")[1] || "data";
+                queryClient.invalidateQueries({ 
+                    queryKey: [queryKey],
+                    exact: false 
+                });
+                
+                // Update cache if needed
+                if (options.updateCache !== false) {
+                    updateItem(queryKey, variables.id, variables.data);
+                }
+                
+                if (options.successMessage) {
+                    toast.success(options.successMessage);
+                }
+                
+                if (options.onSuccess) {
+                    options.onSuccess(data, variables);
+                }
             },
-            onError: (error) => {
-                showSnackbar(error.response?.data?.message || "خطا در به‌روزرسانی", "error");
+            onError: (error, variables) => {
+                // Error toast is handled by api interceptor
+                if (options.onError) {
+                    options.onError(error, variables);
+                }
             },
         });
     };
@@ -46,12 +74,32 @@ export const useApi = () => {
                 const response = await api.post(endpoint, data);
                 return response.data;
             },
-            onSuccess: () => {
-                queryClient.invalidateQueries({ queryKey: [options.storeKey || 'data'] });
-                showSnackbar(options.successMessage || "با موفقیت ایجاد شد", "success");
+            onSuccess: (data, variables) => {
+                // Invalidate related queries
+                const queryKey = options.queryKey || endpoint.split("/")[1] || "data";
+                queryClient.invalidateQueries({ 
+                    queryKey: [queryKey],
+                    exact: false 
+                });
+                
+                // Add to cache if needed
+                if (options.updateCache !== false && data.data) {
+                    addItem(queryKey, data.data);
+                }
+                
+                if (options.successMessage) {
+                    toast.success(options.successMessage);
+                }
+                
+                if (options.onSuccess) {
+                    options.onSuccess(data, variables);
+                }
             },
-            onError: (error) => {
-                showSnackbar(error.response?.data?.message || "خطا در ایجاد", "error");
+            onError: (error, variables) => {
+                // Error toast is handled by api interceptor
+                if (options.onError) {
+                    options.onError(error, variables);
+                }
             },
         });
     };
@@ -62,12 +110,32 @@ export const useApi = () => {
                 const response = await api.delete(`${endpoint}/${id}`);
                 return response.data;
             },
-            onSuccess: () => {
-                queryClient.invalidateQueries({ queryKey: [options.storeKey || 'data'] });
-                showSnackbar(options.successMessage || "با موفقیت حذف شد", "success");
+            onSuccess: (data, id) => {
+                // Invalidate related queries
+                const queryKey = options.queryKey || endpoint.split("/")[1] || "data";
+                queryClient.invalidateQueries({ 
+                    queryKey: [queryKey],
+                    exact: false 
+                });
+                
+                // Remove from cache if needed
+                if (options.updateCache !== false) {
+                    removeItem(queryKey, id);
+                }
+                
+                if (options.successMessage) {
+                    toast.success(options.successMessage);
+                }
+                
+                if (options.onSuccess) {
+                    options.onSuccess(data, id);
+                }
             },
-            onError: (error) => {
-                showSnackbar(error.response?.data?.message || "خطا در حذف", "error");
+            onError: (error, id) => {
+                // Error toast is handled by api interceptor
+                if (options.onError) {
+                    options.onError(error, id);
+                }
             },
         });
     };

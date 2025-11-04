@@ -175,7 +175,7 @@ export default function Sidebar({ open, onClose, isMobile }) {
                             {user?.name || "مدیر سیستم"}
                         </Typography>
                         <Typography variant="caption" color="textSecondary">
-                            {user?.role?.name || "مدیر"}
+                            {user?.role?.displayName?.fa || user?.role?.name || "مدیر"}
                         </Typography>
                     </Box>
                 </Box>

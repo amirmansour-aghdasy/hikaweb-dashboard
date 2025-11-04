@@ -52,11 +52,11 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
 
     const { useCreateData, useUpdateData, useFetchData } = useApi();
 
-    const createProject = useCreateData("/api/v1/portfolio");
-    const updateProject = useUpdateData("/api/v1/portfolio");
+    const createProject = useCreateData("/portfolio");
+    const updateProject = useUpdateData("/portfolio");
 
     // Fetch services for selection
-    const { data: servicesData } = useFetchData("services-list", "/api/v1/services?status=active");
+    const { data: servicesData } = useFetchData("services-list", "/services?status=active");
 
     const {
         control,
@@ -140,6 +140,19 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
 
     useEffect(() => {
         if (project) {
+            // Handle services and categories - they might be populated objects or just ObjectIds
+            const servicesValue = Array.isArray(project.services)
+                ? project.services.map(service => 
+                    typeof service === 'object' && service._id ? service._id : service
+                  )
+                : [];
+            
+            const categoriesValue = Array.isArray(project.categories)
+                ? project.categories.map(cat => 
+                    typeof cat === 'object' && cat._id ? cat._id : cat
+                  )
+                : [];
+            
             reset({
                 title: project.title || { fa: "", en: "" },
                 slug: project.slug || { fa: "", en: "" },
@@ -158,8 +171,8 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                     completedAt: "",
                     projectType: { fa: "", en: "" },
                 },
-                services: project.services || [],
-                categories: project.categories || [],
+                services: servicesValue,
+                categories: categoriesValue,
                 toolsUsed: project.toolsUsed || [],
                 featuredImage: project.featuredImage || "",
                 gallery: project.gallery || [],
@@ -175,6 +188,48 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                 orderIndex: project.orderIndex || 0,
                 isFeatured: project.isFeatured || false,
                 seo: project.seo || {
+                    metaTitle: { fa: "", en: "" },
+                    metaDescription: { fa: "", en: "" },
+                    metaKeywords: { fa: [], en: [] },
+                },
+            });
+        } else {
+            // Reset to default when no project
+            reset({
+                title: { fa: "", en: "" },
+                slug: { fa: "", en: "" },
+                description: { fa: "", en: "" },
+                shortDescription: { fa: "", en: "" },
+                client: {
+                    name: "",
+                    logo: "",
+                    website: "",
+                    industry: { fa: "", en: "" },
+                    size: "medium",
+                },
+                project: {
+                    duration: "",
+                    budget: "",
+                    completedAt: "",
+                    projectType: { fa: "", en: "" },
+                },
+                services: [],
+                categories: [],
+                toolsUsed: [],
+                featuredImage: "",
+                gallery: [],
+                results: [],
+                testimonial: {
+                    content: { fa: "", en: "" },
+                    clientName: "",
+                    clientPosition: "",
+                    clientAvatar: "",
+                    rating: 5,
+                },
+                challenges: [],
+                orderIndex: 0,
+                isFeatured: false,
+                seo: {
                     metaTitle: { fa: "", en: "" },
                     metaDescription: { fa: "", en: "" },
                     metaKeywords: { fa: [], en: [] },
@@ -248,7 +303,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
-                <Grid item size={{ xs: 12, lg: 8 }}>
+                <Grid size={{ xs: 12, lg: 8 }}>
                     <Stack spacing={3}>
                         {/* Basic Information */}
                         <Box>
@@ -257,7 +312,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item size={{ xs: 12 }}>
+                                <Grid size={{ xs: 12 }}>
                                     <Controller
                                         name="title"
                                         control={control}
@@ -271,15 +326,15 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item size={{ xs: 12 }}>
+                                <Grid size={{ xs: 12 }}>
                                     <Controller name="slug" control={control} render={({ field }) => <MultiLangTextField {...field} label="نامک (URL Slug)" />} />
                                 </Grid>
 
-                                <Grid item size={{ xs: 12 }}>
+                                <Grid size={{ xs: 12 }}>
                                     <Controller name="shortDescription" control={control} render={({ field }) => <MultiLangTextField {...field} label="توضیحات کوتاه" multiline rows={2} />} />
                                 </Grid>
 
-                                <Grid item size={{ xs: 12 }}>
+                                <Grid size={{ xs: 12 }}>
                                     <Controller name="description" control={control} render={({ field }) => <MultiLangEditor {...field} label="توضیحات کامل پروژه" height={300} />} />
                                 </Grid>
                             </Grid>
@@ -294,7 +349,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                             </AccordionSummary>
                             <AccordionDetails>
                                 <Grid container spacing={2}>
-                                    <Grid item size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
                                         <Controller
                                             name="client.name"
                                             control={control}
@@ -305,7 +360,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                         />
                                     </Grid>
 
-                                    <Grid item size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
                                         <Controller
                                             name="client.website"
                                             control={control}
@@ -313,11 +368,11 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                         />
                                     </Grid>
 
-                                    <Grid item size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
                                         <Controller name="client.industry" control={control} render={({ field }) => <MultiLangTextField {...field} label="صنعت" size="small" />} />
                                     </Grid>
 
-                                    <Grid item size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
                                         <Controller
                                             name="client.size"
                                             control={control}
@@ -336,7 +391,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                         />
                                     </Grid>
 
-                                    <Grid item size={{ xs: 12 }}>
+                                    <Grid size={{ xs: 12 }}>
                                         <Typography variant="subtitle2" gutterBottom>
                                             لوگوی مشتری
                                         </Typography>
@@ -367,11 +422,11 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                             </AccordionSummary>
                             <AccordionDetails>
                                 <Grid container spacing={2}>
-                                    <Grid item size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
                                         <Controller name="project.duration" control={control} render={({ field }) => <TextField {...field} label="مدت زمان (روز)" type="number" fullWidth />} />
                                     </Grid>
 
-                                    <Grid item size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
                                         <Controller
                                             name="project.budget"
                                             control={control}
@@ -390,7 +445,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                         />
                                     </Grid>
 
-                                    <Grid item size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
                                         <Controller
                                             name="project.completedAt"
                                             control={control}
@@ -398,7 +453,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                         />
                                     </Grid>
 
-                                    <Grid item size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
                                         <Controller name="project.projectType" control={control} render={({ field }) => <MultiLangTextField {...field} label="نوع پروژه" size="small" />} />
                                     </Grid>
                                 </Grid>
@@ -425,7 +480,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                                 </Box>
 
                                                 <Grid container spacing={2}>
-                                                    <Grid item size={{ xs: 12, md: 4 }}>
+                                                    <Grid size={{ xs: 12, md: 4 }}>
                                                         <Controller
                                                             name={`toolsUsed.${index}.name`}
                                                             control={control}
@@ -433,7 +488,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                                         />
                                                     </Grid>
 
-                                                    <Grid item size={{ xs: 12, md: 4 }}>
+                                                    <Grid size={{ xs: 12, md: 4 }}>
                                                         <Controller
                                                             name={`toolsUsed.${index}.icon`}
                                                             control={control}
@@ -441,7 +496,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                                         />
                                                     </Grid>
 
-                                                    <Grid item size={{ xs: 12, md: 4 }}>
+                                                    <Grid size={{ xs: 12, md: 4 }}>
                                                         <Controller
                                                             name={`toolsUsed.${index}.category`}
                                                             control={control}
@@ -490,7 +545,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                                 </Box>
 
                                                 <Grid container spacing={2}>
-                                                    <Grid item size={{ xs: 12, md: 3 }}>
+                                                    <Grid size={{ xs: 12, md: 3 }}>
                                                         <Controller
                                                             name={`results.${index}.metric`}
                                                             control={control}
@@ -498,7 +553,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                                         />
                                                     </Grid>
 
-                                                    <Grid item size={{ xs: 12, md: 3 }}>
+                                                    <Grid size={{ xs: 12, md: 3 }}>
                                                         <Controller
                                                             name={`results.${index}.value`}
                                                             control={control}
@@ -506,7 +561,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                                         />
                                                     </Grid>
 
-                                                    <Grid item size={{ xs: 12, md: 3 }}>
+                                                    <Grid size={{ xs: 12, md: 3 }}>
                                                         <Controller
                                                             name={`results.${index}.improvement`}
                                                             control={control}
@@ -514,7 +569,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                                         />
                                                     </Grid>
 
-                                                    <Grid item size={{ xs: 12, md: 3 }}>
+                                                    <Grid size={{ xs: 12, md: 3 }}>
                                                         <Controller
                                                             name={`results.${index}.icon`}
                                                             control={control}
@@ -547,7 +602,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                 </Grid>
 
                 {/* Sidebar */}
-                <Grid item size={{ xs: 12, lg: 4 }}>
+                <Grid size={{ xs: 12, lg: 4 }}>
                     <Stack spacing={3}>
                         {/* Settings */}
                         <Box>

@@ -37,7 +37,7 @@ export default function UsersPage() {
     const columns = [
         { field: "name", headerName: "نام", align: "left" },
         { field: "email", headerName: "ایمیل", align: "left" },
-        { field: "phone", headerName: "تلفن", align: "center" },
+        { field: "phoneNumber", headerName: "تلفن", align: "center" },
         { field: "role", headerName: "نقش", align: "center" },
         { field: "status", headerName: "وضعیت", type: "status", align: "center" },
         { field: "lastLogin", headerName: "آخرین ورود", type: "date", align: "center" },

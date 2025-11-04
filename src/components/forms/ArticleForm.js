@@ -17,8 +17,8 @@ export default function ArticleForm({ article, onSave, onCancel }) {
 
     const { useCreateData, useUpdateData } = useApi();
 
-    const createArticle = useCreateData("/api/v1/articles");
-    const updateArticle = useUpdateData("/api/v1/articles");
+    const createArticle = useCreateData("/articles");
+    const updateArticle = useUpdateData("/articles");
 
     const {
         control,
@@ -50,13 +50,20 @@ export default function ArticleForm({ article, onSave, onCancel }) {
 
     useEffect(() => {
         if (article) {
+            // Handle categories - they might be populated objects or just ObjectIds
+            const categoriesValue = Array.isArray(article.categories)
+                ? article.categories.map(cat => 
+                    typeof cat === 'object' && cat._id ? cat._id : cat
+                  )
+                : [];
+            
             reset({
                 title: article.title || { fa: "", en: "" },
                 slug: article.slug || { fa: "", en: "" },
                 excerpt: article.excerpt || { fa: "", en: "" },
                 content: article.content || { fa: "", en: "" },
                 featuredImage: article.featuredImage || "",
-                categories: article.categories || [],
+                categories: categoriesValue,
                 tags: article.tags || { fa: [], en: [] },
                 isPublished: article.isPublished || false,
                 isFeatured: article.isFeatured || false,
@@ -64,6 +71,23 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                 metaTitle: article.seo?.metaTitle || { fa: "", en: "" },
                 metaDescription: article.seo?.metaDescription || { fa: "", en: "" },
                 metaKeywords: article.seo?.metaKeywords || { fa: [], en: [] },
+            });
+        } else {
+            // Reset to default when no article
+            reset({
+                title: { fa: "", en: "" },
+                slug: { fa: "", en: "" },
+                excerpt: { fa: "", en: "" },
+                content: { fa: "", en: "" },
+                featuredImage: "",
+                categories: [],
+                tags: { fa: [], en: [] },
+                isPublished: false,
+                isFeatured: false,
+                allowComments: true,
+                metaTitle: { fa: "", en: "" },
+                metaDescription: { fa: "", en: "" },
+                metaKeywords: { fa: [], en: [] },
             });
         }
     }, [article, reset]);
@@ -130,7 +154,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
-                <Grid item size={{ xs: 12, lg: 8 }}>
+                <Grid size={{ xs: 12, lg: 8 }}>
                     <Stack spacing={3}>
                         {/* Title Section */}
                         <Box>
@@ -225,7 +249,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                 </Grid>
 
                 {/* Sidebar */}
-                <Grid item size={{xs:12, lg:4}}>
+                <Grid size={{xs:12, lg:4}}>
                     <Stack spacing={3}>
                         {/* Publication Settings */}
                         <Box>

@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "./api";
 import Cookies from "js-cookie";
-import toast from "react-hot-toast"; // به جای useUIStore
+import toast from "react-hot-toast";
 
 const AuthContext = createContext();
 
@@ -25,13 +25,14 @@ export function AuthProvider({ children }) {
             }
 
             const response = await api.get("/auth/me");
-            if (response.data.success) {
-                setUser(response.data.data);
+            if (response.data.success && response.data.data) {
+                setUser(response.data.data.user || response.data.data);
             }
         } catch (error) {
             console.error("Auth check failed:", error);
             if (error.response?.status === 401) {
                 Cookies.remove("token");
+                setUser(null);
             }
         } finally {
             setLoading(false);
@@ -44,12 +45,17 @@ export function AuthProvider({ children }) {
             const response = await api.post("/auth/login", { email, password });
 
             if (response.data.success) {
-                const { user } = response.data.data;
-                const { accessToken: token } = response.data.data.tokens;
+                const { user, tokens } = response.data.data;
+                const token = tokens.accessToken || tokens.token;
+
+                if (!token) {
+                    toast.error("خطا در دریافت توکن احراز هویت");
+                    return { success: false, message: "خطا در دریافت توکن" };
+                }
 
                 Cookies.set("token", token, {
                     expires: 7,
-                    secure: false,
+                    secure: process.env.NODE_ENV === "production",
                     sameSite: "lax",
                     path: "/",
                 });
@@ -61,7 +67,7 @@ export function AuthProvider({ children }) {
             }
         } catch (error) {
             const message = error.response?.data?.message || "خطا در ورود";
-            toast.error(message);
+            // Error toast is handled by api interceptor, but we can override
             return { success: false, message };
         } finally {
             setLoading(false);
@@ -81,7 +87,7 @@ export function AuthProvider({ children }) {
         }
     };
 
-    const value = { user, loading, login, logout, checkAuth };
+    const value = { user, loading, login, logout, checkAuth, setUser };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -24,6 +24,7 @@ import {
 import { Search, FilterList, MoreVert, Edit, Delete, Visibility, Add } from "@mui/icons-material";
 import { useState } from "react";
 import { formatDate } from "../../lib/utils";
+import Image from "next/image";
 
 export default function DataTable({
     title,
@@ -44,6 +45,9 @@ export default function DataTable({
     enableActions = true,
     customActions = [],
 }) {
+    // Ensure data is always an array
+    const safeData = Array.isArray(data) ? data : (data?.data ? (Array.isArray(data.data) ? data.data : []) : []);
+    
     const [selected, setSelected] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [anchorEl, setAnchorEl] = useState(null);
@@ -51,7 +55,7 @@ export default function DataTable({
 
     const handleSelectAll = (event) => {
         if (event.target.checked) {
-            setSelected(data.map((row) => row._id));
+            setSelected(safeData.map((row) => row._id));
         } else {
             setSelected([]);
         }
@@ -131,7 +135,7 @@ export default function DataTable({
                 return value ? formatDate(value) : "-";
 
             case "image":
-                return value ? <img src={value} alt="" style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover" }} /> : null;
+                return value ? <Image src={value} alt="" title="" width={40} height={40} style={{ borderRadius: "50%", objectFit: "cover" }} /> : null;
 
             case "boolean":
                 return value ? "بله" : "خیر";
@@ -201,8 +205,8 @@ export default function DataTable({
                             {enableSelection && (
                                 <TableCell padding="checkbox">
                                     <Checkbox
-                                        indeterminate={selected.length > 0 && selected.length < data.length}
-                                        checked={data.length > 0 && selected.length === data.length}
+                                        indeterminate={selected.length > 0 && selected.length < safeData.length}
+                                        checked={safeData.length > 0 && selected.length === safeData.length}
                                         onChange={handleSelectAll}
                                     />
                                 </TableCell>
@@ -225,14 +229,14 @@ export default function DataTable({
                                     <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>در حال بارگذاری...</Box>
                                 </TableCell>
                             </TableRow>
-                        ) : data.length === 0 ? (
+                        ) : safeData.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={columns.length + (enableSelection ? 1 : 0) + (enableActions ? 1 : 0)}>
                                     <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>داده‌ای یافت نشد</Box>
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            (data || []).map((row) => (
+                            safeData.map((row) => (
                                 <TableRow key={row._id} hover selected={selected.indexOf(row._id) !== -1}>
                                     {enableSelection && (
                                         <TableCell padding="checkbox">
@@ -267,8 +271,23 @@ export default function DataTable({
                     count={pagination.total || 0}
                     page={(pagination.page || 1) - 1}
                     onPageChange={(e, page) => onPageChange && onPageChange(page + 1)}
-                    rowsPerPage={pagination.limit || 20}
-                    onRowsPerPageChange={(e) => onRowsPerPageChange && onRowsPerPageChange(e.target.value)}
+                    rowsPerPage={(() => {
+                        const limit = pagination.limit || 25;
+                        // MUI only accepts 10, 25, 50, 100
+                        // Convert invalid values to closest valid value
+                        if ([10, 25, 50, 100].includes(limit)) return limit;
+                        // Convert 20 to 25 (most common invalid value)
+                        if (limit === 20) return 25;
+                        // For other invalid values, default to 25
+                        return 25;
+                    })()}
+                    onRowsPerPageChange={(e) => {
+                        const newLimit = parseInt(e.target.value, 10);
+                        if (onRowsPerPageChange) {
+                            onRowsPerPageChange(newLimit);
+                        }
+                    }}
+                    rowsPerPageOptions={[10, 25, 50, 100]}
                     labelRowsPerPage="تعداد در هر صفحه:"
                     labelDisplayedRows={({ from, to, count }) => `${from}-${to} از ${count}`}
                 />

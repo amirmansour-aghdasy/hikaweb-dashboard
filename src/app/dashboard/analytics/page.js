@@ -24,7 +24,7 @@ import { TrendingUp, TrendingDown, People, Article, Visibility, Comment, Star, B
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import Layout from "@/components/layout/Layout";
 import { useApi } from "@/hooks/useApi";
-import { formatDate, formatPrice } from "@/lib/utils";
+import { formatDate, formatPrice, formatNumber } from "@/lib/utils";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
@@ -33,9 +33,9 @@ export default function AnalyticsPage() {
     const { useFetchData } = useApi();
 
     // Fetch analytics data
-    const { data: analyticsData, isLoading } = useFetchData(["analytics", timeRange], `/api/v1/analytics?period=${timeRange}`);
+    const { data: analyticsData, isLoading } = useFetchData(["analytics", timeRange], `/analytics?period=${timeRange}`);
 
-    const { data: statsData } = useFetchData(["dashboard-stats", timeRange], `/api/v1/analytics/dashboard-stats?period=${timeRange}`);
+    const { data: statsData } = useFetchData(["dashboard-stats", timeRange], `/analytics/dashboard-stats?period=${timeRange}`);
 
     // Stats Cards Component
     const StatsCard = ({ title, value, change, icon, color = "primary" }) => (
@@ -72,29 +72,30 @@ export default function AnalyticsPage() {
         </Card>
     );
 
-    // Sample data for charts
-    const chartData = [
-        { name: "فروردین", views: 4000, users: 2400, articles: 24 },
-        { name: "اردیبهشت", views: 3000, users: 1398, articles: 22 },
-        { name: "خرداد", views: 2000, users: 9800, articles: 29 },
-        { name: "تیر", views: 2780, users: 3908, articles: 20 },
-        { name: "مرداد", views: 1890, users: 4800, articles: 21 },
-        { name: "شهریور", views: 2390, users: 3800, articles: 25 },
-    ];
+    // Transform analytics data for charts
+    const chartData = analyticsData?.data?.charts?.map((item) => ({
+        name: item._id || "نامشخص",
+        views: item.views || 0,
+        users: item.visitors || 0,
+        articles: item.articles || 0,
+    })) || [];
 
-    const pieData = [
-        { name: "مقالات", value: 45 },
-        { name: "خدمات", value: 30 },
-        { name: "نمونه کارها", value: 15 },
-        { name: "سایر", value: 10 },
-    ];
+    const pieData = analyticsData?.data?.contentDistribution 
+        ? [
+            { name: "مقالات", value: analyticsData.data.contentDistribution.articles || 0 },
+            { name: "خدمات", value: analyticsData.data.contentDistribution.services || 0 },
+            { name: "نمونه کارها", value: analyticsData.data.contentDistribution.portfolio || 0 },
+            { name: "سایر", value: analyticsData.data.contentDistribution.other || 0 },
+          ]
+        : [];
 
-    const topArticles = [
-        { title: "راهنمای کامل SEO", views: 1234, comments: 45 },
-        { title: "طراحی UI/UX مدرن", views: 987, comments: 32 },
-        { title: "بازاریابی دیجیتال", views: 856, comments: 28 },
-        { title: "برندسازی موثر", views: 743, comments: 19 },
-    ];
+    const topArticles = analyticsData?.data?.topArticles?.map((article) => ({
+        title: article.title?.fa || article.title?.en || "بدون عنوان",
+        views: article.views || 0,
+        comments: article.commentsCount || 0,
+    })) || [];
+
+    const performanceMetrics = analyticsData?.data?.performanceMetrics || {};
 
     return (
         <Layout>
@@ -118,16 +119,40 @@ export default function AnalyticsPage() {
                 {/* Stats Cards */}
                 <Grid container spacing={3} sx={{ mb: 3 }}>
                     <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
-                        <StatsCard title="بازدید کل" value="12,457" change={12.5} icon={<Visibility />} color="primary" />
+                        <StatsCard 
+                            title="بازدید کل" 
+                            value={formatNumber(statsData?.data?.analytics?.pageViews || 0)} 
+                            change={statsData?.data?.analytics?.pageViews > 0 ? 12.5 : 0} 
+                            icon={<Visibility />} 
+                            color="primary" 
+                        />
                     </Grid>
                     <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
-                        <StatsCard title="کاربران جدید" value="1,246" change={8.2} icon={<People />} color="success" />
+                        <StatsCard 
+                            title="کاربران جدید" 
+                            value={formatNumber(statsData?.data?.overview?.totalUsers || 0)} 
+                            change={statsData?.data?.recent?.articles > 0 ? 8.2 : 0} 
+                            icon={<People />} 
+                            color="success" 
+                        />
                     </Grid>
                     <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
-                        <StatsCard title="مقالات منتشر شده" value="24" change={-2.1} icon={<Article />} color="info" />
+                        <StatsCard 
+                            title="مقالات منتشر شده" 
+                            value={formatNumber(statsData?.data?.overview?.publishedArticles || 0)} 
+                            change={statsData?.data?.recent?.articles > 0 ? -2.1 : 0} 
+                            icon={<Article />} 
+                            color="info" 
+                        />
                     </Grid>
                     <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
-                        <StatsCard title="نظرات جدید" value="156" change={15.3} icon={<Comment />} color="warning" />
+                        <StatsCard 
+                            title="نظرات جدید" 
+                            value={formatNumber(statsData?.data?.recent?.comments || 0)} 
+                            change={statsData?.data?.recent?.comments > 0 ? 15.3 : 0} 
+                            icon={<Comment />} 
+                            color="warning" 
+                        />
                     </Grid>
                 </Grid>
 
@@ -229,40 +254,42 @@ export default function AnalyticsPage() {
                                         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
                                             <Typography variant="body2">نرخ تبدیل</Typography>
                                             <Typography variant="body2" fontWeight="bold">
-                                                3.2%
+                                                {performanceMetrics.conversionRate?.toFixed(1) || 0}%
                                             </Typography>
                                         </Box>
-                                        <LinearProgress variant="determinate" value={32} />
+                                        <LinearProgress variant="determinate" value={performanceMetrics.conversionRate || 0} />
                                     </Box>
 
                                     <Box>
                                         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
                                             <Typography variant="body2">میانگین زمان در سایت</Typography>
                                             <Typography variant="body2" fontWeight="bold">
-                                                4:32
+                                                {performanceMetrics.avgTimeOnSite 
+                                                    ? `${Math.floor(performanceMetrics.avgTimeOnSite / 60)}:${String(performanceMetrics.avgTimeOnSite % 60).padStart(2, '0')}`
+                                                    : "0:00"}
                                             </Typography>
                                         </Box>
-                                        <LinearProgress variant="determinate" value={65} color="success" />
+                                        <LinearProgress variant="determinate" value={(performanceMetrics.avgTimeOnSite || 0) / 10} color="success" />
                                     </Box>
 
                                     <Box>
                                         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
                                             <Typography variant="body2">نرخ بازگشت</Typography>
                                             <Typography variant="body2" fontWeight="bold">
-                                                42%
+                                                {performanceMetrics.bounceRate?.toFixed(0) || 0}%
                                             </Typography>
                                         </Box>
-                                        <LinearProgress variant="determinate" value={42} color="warning" />
+                                        <LinearProgress variant="determinate" value={performanceMetrics.bounceRate || 0} color="warning" />
                                     </Box>
 
                                     <Box>
                                         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
                                             <Typography variant="body2">رضایت کاربران</Typography>
                                             <Typography variant="body2" fontWeight="bold">
-                                                4.8/5
+                                                {performanceMetrics.userSatisfaction?.toFixed(1) || 0}/5
                                             </Typography>
                                         </Box>
-                                        <LinearProgress variant="determinate" value={96} color="success" />
+                                        <LinearProgress variant="determinate" value={(performanceMetrics.userSatisfaction || 0) * 20} color="success" />
                                     </Box>
                                 </Stack>
                             </CardContent>

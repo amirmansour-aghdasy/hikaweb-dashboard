@@ -10,7 +10,7 @@ export default function UserForm({ user, onSave, onCancel }) {
     const { useFetchData, useCreateData, useUpdateData } = useApi();
 
     // Fetch roles for dropdown
-    const { data: rolesData } = useFetchData("roles", "/roles");
+    const { data: rolesData } = useFetchData("roles", "/users/roles");
 
     const {
         control,
@@ -22,7 +22,7 @@ export default function UserForm({ user, onSave, onCancel }) {
         defaultValues: {
             name: "",
             email: "",
-            phone: "",
+            phoneNumber: "",
             password: "",
             confirmPassword: "",
             role: "",
@@ -30,7 +30,7 @@ export default function UserForm({ user, onSave, onCancel }) {
             avatar: "",
             bio: "",
             emailVerified: false,
-            phoneVerified: false,
+            phoneNumberVerified: false,
         },
     });
 
@@ -49,10 +49,38 @@ export default function UserForm({ user, onSave, onCancel }) {
 
     useEffect(() => {
         if (user) {
+            // Handle role - it might be populated object or just ObjectId
+            const roleValue = typeof user.role === 'object' && user.role?._id 
+                ? user.role._id 
+                : user.role;
+            
             reset({
-                ...user,
+                name: user.name || "",
+                email: user.email || "",
+                phoneNumber: user.phoneNumber || "",
+                role: roleValue || "",
+                status: user.status || "active",
+                avatar: user.avatar || "",
+                bio: user.bio || "",
+                emailVerified: user.emailVerified || user.isEmailVerified || false,
+                phoneNumberVerified: user.phoneNumberVerified || user.isPhoneNumberVerified || false,
                 password: "",
                 confirmPassword: "",
+            });
+        } else {
+            // Reset to default values when no user
+            reset({
+                name: "",
+                email: "",
+                phoneNumber: "",
+                password: "",
+                confirmPassword: "",
+                role: "",
+                status: "active",
+                avatar: "",
+                bio: "",
+                emailVerified: false,
+                phoneNumberVerified: false,
             });
         }
     }, [user, reset]);
@@ -101,7 +129,7 @@ export default function UserForm({ user, onSave, onCancel }) {
 
                 <Grid container spacing={3}>
                     {/* Avatar Section */}
-                    <Grid item size={{ xs: 12, md: 4 }}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                         <Paper sx={{ p: 3, textAlign: "center" }}>
                             <Typography variant="h6" gutterBottom>
                                 تصویر پروفایل
@@ -123,14 +151,14 @@ export default function UserForm({ user, onSave, onCancel }) {
                     </Grid>
 
                     {/* Form Fields */}
-                    <Grid item size={{ xs: 12, md: 8 }}>
+                    <Grid size={{ xs: 12, md: 8 }}>
                         <Paper sx={{ p: 3 }}>
                             <Typography variant="h6" gutterBottom>
                                 اطلاعات کاربر
                             </Typography>
 
                             <Grid container spacing={2}>
-                                <Grid item size={{ xs: 12, md: 6 }}>
+                                <Grid size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="name"
                                         control={control}
@@ -139,7 +167,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item size={{ xs: 12, md: 6 }}>
+                                <Grid size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="email"
                                         control={control}
@@ -154,9 +182,9 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item size={{ xs: 12, md: 6 }}>
+                                <Grid size={{ xs: 12, md: 6 }}>
                                     <Controller
-                                        name="phone"
+                                        name="phoneNumber"
                                         control={control}
                                         rules={{
                                             pattern: {
@@ -165,12 +193,12 @@ export default function UserForm({ user, onSave, onCancel }) {
                                             },
                                         }}
                                         render={({ field }) => (
-                                            <TextField {...field} fullWidth label="شماره تلفن" placeholder="09123456789" error={!!errors.phone} helperText={errors.phone?.message} />
+                                            <TextField {...field} fullWidth label="شماره تلفن" placeholder="09123456789" error={!!errors.phoneNumber} helperText={errors.phoneNumber?.message} />
                                         )}
                                     />
                                 </Grid>
 
-                                <Grid item size={{ xs: 12, md: 6 }}>
+                                <Grid size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="role"
                                         control={control}
@@ -179,9 +207,9 @@ export default function UserForm({ user, onSave, onCancel }) {
                                             <FormControl fullWidth error={!!errors.role}>
                                                 <InputLabel>نقش کاربر</InputLabel>
                                                 <Select {...field} label="نقش کاربر">
-                                                    {rolesData?.data?.map((role) => (
+                                                    {rolesData?.data?.roles?.map((role) => (
                                                         <MenuItem key={role._id} value={role._id}>
-                                                            {role.name}
+                                                            {role.displayName?.fa || role.name}
                                                         </MenuItem>
                                                     ))}
                                                 </Select>
@@ -192,7 +220,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                 </Grid>
 
                                 {/* Password Fields (only for new users or when updating password) */}
-                                <Grid item size={{ xs: 12, md: 6 }}>
+                                <Grid size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="password"
                                         control={control}
@@ -216,7 +244,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item size={{ xs: 12, md: 6 }}>
+                                <Grid size={{ xs: 12, md: 6 }}>
                                     <Controller
                                         name="confirmPassword"
                                         control={control}
@@ -238,7 +266,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item size={{ xs: 12 }}>
+                                <Grid size={{ xs: 12 }}>
                                     <Controller
                                         name="bio"
                                         control={control}
@@ -246,7 +274,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item size={{ xs: 12, md: 4 }}>
+                                <Grid size={{ xs: 12, md: 4 }}>
                                     <Controller
                                         name="status"
                                         control={control}
@@ -263,7 +291,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item size={{ xs: 12, md: 4 }}>
+                                <Grid size={{ xs: 12, md: 4 }}>
                                     <Controller
                                         name="emailVerified"
                                         control={control}
@@ -271,9 +299,9 @@ export default function UserForm({ user, onSave, onCancel }) {
                                     />
                                 </Grid>
 
-                                <Grid item size={{ xs: 12, md: 4 }}>
+                                <Grid size={{ xs: 12, md: 4 }}>
                                     <Controller
-                                        name="phoneVerified"
+                                        name="phoneNumberVerified"
                                         control={control}
                                         render={({ field }) => <FormControlLabel control={<Switch {...field} checked={field.value} />} label="تلفن تایید شده" />}
                                     />
