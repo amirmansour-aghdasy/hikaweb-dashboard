@@ -1,28 +1,36 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button, Stack, Tooltip, Avatar } from "@mui/material";
-import { Article, Edit, Delete, Visibility, Publish, UnpublishedSharp, Star, StarBorder, Language } from "@mui/icons-material";
+import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Article, Publish, UnpublishedSharp, Star, StarBorder } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import ArticleForm from "@/components/forms/ArticleForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
-import { formatDate } from "@/lib/utils";
+import { usePageActions } from "@/hooks/usePageActions";
+import { formatDate, getPersianValue, formatNumber } from "@/lib/utils";
 
 export default function ArticlesPage() {
     const [editingArticle, setEditingArticle] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [articleToDelete, setArticleToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [categoryFilter, setCategoryFilter] = useState("all");
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 800);
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
+    const { canView, canEdit, canDelete, canCreate } = usePageActions("articles");
 
     // Build query params
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
         if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
             params.append("search", debouncedSearchTerm);
         }
@@ -33,9 +41,9 @@ export default function ArticlesPage() {
             params.append("category", categoryFilter);
         }
         return params.toString();
-    }, [debouncedSearchTerm, statusFilter, categoryFilter]);
+    }, [debouncedSearchTerm, statusFilter, categoryFilter, page, limit]);
 
-    const endpoint = `/articles${queryParams ? `?${queryParams}` : ""}`;
+    const endpoint = `/articles?${queryParams}`;
 
     // Fetch articles
     const { data: articlesData, isLoading } = useFetchData(["articles", queryParams], endpoint);
@@ -43,11 +51,13 @@ export default function ArticlesPage() {
     // Update article
     const updateArticle = useUpdateData("/articles", {
         successMessage: "مقاله با موفقیت به‌روزرسانی شد",
+        queryKey: "articles",
     });
 
     // Delete article
     const deleteArticle = useDeleteData("/articles", {
         successMessage: "مقاله با موفقیت حذف شد",
+        queryKey: "articles",
     });
 
     const columns = [
@@ -66,104 +76,127 @@ export default function ArticlesPage() {
             headerName: "عنوان",
             flex: 2,
             render: (row) => (
-                <Box>
-                    <Typography variant="body2" fontWeight="bold">
-                        {row.title?.fa}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {row.title?.en}
-                    </Typography>
-                </Box>
+                <Typography variant="body2" fontWeight="bold">
+                    {getPersianValue(row.title, "-")}
+                </Typography>
             ),
         },
         {
             field: "author",
             headerName: "نویسنده",
-            width: 120,
+            width: 150,
             render: (row) => (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Avatar src={row.author?.avatar} sx={{ width: 24, height: 24 }}>
-                        {row.author?.name?.charAt(0)}
+                        {row.author?.name?.charAt(0) || "?"}
                     </Avatar>
-                    <Typography variant="caption">{row.author?.name}</Typography>
+                    <Typography variant="caption">{row.author?.name || "-"}</Typography>
                 </Box>
             ),
         },
         {
             field: "categories",
             headerName: "دسته‌بندی",
-            width: 150,
+            width: 180,
             render: (row) => (
-                <Stack direction="row" spacing={0.5}>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
                     {row.categories?.slice(0, 2).map((category, index) => (
-                        <Chip key={index} label={category.name?.fa || category.name} size="small" variant="outlined" sx={{ fontSize: "0.7rem" }} />
+                        <Chip
+                            key={index}
+                            label={getPersianValue(category?.name || category, "-")}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: "0.7rem" }}
+                        />
                     ))}
-                    {row.categories?.length > 2 && <Chip label={`+${row.categories.length - 2}`} size="small" variant="outlined" sx={{ fontSize: "0.7rem" }} />}
+                    {row.categories?.length > 2 && (
+                        <Chip
+                            label={`+${row.categories.length - 2}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: "0.7rem" }}
+                        />
+                    )}
                 </Stack>
             ),
         },
         {
             field: "status",
             headerName: "وضعیت",
-            width: 100,
+            width: 140,
             render: (row) => (
                 <Stack spacing={0.5}>
-                    <Chip label={row.isPublished ? "منتشر شده" : "پیش‌نویس"} size="small" color={row.isPublished ? "success" : "warning"} variant={row.isPublished ? "filled" : "outlined"} />
-                    {row.isFeatured && <Chip label="ویژه" size="small" color="secondary" icon={<Star sx={{ fontSize: "12px !important" }} />} />}
+                    <Chip
+                        label={row.isPublished ? "منتشر شده" : "پیش‌نویس"}
+                        size="small"
+                        color={row.isPublished ? "success" : "warning"}
+                        variant={row.isPublished ? "filled" : "outlined"}
+                    />
+                    {row.isFeatured && (
+                        <Chip
+                            label="ویژه"
+                            size="small"
+                            color="secondary"
+                            icon={<Star sx={{ fontSize: "12px !important" }} />}
+                        />
+                    )}
                 </Stack>
             ),
         },
         {
             field: "metrics",
             headerName: "آمار",
-            width: 100,
+            width: 120,
             render: (row) => (
                 <Box>
                     <Typography variant="caption" display="block">
-                        👀 {row.views || 0}
+                        👀 {formatNumber(row.views || 0)}
                     </Typography>
                     <Typography variant="caption" display="block">
-                        💬 {row.commentsCount || 0}
+                        💬 {formatNumber(row.commentsCount || 0)}
                     </Typography>
                     <Typography variant="caption" display="block">
-                        👍 {row.likes || 0}
+                        👍 {formatNumber(row.likes || 0)}
                     </Typography>
                 </Box>
             ),
         },
         {
-            field: "language",
-            headerName: "زبان",
-            width: 80,
-            render: (row) => (
-                <Stack direction="row" spacing={0.5}>
-                    {row.title?.fa && <Chip label="FA" size="small" variant="outlined" />}
-                    {row.title?.en && <Chip label="EN" size="small" variant="outlined" />}
-                </Stack>
-            ),
-        },
-        {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
-            width: 120,
-            render: (row) => <Typography variant="caption">{formatDate(row.createdAt)}</Typography>,
-        },
-        {
-            field: "updatedAt",
-            headerName: "آخرین ویرایش",
-            width: 120,
-            render: (row) => <Typography variant="caption">{formatDate(row.updatedAt)}</Typography>,
+            width: 150,
+            type: "date",
         },
     ];
 
     const handleEdit = (article) => {
+        if (!canEdit) return;
         setEditingArticle(article);
         setIsModalOpen(true);
     };
 
     const handleDelete = (article) => {
-        if (window.confirm("آیا از حذف این مقاله اطمینان دارید؟")) {
-            deleteArticle.mutate(article._id);
+        if (!canDelete) return;
+        setArticleToDelete(article);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (articleToDelete) {
+            deleteArticle.mutate(articleToDelete._id, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setArticleToDelete(null);
+                },
+            });
+        }
+    };
+
+    const handleView = (article) => {
+        if (!canView) return;
+        const slug = article.slug?.fa || article.slug;
+        if (slug) {
+            window.open(`/articles/${slug}`, "_blank");
         }
     };
 
@@ -182,12 +215,23 @@ export default function ArticlesPage() {
     };
 
     const handleAdd = () => {
+        if (!canCreate) return;
         setEditingArticle(null);
         setIsModalOpen(true);
     };
 
     const handleSearch = (searchValue) => {
         setSearchTerm(searchValue);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (newLimit) => {
+        setLimit(newLimit);
+        setPage(1); // Reset to first page when changing limit
     };
 
     const handleSaveArticle = () => {
@@ -195,41 +239,16 @@ export default function ArticlesPage() {
         setEditingArticle(null);
     };
 
-    const customActions = [
-        {
-            label: "مشاهده",
-            icon: <Visibility />,
-            onClick: (article) => {
-                window.open(`/articles/${article.slug?.fa || article.slug}`, "_blank");
-            },
-        },
-        {
-            label: "تغییر انتشار",
-            icon: (article) => (article.isPublished ? <UnpublishedSharp /> : <Publish />),
-            onClick: handleTogglePublish,
-            color: (article) => (article.isPublished ? "warning" : "success"),
-        },
-        {
-            label: "ویژه",
-            icon: (article) => (article.isFeatured ? <Star /> : <StarBorder />),
-            onClick: handleToggleFeatured,
-            color: (article) => (article.isFeatured ? "secondary" : "default"),
-        },
-        {
-            label: "حذف",
-            icon: <Delete />,
-            onClick: handleDelete,
-            color: "error",
-        },
-    ];
-
     // Filters for the data table
     const filters = [
         {
             key: "status",
             label: "وضعیت انتشار",
             value: statusFilter,
-            onChange: setStatusFilter,
+            onChange: (value) => {
+                setStatusFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه" },
                 { value: "published", label: "منتشر شده" },
@@ -240,11 +259,32 @@ export default function ArticlesPage() {
             key: "category",
             label: "دسته‌بندی",
             value: categoryFilter,
-            onChange: setCategoryFilter,
+            onChange: (value) => {
+                setCategoryFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه دسته‌ها" },
                 // This would be populated from categories API
             ],
+        },
+    ];
+
+    // Custom actions - shown after standard actions
+    const customActions = [
+        {
+            label: "تغییر انتشار",
+            icon: (article) => (article.isPublished ? <UnpublishedSharp /> : <Publish />),
+            onClick: handleTogglePublish,
+            color: (article) => (article.isPublished ? "warning" : "success"),
+            permission: canEdit,
+        },
+        {
+            label: "ویژه",
+            icon: (article) => (article.isFeatured ? <Star /> : <StarBorder />),
+            onClick: handleToggleFeatured,
+            color: (article) => (article.isFeatured ? "secondary" : "default"),
+            permission: canEdit,
         },
     ];
 
@@ -255,9 +295,11 @@ export default function ArticlesPage() {
                     <Typography variant="h4" fontWeight="bold">
                         مدیریت مقالات
                     </Typography>
-                    <Button variant="contained" startIcon={<Article />} onClick={handleAdd} size="large">
-                        مقاله جدید
-                    </Button>
+                    {canCreate && (
+                        <Button variant="contained" startIcon={<Article />} onClick={handleAdd} size="large">
+                            مقاله جدید
+                        </Button>
+                    )}
                 </Box>
 
                 <DataTable
@@ -266,27 +308,69 @@ export default function ArticlesPage() {
                     columns={columns}
                     loading={isLoading}
                     pagination={articlesData?.pagination}
+                    onPageChange={handlePageChange}
+                    onRowsPerPageChange={handleRowsPerPageChange}
                     onSearch={handleSearch}
-                    onEdit={handleEdit}
-                    onAdd={handleAdd}
+                    onEdit={canEdit ? handleEdit : undefined}
+                    onDelete={canDelete ? handleDelete : undefined}
+                    onView={canView ? handleView : undefined}
+                    onAdd={canCreate ? handleAdd : undefined}
                     searchPlaceholder="جستجو در مقالات (حداقل 3 کاراکتر)..."
-                    enableSelection={true}
+                    enableSelection={false}
                     customActions={customActions}
                     filters={filters}
+                    canView={canView}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    canCreate={canCreate}
                     emptyStateProps={{
                         title: "مقاله‌ای یافت نشد",
                         description: "هنوز مقاله‌ای ایجاد نشده است. اولین مقاله خود را بنویسید!",
-                        action: {
-                            label: "نوشتن مقاله جدید",
-                            onClick: handleAdd,
-                        },
+                        action: canCreate
+                            ? {
+                                  label: "نوشتن مقاله جدید",
+                                  onClick: handleAdd,
+                              }
+                            : undefined,
                     }}
                 />
 
                 {/* Article Form Modal */}
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingArticle ? "ویرایش مقاله" : "نوشتن مقاله جدید"} maxWidth="lg" fullWidth>
-                    <ArticleForm article={editingArticle} onSave={handleSaveArticle} onCancel={() => setIsModalOpen(false)} />
+                <Modal
+                    open={isModalOpen}
+                    onClose={handleSaveArticle}
+                    title={editingArticle ? "ویرایش مقاله" : "نوشتن مقاله جدید"}
+                    maxWidth="lg"
+                    fullWidth
+                >
+                    <ArticleForm article={editingArticle} onSave={handleSaveArticle} onCancel={handleSaveArticle} />
                 </Modal>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                    <DialogTitle>تأیید حذف</DialogTitle>
+                    <DialogContent>
+                        <Typography>
+                            آیا از حذف مقاله <strong>{getPersianValue(articleToDelete?.title, "-")}</strong> اطمینان دارید؟
+                            <br />
+                            <br />
+                            <Typography variant="caption" color="error">
+                                توجه: این عملیات قابل بازگشت نیست.
+                            </Typography>
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
+                        <Button
+                            onClick={handleConfirmDelete}
+                            color="error"
+                            variant="contained"
+                            disabled={deleteArticle.isPending}
+                        >
+                            {deleteArticle.isPending ? "در حال حذف..." : "حذف"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         </Layout>
     );

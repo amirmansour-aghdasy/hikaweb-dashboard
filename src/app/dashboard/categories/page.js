@@ -1,29 +1,38 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button, Stack, Avatar, IconButton, Tooltip, Card, CardContent, Grid } from "@mui/material";
+import { Box, Typography, Chip, Button, Stack, Avatar, IconButton, Card, CardContent, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import { SimpleTreeView, TreeItem } from "@mui/x-tree-view";
-import { Category, Edit, Delete, Add, ExpandMore, ChevronRight, Folder, FolderOpen, ColorLens, Reorder } from "@mui/icons-material";
+import { Category, Edit, Delete, Add, ExpandMore, ChevronRight } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import CategoryForm from "@/components/forms/CategoryForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
-import { formatDate } from "@/lib/utils";
+import { usePageActions } from "@/hooks/usePageActions";
+import { formatDate, getPersianValue, formatNumber } from "@/lib/utils";
+import toast from "react-hot-toast";
 
 export default function CategoriesPage() {
     const [editingCategory, setEditingCategory] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [categoryToDelete, setCategoryToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [typeFilter, setTypeFilter] = useState("all");
     const [viewMode, setViewMode] = useState("table"); // 'table' or 'tree'
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 800);
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
+    const { canView, canEdit, canDelete, canCreate } = usePageActions("categories");
 
     // Build query params
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
         if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
             params.append("search", debouncedSearchTerm);
         }
@@ -31,9 +40,9 @@ export default function CategoriesPage() {
             params.append("type", typeFilter);
         }
         return params.toString();
-    }, [debouncedSearchTerm, typeFilter]);
+    }, [debouncedSearchTerm, typeFilter, page, limit]);
 
-    const endpoint = `/categories${queryParams ? `?${queryParams}` : ""}`;
+    const endpoint = `/categories?${queryParams}`;
 
     // Fetch categories
     const { data: categoriesData, isLoading } = useFetchData(["categories", queryParams], endpoint);
@@ -41,19 +50,13 @@ export default function CategoriesPage() {
     // Update category
     const updateCategory = useUpdateData("/categories", {
         successMessage: "دسته‌بندی با موفقیت به‌روزرسانی شد",
+        queryKey: "categories",
     });
-
-    const handleToggleStatus = (category) => {
-        const newStatus = category.status === "active" ? "inactive" : "active";
-        updateCategory.mutate({
-            id: category._id,
-            data: { status: newStatus },
-        });
-    };
 
     // Delete category
     const deleteCategory = useDeleteData("/categories", {
         successMessage: "دسته‌بندی با موفقیت حذف شد",
+        queryKey: "categories",
     });
 
     const columns = [
@@ -68,6 +71,7 @@ export default function CategoriesPage() {
                         height: 32,
                         bgcolor: row.color || "primary.main",
                         fontSize: "1rem",
+                        mx: "auto"
                     }}
                 >
                     {row.icon ? <span style={{ fontSize: "16px" }}>{row.icon}</span> : <Category />}
@@ -82,14 +86,12 @@ export default function CategoriesPage() {
             render: (row) => (
                 <Box>
                     <Typography variant="body2" fontWeight="bold">
-                        {row.name?.fa}
+                        {getPersianValue(row.name, "-")}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {row.name?.en}
-                    </Typography>
-                    {row.description?.fa && (
-                        <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                            {row.description.fa.substring(0, 60)}...
+                    {row.description && (
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                            {getPersianValue(row.description, "").substring(0, 60)}
+                            {getPersianValue(row.description, "").length > 60 ? "..." : ""}
                         </Typography>
                     )}
                 </Box>
@@ -115,7 +117,12 @@ export default function CategoriesPage() {
             field: "parent",
             headerName: "دسته والد",
             width: 150,
-            render: (row) => (row.parent ? <Typography variant="caption">{row.parent.name?.fa || row.parent.name}</Typography> : <Chip label="دسته اصلی" size="small" variant="outlined" />),
+            render: (row) =>
+                row.parent ? (
+                    <Typography variant="caption">{getPersianValue(row.parent.name, row.parent.name || "-")}</Typography>
+                ) : (
+                    <Chip label="دسته اصلی" size="small" variant="outlined" />
+                ),
             align: "center",
         },
         {
@@ -125,10 +132,10 @@ export default function CategoriesPage() {
             render: (row) => (
                 <Box>
                     <Typography variant="caption" display="block">
-                        📄 {row.itemCount || 0}
+                        📄 {formatNumber(row.itemCount || 0)}
                     </Typography>
                     <Typography variant="caption" display="block">
-                        📁 {row.childrenCount || 0}
+                        📁 {formatNumber(row.childrenCount || 0)}
                     </Typography>
                 </Box>
             ),
@@ -151,35 +158,65 @@ export default function CategoriesPage() {
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
-            width: 120,
-            render: (row) => <Typography variant="caption">{formatDate(row.createdAt)}</Typography>,
+            width: 150,
+            type: "date",
             align: "center",
         },
     ];
 
     const handleEdit = (category) => {
+        if (!canEdit) return;
         setEditingCategory(category);
         setIsModalOpen(true);
     };
 
     const handleDelete = (category) => {
+        if (!canDelete) return;
         if (category.childrenCount > 0) {
             toast.error("ابتدا زیردسته‌ها را حذف کنید");
             return;
         }
+        setCategoryToDelete(category);
+        setIsDeleteDialogOpen(true);
+    };
 
-        if (window.confirm("آیا از حذف این دسته‌بندی اطمینان دارید؟")) {
-            deleteCategory.mutate(category._id);
+    const handleConfirmDelete = () => {
+        if (categoryToDelete) {
+            deleteCategory.mutate(categoryToDelete._id, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setCategoryToDelete(null);
+                },
+            });
         }
     };
 
+    const handleToggleStatus = (category) => {
+        const newStatus = category.status === "active" ? "inactive" : "active";
+        updateCategory.mutate({
+            id: category._id,
+            data: { status: newStatus },
+        });
+    };
+
     const handleAdd = () => {
+        if (!canCreate) return;
         setEditingCategory(null);
         setIsModalOpen(true);
     };
 
     const handleSearch = (searchValue) => {
         setSearchTerm(searchValue);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (newLimit) => {
+        setLimit(newLimit);
+        setPage(1); // Reset to first page when changing limit
     };
 
     const handleSaveCategory = () => {
@@ -187,33 +224,16 @@ export default function CategoriesPage() {
         setEditingCategory(null);
     };
 
-    const customActions = [
-        {
-            label: "تغییر وضعیت",
-            icon: <Edit />,
-            onClick: handleToggleStatus,
-            color: "warning",
-        },
-        {
-            label: "ویرایش",
-            icon: <Edit />,
-            onClick: handleEdit,
-            color: "primary",
-        },
-        {
-            label: "حذف",
-            icon: <Delete />,
-            onClick: handleDelete,
-            color: "error",
-        },
-    ];
-
+    // Filters for the data table
     const filters = [
         {
             key: "type",
             label: "نوع دسته‌بندی",
             value: typeFilter,
-            onChange: setTypeFilter,
+            onChange: (value) => {
+                setTypeFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه انواع" },
                 { value: "article", label: "مقالات" },
@@ -221,6 +241,17 @@ export default function CategoriesPage() {
                 { value: "portfolio", label: "نمونه کارها" },
                 { value: "general", label: "عمومی" },
             ],
+        },
+    ];
+
+    // Custom actions - shown after standard actions
+    const customActions = [
+        {
+            label: "تغییر وضعیت",
+            icon: <Edit />,
+            onClick: handleToggleStatus,
+            color: "warning",
+            permission: canEdit,
         },
     ];
 
@@ -254,15 +285,19 @@ export default function CategoriesPage() {
                             >
                                 {node.icon ? <span style={{ fontSize: "12px" }}>{node.icon}</span> : <Category />}
                             </Avatar>
-                            <Typography variant="body2">{node.name?.fa}</Typography>
+                            <Typography variant="body2">{getPersianValue(node.name, "-")}</Typography>
                             <Chip label={node.itemCount || 0} size="small" />
                             <Box sx={{ ml: "auto" }}>
-                                <IconButton size="small" onClick={() => handleEdit(node)}>
-                                    <Edit fontSize="small" />
-                                </IconButton>
-                                <IconButton size="small" onClick={() => handleDelete(node)}>
-                                    <Delete fontSize="small" />
-                                </IconButton>
+                                {canEdit && (
+                                    <IconButton size="small" onClick={() => handleEdit(node)}>
+                                        <Edit fontSize="small" />
+                                    </IconButton>
+                                )}
+                                {canDelete && (
+                                    <IconButton size="small" onClick={() => handleDelete(node)}>
+                                        <Delete fontSize="small" />
+                                    </IconButton>
+                                )}
                             </Box>
                         </Box>
                     }
@@ -305,26 +340,45 @@ export default function CategoriesPage() {
                         <Button variant={viewMode === "tree" ? "contained" : "outlined"} onClick={() => setViewMode("tree")} size="small">
                             درختی
                         </Button>
-                        <Button variant="contained" startIcon={<Add />} onClick={handleAdd}>
-                            دسته‌بندی جدید
-                        </Button>
+                        {canCreate && (
+                            <Button variant="contained" startIcon={<Add />} onClick={handleAdd}>
+                                دسته‌بندی جدید
+                            </Button>
+                        )}
                     </Stack>
                 </Box>
 
                 {viewMode === "table" ? (
                     <DataTable
                         title="لیست دسته‌بندی‌ها"
-                        data={categoriesData?.data.categories || []}
+                        data={categoriesData?.data?.categories || categoriesData?.data || []}
                         columns={columns}
                         loading={isLoading}
                         pagination={categoriesData?.pagination}
+                        onPageChange={handlePageChange}
+                        onRowsPerPageChange={handleRowsPerPageChange}
                         onSearch={handleSearch}
-                        onEdit={handleEdit}
-                        onAdd={handleAdd}
+                        onEdit={canEdit ? handleEdit : undefined}
+                        onDelete={canDelete ? handleDelete : undefined}
+                        onAdd={canCreate ? handleAdd : undefined}
                         searchPlaceholder="جستجو در دسته‌بندی‌ها (حداقل 3 کاراکتر)..."
-                        enableSelection={true}
+                        enableSelection={false}
                         customActions={customActions}
                         filters={filters}
+                        canView={canView}
+                        canEdit={canEdit}
+                        canDelete={canDelete}
+                        canCreate={canCreate}
+                        emptyStateProps={{
+                            title: "دسته‌بندی‌ای یافت نشد",
+                            description: "هنوز دسته‌بندی‌ای ایجاد نشده است. اولین دسته‌بندی خود را ایجاد کنید!",
+                            action: canCreate
+                                ? {
+                                      label: "ایجاد دسته‌بندی جدید",
+                                      onClick: handleAdd,
+                                  }
+                                : undefined,
+                        }}
                     />
                 ) : (
                     <Card>
@@ -332,15 +386,47 @@ export default function CategoriesPage() {
                             <Typography variant="h6" gutterBottom>
                                 نمای درختی دسته‌بندی‌ها
                             </Typography>
-                            <CategoryTree categories={categoriesData?.data.categories || []} />
+                            <CategoryTree categories={categoriesData?.data?.categories || categoriesData?.data || []} />
                         </CardContent>
                     </Card>
                 )}
 
                 {/* Category Form Modal */}
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCategory ? "ویرایش دسته‌بندی" : "ایجاد دسته‌بندی جدید"} maxWidth="lg" fullWidth>
-                    <CategoryForm category={editingCategory} onSave={handleSaveCategory} onCancel={() => setIsModalOpen(false)} />
+                <Modal
+                    open={isModalOpen}
+                    onClose={handleSaveCategory}
+                    title={editingCategory ? "ویرایش دسته‌بندی" : "ایجاد دسته‌بندی جدید"}
+                    maxWidth="lg"
+                    fullWidth
+                >
+                    <CategoryForm category={editingCategory} onSave={handleSaveCategory} onCancel={handleSaveCategory} />
                 </Modal>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                    <DialogTitle>تأیید حذف</DialogTitle>
+                    <DialogContent>
+                        <Typography>
+                            آیا از حذف دسته‌بندی <strong>{getPersianValue(categoryToDelete?.name, "-")}</strong> اطمینان دارید؟
+                            <br />
+                            <br />
+                            <Typography variant="caption" color="error">
+                                توجه: این عملیات قابل بازگشت نیست.
+                            </Typography>
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
+                        <Button
+                            onClick={handleConfirmDelete}
+                            color="error"
+                            variant="contained"
+                            disabled={deleteCategory.isPending}
+                        >
+                            {deleteCategory.isPending ? "در حال حذف..." : "حذف"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         </Layout>
     );

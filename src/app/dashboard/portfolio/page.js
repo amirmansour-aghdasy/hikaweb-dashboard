@@ -1,28 +1,36 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button, Stack, Avatar, Rating, LinearProgress } from "@mui/material";
-import { Work, Edit, Delete, Visibility, Star, StarBorder, Business, Schedule, AttachMoney, TrendingUp } from "@mui/icons-material";
+import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Work, Star, StarBorder } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import PortfolioForm from "@/components/forms/PortfolioForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
-import { formatDate } from "@/lib/utils";
+import { usePageActions } from "@/hooks/usePageActions";
+import { formatDate, getPersianValue } from "@/lib/utils";
 
 export default function PortfolioPage() {
     const [editingProject, setEditingProject] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [projectToDelete, setProjectToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [categoryFilter, setCategoryFilter] = useState("all");
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 800);
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
+    const { canView, canEdit, canDelete, canCreate } = usePageActions("portfolio");
 
     // Build query params
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
         if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
             params.append("search", debouncedSearchTerm);
         }
@@ -33,9 +41,9 @@ export default function PortfolioPage() {
             params.append("category", categoryFilter);
         }
         return params.toString();
-    }, [debouncedSearchTerm, statusFilter, categoryFilter]);
+    }, [debouncedSearchTerm, statusFilter, categoryFilter, page, limit]);
 
-    const endpoint = `/portfolio${queryParams ? `?${queryParams}` : ""}`;
+    const endpoint = `/portfolio?${queryParams}`;
 
     // Fetch portfolio
     const { data: portfolioData, isLoading } = useFetchData(["portfolio", queryParams], endpoint);
@@ -43,11 +51,13 @@ export default function PortfolioPage() {
     // Update portfolio
     const updateProject = useUpdateData("/portfolio", {
         successMessage: "پروژه با موفقیت به‌روزرسانی شد",
+        queryKey: "portfolio",
     });
 
     // Delete portfolio
     const deleteProject = useDeleteData("/portfolio", {
         successMessage: "پروژه با موفقیت حذف شد",
+        queryKey: "portfolio",
     });
 
     const columns = [
@@ -68,14 +78,12 @@ export default function PortfolioPage() {
             render: (row) => (
                 <Box>
                     <Typography variant="body2" fontWeight="bold">
-                        {row.title?.fa}
+                        {getPersianValue(row.title, "-")}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {row.title?.en}
-                    </Typography>
-                    {row.shortDescription?.fa && (
-                        <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                            {row.shortDescription.fa.substring(0, 60)}...
+                    {row.shortDescription && (
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                            {getPersianValue(row.shortDescription, "").substring(0, 60)}
+                            {getPersianValue(row.shortDescription, "").length > 60 ? "..." : ""}
                         </Typography>
                     )}
                 </Box>
@@ -86,97 +94,86 @@ export default function PortfolioPage() {
             headerName: "مشتری",
             width: 150,
             render: (row) => (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Avatar src={row.client?.logo} sx={{ width: 24, height: 24 }}>
-                        <Business />
-                    </Avatar>
-                    <Box>
-                        <Typography variant="caption" fontWeight="bold">
-                            {row.client?.name}
+                <Box>
+                    <Typography variant="body2" fontWeight="bold">
+                        {row.client?.name || "-"}
+                    </Typography>
+                    {row.client?.industry && (
+                        <Typography variant="caption" color="text.secondary">
+                            {getPersianValue(row.client.industry, "-")}
                         </Typography>
-                        {row.client?.industry?.fa && (
-                            <Typography variant="caption" display="block" color="text.secondary">
-                                {row.client.industry.fa}
-                            </Typography>
-                        )}
-                    </Box>
+                    )}
                 </Box>
             ),
         },
         {
-            field: "services",
-            headerName: "خدمات",
-            width: 150,
+            field: "categories",
+            headerName: "دسته‌بندی",
+            width: 180,
             render: (row) => (
-                <Stack direction="column" spacing={0.5}>
-                    {row.services?.slice(0, 2).map((service, index) => (
-                        <Chip key={index} label={service.name?.fa || service.name} size="small" variant="outlined" sx={{ fontSize: "0.7rem" }} />
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
+                    {row.categories?.slice(0, 2).map((category, index) => (
+                        <Chip
+                            key={index}
+                            label={getPersianValue(category?.name || category, "-")}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: "0.7rem" }}
+                        />
                     ))}
-                    {row.services?.length > 2 && (
-                        <Typography variant="caption" color="text.secondary">
-                            +{row.services.length - 2} بیشتر
-                        </Typography>
+                    {row.categories?.length > 2 && (
+                        <Chip
+                            label={`+${row.categories.length - 2}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: "0.7rem" }}
+                        />
                     )}
                 </Stack>
             ),
         },
         {
-            field: "project",
-            headerName: "جزئیات پروژه",
-            width: 150,
-            render: (row) => (
-                <Box>
-                    <Typography variant="caption" display="block">
-                        <Schedule sx={{ fontSize: 12, mr: 0.5 }} />
-                        {row.project?.duration} روز
-                    </Typography>
-                    <Typography variant="caption" display="block">
-                        <AttachMoney sx={{ fontSize: 12, mr: 0.5 }} />
-                        {row.project?.budget || "نامشخص"}
-                    </Typography>
-                    <Typography variant="caption" display="block" color="text.secondary">
-                        {formatDate(row.project?.completedAt)}
-                    </Typography>
-                </Box>
-            ),
-        },
-        {
-            field: "performance",
-            headerName: "عملکرد",
-            width: 120,
-            render: (row) => (
-                <Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
-                        <Typography variant="caption">👀</Typography>
-                        <Typography variant="caption">{row.views || 0}</Typography>
-                    </Box>
-                    {row.testimonial?.rating && <Rating value={row.testimonial.rating} size="small" readOnly />}
-                    {row.isFeatured && <Chip label="ویژه" size="small" color="secondary" icon={<Star sx={{ fontSize: "12px !important" }} />} />}
-                </Box>
-            ),
-        },
-        {
             field: "status",
             headerName: "وضعیت",
-            width: 100,
+            width: 120,
             type: "status",
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
-            width: 120,
-            render: (row) => <Typography variant="caption">{formatDate(row.createdAt)}</Typography>,
+            width: 150,
+            type: "date",
         },
     ];
 
     const handleEdit = (project) => {
+        if (!canEdit) return;
         setEditingProject(project);
         setIsModalOpen(true);
     };
 
     const handleDelete = (project) => {
-        if (window.confirm("آیا از حذف این پروژه اطمینان دارید؟")) {
-            deleteProject.mutate(project._id);
+        if (!canDelete) return;
+        setProjectToDelete(project);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (projectToDelete) {
+            deleteProject.mutate(projectToDelete._id, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setProjectToDelete(null);
+                },
+            });
+        }
+    };
+
+    const handleView = (project) => {
+        if (!canView) return;
+        const slug = project.slug?.fa || project.slug;
+        if (slug) {
+            window.open(`/portfolio/${slug}`, "_blank");
         }
     };
 
@@ -188,12 +185,23 @@ export default function PortfolioPage() {
     };
 
     const handleAdd = () => {
+        if (!canCreate) return;
         setEditingProject(null);
         setIsModalOpen(true);
     };
 
     const handleSearch = (searchValue) => {
         setSearchTerm(searchValue);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (newLimit) => {
+        setLimit(newLimit);
+        setPage(1); // Reset to first page when changing limit
     };
 
     const handleSaveProject = () => {
@@ -201,74 +209,132 @@ export default function PortfolioPage() {
         setEditingProject(null);
     };
 
-    const customActions = [
-        {
-            label: "مشاهده",
-            icon: <Visibility />,
-            onClick: (project) => {
-                window.open(`/portfolio/${project.slug?.fa || project.slug}`, "_blank");
-            },
-        },
-        {
-            label: "ویژه",
-            icon: (project) => (project.isFeatured ? <Star /> : <StarBorder />),
-            onClick: handleToggleFeatured,
-            color: (project) => (project.isFeatured ? "secondary" : "default"),
-        },
-        {
-            label: "حذف",
-            icon: <Delete />,
-            onClick: handleDelete,
-            color: "error",
-        },
-    ];
-
+    // Filters for the data table
     const filters = [
         {
             key: "status",
             label: "وضعیت",
             value: statusFilter,
-            onChange: setStatusFilter,
+            onChange: (value) => {
+                setStatusFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه" },
                 { value: "active", label: "فعال" },
                 { value: "inactive", label: "غیرفعال" },
             ],
         },
+        {
+            key: "category",
+            label: "دسته‌بندی",
+            value: categoryFilter,
+            onChange: (value) => {
+                setCategoryFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
+            options: [
+                { value: "all", label: "همه دسته‌ها" },
+                // This would be populated from categories API
+            ],
+        },
+    ];
+
+    // Custom actions - shown after standard actions
+    const customActions = [
+        {
+            label: "ویژه",
+            icon: (project) => (project.isFeatured ? <Star /> : <StarBorder />),
+            onClick: handleToggleFeatured,
+            color: (project) => (project.isFeatured ? "secondary" : "default"),
+            permission: canEdit,
+        },
     ];
 
     return (
         <Layout>
-        <Box>
-            <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <Typography variant="h4" fontWeight="bold">
-                    مدیریت نمونه کارها
-                </Typography>
-                <Button variant="contained" startIcon={<Work />} onClick={handleAdd} size="large">
-                    پروژه جدید
-                </Button>
+            <Box>
+                <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Typography variant="h4" fontWeight="bold">
+                        مدیریت نمونه کارها
+                    </Typography>
+                    {canCreate && (
+                        <Button variant="contained" startIcon={<Work />} onClick={handleAdd} size="large">
+                            پروژه جدید
+                        </Button>
+                    )}
+                </Box>
+
+                <DataTable
+                    title="لیست پروژه‌ها"
+                    data={portfolioData?.data || []}
+                    columns={columns}
+                    loading={isLoading}
+                    pagination={portfolioData?.pagination}
+                    onPageChange={handlePageChange}
+                    onRowsPerPageChange={handleRowsPerPageChange}
+                    onSearch={handleSearch}
+                    onEdit={canEdit ? handleEdit : undefined}
+                    onDelete={canDelete ? handleDelete : undefined}
+                    onView={canView ? handleView : undefined}
+                    onAdd={canCreate ? handleAdd : undefined}
+                    searchPlaceholder="جستجو در پروژه‌ها (حداقل 3 کاراکتر)..."
+                    enableSelection={false}
+                    customActions={customActions}
+                    filters={filters}
+                    canView={canView}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    canCreate={canCreate}
+                    emptyStateProps={{
+                        title: "پروژه‌ای یافت نشد",
+                        description: "هنوز پروژه‌ای ایجاد نشده است. اولین پروژه خود را ایجاد کنید!",
+                        action: canCreate
+                            ? {
+                                  label: "ایجاد پروژه جدید",
+                                  onClick: handleAdd,
+                              }
+                            : undefined,
+                    }}
+                />
+
+                {/* Portfolio Form Modal */}
+                <Modal
+                    open={isModalOpen}
+                    onClose={handleSaveProject}
+                    title={editingProject ? "ویرایش پروژه" : "ایجاد پروژه جدید"}
+                    maxWidth="lg"
+                    fullWidth
+                >
+                    <PortfolioForm project={editingProject} onSave={handleSaveProject} onCancel={handleSaveProject} />
+                </Modal>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                    <DialogTitle>تأیید حذف</DialogTitle>
+                    <DialogContent>
+                        <Typography>
+                            آیا از حذف پروژه <strong>{getPersianValue(projectToDelete?.title, "-")}</strong> اطمینان دارید؟
+                            <br />
+                            <br />
+                            <Typography variant="caption" color="error">
+                                توجه: این عملیات قابل بازگشت نیست.
+                            </Typography>
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
+                        <Button
+                            onClick={handleConfirmDelete}
+                            color="error"
+                            variant="contained"
+                            disabled={deleteProject.isPending}
+                        >
+                            {deleteProject.isPending ? "در حال حذف..." : "حذف"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
-
-            <DataTable
-                title="لیست نمونه کارها"
-                data={portfolioData?.data || []}
-                columns={columns}
-                loading={isLoading}
-                pagination={portfolioData?.pagination}
-                onSearch={handleSearch}
-                onEdit={handleEdit}
-                onAdd={handleAdd}
-                searchPlaceholder="جستجو در پروژه‌ها (حداقل 3 کاراکتر)..."
-                enableSelection={true}
-                customActions={customActions}
-                filters={filters}
-            />
-
-            {/* Portfolio Form Modal */}
-            <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingProject ? "ویرایش پروژه" : "ایجاد پروژه جدید"} maxWidth="lg" fullWidth>
-                <PortfolioForm project={editingProject} onSave={handleSaveProject} onCancel={() => setIsModalOpen(false)} />
-            </Modal>
-        </Box>
-    </Layout>
+        </Layout>
     );
 }

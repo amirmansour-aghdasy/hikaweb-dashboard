@@ -1,13 +1,14 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Grid, Typography, Chip, Button, Stack, Avatar, Card, CardContent, LinearProgress, Tooltip, Badge } from "@mui/material";
-import { SupportAgent, Edit, Delete, Add, Assignment, Reply, Close, Schedule, Person, Flag, CheckCircle } from "@mui/icons-material";
+import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { SupportAgent, Edit, Delete, Add, Assignment, Reply, Close, CheckCircle, Person } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import TicketForm from "@/components/forms/TicketForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
+import { usePageActions } from "@/hooks/usePageActions";
 import { formatDate, formatRelativeDate } from "@/lib/utils";
 
 const PRIORITY_CONFIG = {
@@ -28,17 +29,23 @@ const STATUS_CONFIG = {
 export default function TicketsPage() {
     const [editingTicket, setEditingTicket] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [ticketToDelete, setTicketToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [priorityFilter, setPriorityFilter] = useState("all");
-    const [assigneeFilter, setAssigneeFilter] = useState("all");
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 800);
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
+    const { canView, canEdit, canDelete, canCreate } = usePageActions("tickets");
 
     // Build query params
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
         if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
             params.append("search", debouncedSearchTerm);
         }
@@ -48,13 +55,10 @@ export default function TicketsPage() {
         if (priorityFilter !== "all") {
             params.append("priority", priorityFilter);
         }
-        if (assigneeFilter !== "all") {
-            params.append("assignee", assigneeFilter);
-        }
         return params.toString();
-    }, [debouncedSearchTerm, statusFilter, priorityFilter, assigneeFilter]);
+    }, [debouncedSearchTerm, statusFilter, priorityFilter, page, limit]);
 
-    const endpoint = `/tickets${queryParams ? `?${queryParams}` : ""}`;
+    const endpoint = `/tickets?${queryParams}`;
 
     // Fetch tickets
     const { data: ticketsData, isLoading } = useFetchData(["tickets", queryParams], endpoint);
@@ -62,11 +66,13 @@ export default function TicketsPage() {
     // Update ticket
     const updateTicket = useUpdateData("/tickets", {
         successMessage: "تیکت با موفقیت به‌روزرسانی شد",
+        queryKey: "tickets",
     });
 
     // Delete ticket
     const deleteTicket = useDeleteData("/tickets", {
         successMessage: "تیکت با موفقیت حذف شد",
+        queryKey: "tickets",
     });
 
     const columns = [
@@ -89,9 +95,11 @@ export default function TicketsPage() {
                     <Typography variant="body2" fontWeight="bold">
                         {row.subject}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {row.description?.length > 60 ? `${row.description.substring(0, 60)}...` : row.description}
-                    </Typography>
+                    {row.description && (
+                        <Typography variant="caption" color="text.secondary">
+                            {row.description.length > 60 ? `${row.description.substring(0, 60)}...` : row.description}
+                        </Typography>
+                    )}
                 </Box>
             ),
         },
@@ -109,7 +117,7 @@ export default function TicketsPage() {
                             {row.customer?.name || "کاربر ناشناس"}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                            {row.customer?.email}
+                            {row.customer?.email || "-"}
                         </Typography>
                     </Box>
                 </Box>
@@ -121,7 +129,14 @@ export default function TicketsPage() {
             width: 100,
             render: (row) => {
                 const config = PRIORITY_CONFIG[row.priority] || PRIORITY_CONFIG.normal;
-                return <Chip label={config.label} size="small" color={config.color} icon={<span style={{ fontSize: "12px" }}>{config.icon}</span>} />;
+                return (
+                    <Chip
+                        label={config.label}
+                        size="small"
+                        color={config.color}
+                        icon={<span style={{ fontSize: "12px" }}>{config.icon}</span>}
+                    />
+                );
             },
         },
         {
@@ -130,7 +145,14 @@ export default function TicketsPage() {
             width: 150,
             render: (row) => {
                 const config = STATUS_CONFIG[row.status] || STATUS_CONFIG.open;
-                return <Chip label={config.label} size="small" color={config.color} variant={row.status === "resolved" ? "filled" : "outlined"} />;
+                return (
+                    <Chip
+                        label={config.label}
+                        size="small"
+                        color={config.color}
+                        variant={row.status === "resolved" || row.status === "closed" ? "filled" : "outlined"}
+                    />
+                );
             },
         },
         {
@@ -141,7 +163,7 @@ export default function TicketsPage() {
                 row.assignee ? (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                         <Avatar src={row.assignee.avatar} sx={{ width: 24, height: 24 }}>
-                            {row.assignee.name?.charAt(0)}
+                            {row.assignee.name?.charAt(0) || "?"}
                         </Avatar>
                         <Typography variant="caption">{row.assignee.name}</Typography>
                     </Box>
@@ -150,61 +172,34 @@ export default function TicketsPage() {
                 ),
         },
         {
-            field: "category",
-            headerName: "دسته‌بندی",
-            width: 120,
-            render: (row) =>
-                row.category ? (
-                    <Chip label={row.category} size="small" color="primary" variant="outlined" />
-                ) : (
-                    <Typography variant="caption" color="text.secondary">
-                        بدون دسته
-                    </Typography>
-                ),
-        },
-        {
-            field: "responseTime",
-            headerName: "زمان پاسخ",
-            width: 120,
-            render: (row) => (
-                <Box>
-                    {row.firstResponseAt ? (
-                        <Typography variant="caption" color="success.main">
-                            پاسخ داده شده
-                        </Typography>
-                    ) : (
-                        <Typography variant="caption" color="warning.main">
-                            در انتظار پاسخ
-                        </Typography>
-                    )}
-                    <Typography variant="caption" display="block">
-                        {formatRelativeDate(row.createdAt)}
-                    </Typography>
-                </Box>
-            ),
-        },
-        {
-            field: "lastActivity",
-            headerName: "آخرین فعالیت",
-            width: 120,
-            render: (row) => <Typography variant="caption">{formatRelativeDate(row.updatedAt)}</Typography>,
+            field: "createdAt",
+            headerName: "تاریخ ایجاد",
+            width: 150,
+            type: "date",
         },
     ];
 
     const handleEdit = (ticket) => {
+        if (!canEdit) return;
         setEditingTicket(ticket);
         setIsModalOpen(true);
     };
 
     const handleDelete = (ticket) => {
-        if (window.confirm("آیا از حذف این تیکت اطمینان دارید؟")) {
-            deleteTicket.mutate(ticket._id);
-        }
+        if (!canDelete) return;
+        setTicketToDelete(ticket);
+        setIsDeleteDialogOpen(true);
     };
 
-    const handleAssign = (ticket) => {
-        // Open assignment modal or dropdown
-        console.log("Assign ticket:", ticket);
+    const handleConfirmDelete = () => {
+        if (ticketToDelete) {
+            deleteTicket.mutate(ticketToDelete._id, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setTicketToDelete(null);
+                },
+            });
+        }
     };
 
     const handleStatusChange = (ticket, newStatus) => {
@@ -214,20 +209,29 @@ export default function TicketsPage() {
         });
     };
 
-    const handlePriorityChange = (ticket, newPriority) => {
-        updateTicket.mutate({
-            id: ticket._id,
-            data: { priority: newPriority },
-        });
+    const handleAssign = (ticket) => {
+        // This would open an assign dialog
+        console.log("Assign ticket:", ticket);
     };
 
     const handleAdd = () => {
+        if (!canCreate) return;
         setEditingTicket(null);
         setIsModalOpen(true);
     };
 
     const handleSearch = (searchValue) => {
         setSearchTerm(searchValue);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (newLimit) => {
+        setLimit(newLimit);
+        setPage(1); // Reset to first page when changing limit
     };
 
     const handleSaveTicket = () => {
@@ -235,192 +239,153 @@ export default function TicketsPage() {
         setEditingTicket(null);
     };
 
-    const customActions = [
-        {
-            label: "پاسخ",
-            icon: <Reply />,
-            onClick: (ticket) => handleEdit(ticket),
-            color: "primary",
-            show: (ticket) => ticket.status !== "closed",
-        },
-        {
-            label: "تخصیص",
-            icon: <Assignment />,
-            onClick: handleAssign,
-            color: "info",
-            show: (ticket) => !ticket.assignee,
-        },
-        {
-            label: "حل شده",
-            icon: <CheckCircle />,
-            onClick: (ticket) => handleStatusChange(ticket, "resolved"),
-            color: "success",
-            show: (ticket) => ticket.status !== "resolved" && ticket.status !== "closed",
-        },
-        {
-            label: "بستن",
-            icon: <Close />,
-            onClick: (ticket) => handleStatusChange(ticket, "closed"),
-            color: "warning",
-            show: (ticket) => ticket.status !== "closed",
-        },
-        {
-            label: "حذف",
-            icon: <Delete />,
-            onClick: handleDelete,
-            color: "error",
-        },
-    ];
-
+    // Filters for the data table
     const filters = [
         {
             key: "status",
             label: "وضعیت",
             value: statusFilter,
-            onChange: setStatusFilter,
+            onChange: (value) => {
+                setStatusFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه" },
-                { value: "open", label: "باز" },
-                { value: "in_progress", label: "در حال بررسی" },
-                { value: "waiting_customer", label: "انتظار پاسخ مشتری" },
-                { value: "resolved", label: "حل شده" },
-                { value: "closed", label: "بسته" },
+                ...Object.entries(STATUS_CONFIG).map(([key, config]) => ({
+                    value: key,
+                    label: config.label,
+                })),
             ],
         },
         {
             key: "priority",
             label: "اولویت",
             value: priorityFilter,
-            onChange: setPriorityFilter,
+            onChange: (value) => {
+                setPriorityFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه" },
-                { value: "low", label: "کم" },
-                { value: "normal", label: "عادی" },
-                { value: "high", label: "بالا" },
-                { value: "urgent", label: "فوری" },
-            ],
-        },
-        {
-            key: "assignee",
-            label: "مسئول",
-            value: assigneeFilter,
-            onChange: setAssigneeFilter,
-            options: [
-                { value: "all", label: "همه" },
-                { value: "unassigned", label: "تخصیص نیافته" },
-                { value: "me", label: "تیکت‌های من" },
+                ...Object.entries(PRIORITY_CONFIG).map(([key, config]) => ({
+                    value: key,
+                    label: config.label,
+                })),
             ],
         },
     ];
 
-    // Summary Cards Component
-    const SummaryCards = () => {
-        const summary = ticketsData?.summary || {};
-
-        return (
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-                <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Card>
-                        <CardContent sx={{ textAlign: "center", py: 2 }}>
-                            <Typography variant="h4" color="info.main">
-                                {summary.open || 0}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                تیکت‌های باز
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Card>
-                        <CardContent sx={{ textAlign: "center", py: 2 }}>
-                            <Typography variant="h4" color="warning.main">
-                                {summary.in_progress || 0}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                در حال بررسی
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Card>
-                        <CardContent sx={{ textAlign: "center", py: 2 }}>
-                            <Typography variant="h4" color="error.main">
-                                {summary.urgent || 0}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                فوری
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Card>
-                        <CardContent sx={{ textAlign: "center", py: 2 }}>
-                            <Typography variant="h4" color="success.main">
-                                {summary.resolved || 0}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                حل شده امروز
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            </Grid>
-        );
-    };
+    // Custom actions - shown after standard actions
+    const customActions = [
+        {
+            label: "پاسخ",
+            icon: <Reply />,
+            onClick: (ticket) => handleEdit(ticket),
+            color: "primary",
+            permission: canEdit,
+            disabled: (ticket) => ticket.status === "closed",
+        },
+        {
+            label: "تخصیص",
+            icon: <Assignment />,
+            onClick: handleAssign,
+            color: "info",
+            permission: canEdit,
+            disabled: (ticket) => !!ticket.assignee,
+        },
+        {
+            label: "حل شده",
+            icon: <CheckCircle />,
+            onClick: (ticket) => handleStatusChange(ticket, "resolved"),
+            color: "success",
+            permission: canEdit,
+            disabled: (ticket) => ticket.status === "resolved" || ticket.status === "closed",
+        },
+        {
+            label: "بستن",
+            icon: <Close />,
+            onClick: (ticket) => handleStatusChange(ticket, "closed"),
+            color: "warning",
+            permission: canEdit,
+            disabled: (ticket) => ticket.status === "closed",
+        },
+    ];
 
     return (
         <Layout>
             <Box>
                 <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Box>
-                        <Typography variant="h4" fontWeight="bold">
-                            مدیریت تیکت‌های پشتیبانی
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            مدیریت درخواست‌ها و تیکت‌های پشتیبانی مشتریان
-                        </Typography>
-                    </Box>
-
-                    <Button variant="contained" startIcon={<Add />} onClick={handleAdd} size="large">
-                        تیکت جدید
-                    </Button>
+                    <Typography variant="h4" fontWeight="bold">
+                        مدیریت تیکت‌ها
+                    </Typography>
+                    {canCreate && (
+                        <Button variant="contained" startIcon={<Add />} onClick={handleAdd} size="large">
+                            تیکت جدید
+                        </Button>
+                    )}
                 </Box>
 
-                <SummaryCards />
-
                 <DataTable
-                    title="لیست تیکت‌های پشتیبانی"
+                    title="لیست تیکت‌ها"
                     data={ticketsData?.data || []}
                     columns={columns}
                     loading={isLoading}
                     pagination={ticketsData?.pagination}
+                    onPageChange={handlePageChange}
+                    onRowsPerPageChange={handleRowsPerPageChange}
                     onSearch={handleSearch}
-                    onEdit={handleEdit}
-                    onAdd={handleAdd}
+                    onEdit={canEdit ? handleEdit : undefined}
+                    onDelete={canDelete ? handleDelete : undefined}
+                    onAdd={canCreate ? handleAdd : undefined}
                     searchPlaceholder="جستجو در تیکت‌ها (حداقل 3 کاراکتر)..."
-                    enableSelection={true}
+                    enableSelection={false}
                     customActions={customActions}
                     filters={filters}
+                    canView={canView}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    canCreate={canCreate}
                     emptyStateProps={{
                         title: "تیکتی یافت نشد",
-                        description: "هنوز درخواست پشتیبانی‌ای ثبت نشده است.",
-                        action: {
-                            label: "ایجاد تیکت جدید",
-                            onClick: handleAdd,
-                        },
+                        description: "هنوز تیکتی ایجاد نشده است.",
                     }}
                 />
 
-                {/* Ticket Form Modal */}
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTicket ? "پاسخ به تیکت" : "ایجاد تیکت جدید"} maxWidth="lg" fullWidth>
-                    <TicketForm ticket={editingTicket} onSave={handleSaveTicket} onCancel={() => setIsModalOpen(false)} />
+                <Modal
+                    open={isModalOpen}
+                    onClose={handleSaveTicket}
+                    title={editingTicket ? "ویرایش تیکت" : "ایجاد تیکت جدید"}
+                    maxWidth="lg"
+                    fullWidth
+                >
+                    <TicketForm ticket={editingTicket} onSave={handleSaveTicket} onCancel={handleSaveTicket} />
                 </Modal>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                    <DialogTitle>تأیید حذف</DialogTitle>
+                    <DialogContent>
+                        <Typography>
+                            آیا از حذف تیکت <strong>#{ticketToDelete?.ticketNumber}</strong> اطمینان دارید؟
+                            <br />
+                            <br />
+                            <Typography variant="caption" color="error">
+                                توجه: این عملیات قابل بازگشت نیست.
+                            </Typography>
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
+                        <Button
+                            onClick={handleConfirmDelete}
+                            color="error"
+                            variant="contained"
+                            disabled={deleteTicket.isPending}
+                        >
+                            {deleteTicket.isPending ? "در حال حذف..." : "حذف"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         </Layout>
     );

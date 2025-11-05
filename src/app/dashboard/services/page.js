@@ -1,28 +1,36 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button, Stack, Avatar, Rating } from "@mui/material";
-import { BusinessCenter, Edit, Delete, Visibility, Star, StarBorder, TrendingUp, AttachMoney } from "@mui/icons-material";
+import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { BusinessCenter, Star, StarBorder } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import ServiceForm from "@/components/forms/ServiceForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
-import { formatDate, formatPrice } from "@/lib/utils";
+import { usePageActions } from "@/hooks/usePageActions";
+import { formatDate, getPersianValue, formatPrice, formatNumber } from "@/lib/utils";
 
 export default function ServicesPage() {
     const [editingService, setEditingService] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [serviceToDelete, setServiceToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [categoryFilter, setCategoryFilter] = useState("all");
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 800);
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
+    const { canView, canEdit, canDelete, canCreate } = usePageActions("services");
 
     // Build query params
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
         if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
             params.append("search", debouncedSearchTerm);
         }
@@ -33,9 +41,9 @@ export default function ServicesPage() {
             params.append("category", categoryFilter);
         }
         return params.toString();
-    }, [debouncedSearchTerm, statusFilter, categoryFilter]);
+    }, [debouncedSearchTerm, statusFilter, categoryFilter, page, limit]);
 
-    const endpoint = `/services${queryParams ? `?${queryParams}` : ""}`;
+    const endpoint = `/services?${queryParams}`;
 
     // Fetch services
     const { data: servicesData, isLoading } = useFetchData(["services", queryParams], endpoint);
@@ -43,11 +51,13 @@ export default function ServicesPage() {
     // Update service
     const updateService = useUpdateData("/services", {
         successMessage: "خدمت با موفقیت به‌روزرسانی شد",
+        queryKey: "services",
     });
 
     // Delete service
     const deleteService = useDeleteData("/services", {
         successMessage: "خدمت با موفقیت حذف شد",
+        queryKey: "services",
     });
 
     const columns = [
@@ -68,14 +78,12 @@ export default function ServicesPage() {
             render: (row) => (
                 <Box>
                     <Typography variant="body2" fontWeight="bold">
-                        {row.name?.fa}
+                        {getPersianValue(row.name, "-")}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {row.name?.en}
-                    </Typography>
-                    {row.shortDescription?.fa && (
-                        <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                            {row.shortDescription.fa.substring(0, 60)}...
+                    {row.shortDescription && (
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                            {getPersianValue(row.shortDescription, "").substring(0, 60)}
+                            {getPersianValue(row.shortDescription, "").length > 60 ? "..." : ""}
                         </Typography>
                     )}
                 </Box>
@@ -84,25 +92,41 @@ export default function ServicesPage() {
         {
             field: "categories",
             headerName: "دسته‌بندی",
-            width: 150,
+            width: 180,
             render: (row) => (
-                <Stack direction="column" spacing={0.5}>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
                     {row.categories?.slice(0, 2).map((category, index) => (
-                        <Chip key={index} label={category.name?.fa || category.name} size="small" variant="outlined" sx={{ fontSize: "0.7rem" }} />
+                        <Chip
+                            key={index}
+                            label={getPersianValue(category?.name || category, "-")}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: "0.7rem" }}
+                        />
                     ))}
+                    {row.categories?.length > 2 && (
+                        <Chip
+                            label={`+${row.categories.length - 2}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: "0.7rem" }}
+                        />
+                    )}
                 </Stack>
             ),
         },
         {
             field: "pricing",
             headerName: "قیمت",
-            width: 120,
+            width: 140,
             render: (row) => (
                 <Box>
                     {row.pricing?.isCustom ? (
                         <Chip label="سفارشی" size="small" color="info" />
                     ) : row.pricing?.startingPrice ? (
-                        <Typography variant="body2">{formatPrice(row.pricing.startingPrice, row.pricing.currency)}</Typography>
+                        <Typography variant="body2">
+                            {formatPrice(row.pricing.startingPrice, row.pricing.currency)}
+                        </Typography>
                     ) : (
                         <Typography variant="caption" color="text.secondary">
                             قیمت ندارد
@@ -112,46 +136,47 @@ export default function ServicesPage() {
             ),
         },
         {
-            field: "popularity",
-            headerName: "محبوبیت",
-            width: 120,
-            render: (row) => (
-                <Box>
-                    {row.isPopular && <Chip label="محبوب" size="small" color="secondary" icon={<Star sx={{ fontSize: "12px !important" }} />} />}
-                    <Typography variant="caption" display="block">
-                        Order: {row.orderIndex || 0}
-                    </Typography>
-                </Box>
-            ),
-        },
-        {
-            field: "duration",
-            headerName: "مدت زمان",
-            width: 100,
-            render: (row) => <Typography variant="caption">{row.duration?.min && row.duration?.max ? `${row.duration.min}-${row.duration.max} روز` : row.duration?.description?.fa || "-"}</Typography>,
-        },
-        {
             field: "status",
             headerName: "وضعیت",
-            width: 100,
+            width: 120,
             type: "status",
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
-            width: 120,
-            render: (row) => <Typography variant="caption">{formatDate(row.createdAt)}</Typography>,
+            width: 150,
+            type: "date",
         },
     ];
 
     const handleEdit = (service) => {
+        if (!canEdit) return;
         setEditingService(service);
         setIsModalOpen(true);
     };
 
     const handleDelete = (service) => {
-        if (window.confirm("آیا از حذف این خدمت اطمینان دارید؟")) {
-            deleteService.mutate(service._id);
+        if (!canDelete) return;
+        setServiceToDelete(service);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (serviceToDelete) {
+            deleteService.mutate(serviceToDelete._id, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setServiceToDelete(null);
+                },
+            });
+        }
+    };
+
+    const handleView = (service) => {
+        if (!canView) return;
+        const slug = service.slug?.fa || service.slug;
+        if (slug) {
+            window.open(`/services/${slug}`, "_blank");
         }
     };
 
@@ -163,12 +188,23 @@ export default function ServicesPage() {
     };
 
     const handleAdd = () => {
+        if (!canCreate) return;
         setEditingService(null);
         setIsModalOpen(true);
     };
 
     const handleSearch = (searchValue) => {
         setSearchTerm(searchValue);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (newLimit) => {
+        setLimit(newLimit);
+        setPage(1); // Reset to first page when changing limit
     };
 
     const handleSaveService = () => {
@@ -176,39 +212,45 @@ export default function ServicesPage() {
         setEditingService(null);
     };
 
-    const customActions = [
-        {
-            label: "مشاهده",
-            icon: <Visibility />,
-            onClick: (service) => {
-                window.open(`/services/${service.slug?.fa || service.slug}`, "_blank");
-            },
-        },
-        {
-            label: "محبوب",
-            icon: (service) => (service.isPopular ? <Star /> : <StarBorder />),
-            onClick: handleTogglePopular,
-            color: (service) => (service.isPopular ? "secondary" : "default"),
-        },
-        {
-            label: "حذف",
-            icon: <Delete />,
-            onClick: handleDelete,
-            color: "error",
-        },
-    ];
-
+    // Filters for the data table
     const filters = [
         {
             key: "status",
             label: "وضعیت",
             value: statusFilter,
-            onChange: setStatusFilter,
+            onChange: (value) => {
+                setStatusFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه" },
                 { value: "active", label: "فعال" },
                 { value: "inactive", label: "غیرفعال" },
             ],
+        },
+        {
+            key: "category",
+            label: "دسته‌بندی",
+            value: categoryFilter,
+            onChange: (value) => {
+                setCategoryFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
+            options: [
+                { value: "all", label: "همه دسته‌ها" },
+                // This would be populated from categories API
+            ],
+        },
+    ];
+
+    // Custom actions - shown after standard actions
+    const customActions = [
+        {
+            label: "محبوب",
+            icon: (service) => (service.isPopular ? <Star /> : <StarBorder />),
+            onClick: handleTogglePopular,
+            color: (service) => (service.isPopular ? "secondary" : "default"),
+            permission: canEdit,
         },
     ];
 
@@ -219,9 +261,11 @@ export default function ServicesPage() {
                     <Typography variant="h4" fontWeight="bold">
                         مدیریت خدمات
                     </Typography>
-                    <Button variant="contained" startIcon={<BusinessCenter />} onClick={handleAdd} size="large">
-                        خدمت جدید
-                    </Button>
+                    {canCreate && (
+                        <Button variant="contained" startIcon={<BusinessCenter />} onClick={handleAdd} size="large">
+                            خدمت جدید
+                        </Button>
+                    )}
                 </Box>
 
                 <DataTable
@@ -230,19 +274,69 @@ export default function ServicesPage() {
                     columns={columns}
                     loading={isLoading}
                     pagination={servicesData?.pagination}
+                    onPageChange={handlePageChange}
+                    onRowsPerPageChange={handleRowsPerPageChange}
                     onSearch={handleSearch}
-                    onEdit={handleEdit}
-                    onAdd={handleAdd}
+                    onEdit={canEdit ? handleEdit : undefined}
+                    onDelete={canDelete ? handleDelete : undefined}
+                    onView={canView ? handleView : undefined}
+                    onAdd={canCreate ? handleAdd : undefined}
                     searchPlaceholder="جستجو در خدمات (حداقل 3 کاراکتر)..."
-                    enableSelection={true}
+                    enableSelection={false}
                     customActions={customActions}
                     filters={filters}
+                    canView={canView}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    canCreate={canCreate}
+                    emptyStateProps={{
+                        title: "خدمتی یافت نشد",
+                        description: "هنوز خدمتی ایجاد نشده است. اولین خدمت خود را ایجاد کنید!",
+                        action: canCreate
+                            ? {
+                                  label: "ایجاد خدمت جدید",
+                                  onClick: handleAdd,
+                              }
+                            : undefined,
+                    }}
                 />
 
                 {/* Service Form Modal */}
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingService ? "ویرایش خدمت" : "ایجاد خدمت جدید"} maxWidth="lg" fullWidth>
-                    <ServiceForm service={editingService} onSave={handleSaveService} onCancel={() => setIsModalOpen(false)} />
+                <Modal
+                    open={isModalOpen}
+                    onClose={handleSaveService}
+                    title={editingService ? "ویرایش خدمت" : "ایجاد خدمت جدید"}
+                    maxWidth="lg"
+                    fullWidth
+                >
+                    <ServiceForm service={editingService} onSave={handleSaveService} onCancel={handleSaveService} />
                 </Modal>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                    <DialogTitle>تأیید حذف</DialogTitle>
+                    <DialogContent>
+                        <Typography>
+                            آیا از حذف خدمت <strong>{getPersianValue(serviceToDelete?.name, "-")}</strong> اطمینان دارید؟
+                            <br />
+                            <br />
+                            <Typography variant="caption" color="error">
+                                توجه: این عملیات قابل بازگشت نیست.
+                            </Typography>
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
+                        <Button
+                            onClick={handleConfirmDelete}
+                            color="error"
+                            variant="contained"
+                            disabled={deleteService.isPending}
+                        >
+                            {deleteService.isPending ? "در حال حذف..." : "حذف"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         </Layout>
     );

@@ -20,6 +20,11 @@ import {
     Toolbar,
     Typography,
     Tooltip,
+    Select,
+    FormControl,
+    InputLabel,
+    Popover,
+    Stack,
 } from "@mui/material";
 import { Search, FilterList, MoreVert, Edit, Delete, Visibility, Add } from "@mui/icons-material";
 import { useState } from "react";
@@ -44,6 +49,13 @@ export default function DataTable({
     enableSelection = false,
     enableActions = true,
     customActions = [],
+    filters = [],
+    emptyStateProps,
+    // Authorization props - if provided, actions will be shown/hidden based on permissions
+    canView = true,
+    canEdit = true,
+    canDelete = true,
+    canCreate = true,
 }) {
     // Ensure data is always an array
     const safeData = Array.isArray(data) ? data : (data?.data ? (Array.isArray(data.data) ? data.data : []) : []);
@@ -52,6 +64,7 @@ export default function DataTable({
     const [searchTerm, setSearchTerm] = useState("");
     const [anchorEl, setAnchorEl] = useState(null);
     const [selectedRow, setSelectedRow] = useState(null);
+    const [filterAnchorEl, setFilterAnchorEl] = useState(null);
 
     const handleSelectAll = (event) => {
         if (event.target.checked) {
@@ -185,11 +198,64 @@ export default function DataTable({
                         sx={{ minWidth: 200 }}
                     />
 
-                    <IconButton onClick={onFilter} disabled={!onFilter}>
-                        <FilterList />
-                    </IconButton>
+                    {filters && filters.length > 0 && (
+                        <>
+                            <IconButton 
+                                onClick={(e) => setFilterAnchorEl(e.currentTarget)}
+                                color={filters.some(f => f.value !== "all" && f.value !== "") ? "primary" : "default"}
+                            >
+                                <FilterList />
+                            </IconButton>
+                            <Popover
+                                open={Boolean(filterAnchorEl)}
+                                anchorEl={filterAnchorEl}
+                                onClose={() => setFilterAnchorEl(null)}
+                                anchorOrigin={{
+                                    vertical: "bottom",
+                                    horizontal: "left",
+                                }}
+                                transformOrigin={{
+                                    vertical: "top",
+                                    horizontal: "left",
+                                }}
+                            >
+                                <Box sx={{ p: 2, minWidth: 250 }}>
+                                    <Typography variant="subtitle2" gutterBottom>
+                                        فیلترها
+                                    </Typography>
+                                    <Stack spacing={2} sx={{ mt: 2 }}>
+                                        {filters.map((filter) => (
+                                            <FormControl key={filter.key} fullWidth size="small">
+                                                <InputLabel>{filter.label}</InputLabel>
+                                                <Select
+                                                    value={filter.value}
+                                                    label={filter.label}
+                                                    onChange={(e) => {
+                                                        if (filter.onChange) {
+                                                            filter.onChange(e.target.value);
+                                                        }
+                                                    }}
+                                                >
+                                                    {filter.options?.map((option) => (
+                                                        <MenuItem key={option.value} value={option.value}>
+                                                            {option.label}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        ))}
+                                    </Stack>
+                                </Box>
+                            </Popover>
+                        </>
+                    )}
+                    {!filters && onFilter && (
+                        <IconButton onClick={onFilter}>
+                            <FilterList />
+                        </IconButton>
+                    )}
 
-                    {onAdd && (
+                    {onAdd && canCreate && (
                         <Button variant="contained" startIcon={<Add />} onClick={onAdd} size="small">
                             افزودن
                         </Button>
@@ -232,7 +298,25 @@ export default function DataTable({
                         ) : safeData.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={columns.length + (enableSelection ? 1 : 0) + (enableActions ? 1 : 0)}>
-                                    <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>داده‌ای یافت نشد</Box>
+                                    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 4 }}>
+                                        <Typography variant="body1" color="text.secondary" gutterBottom>
+                                            {emptyStateProps?.title || "داده‌ای یافت نشد"}
+                                        </Typography>
+                                        {emptyStateProps?.description && (
+                                            <Typography variant="body2" color="text.secondary">
+                                                {emptyStateProps.description}
+                                            </Typography>
+                                        )}
+                                        {emptyStateProps?.action && (
+                                            <Button
+                                                variant="contained"
+                                                onClick={emptyStateProps.action.onClick}
+                                                sx={{ mt: 2 }}
+                                            >
+                                                {emptyStateProps.action.label}
+                                            </Button>
+                                        )}
+                                    </Box>
                                 </TableCell>
                             </TableRow>
                         ) : (
@@ -295,7 +379,8 @@ export default function DataTable({
 
             {/* Actions Menu */}
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-                {onView && (
+                {/* View action - shown first if authorized */}
+                {onView && selectedRow && canView && (
                     <MenuItem
                         onClick={() => {
                             onView(selectedRow);
@@ -307,7 +392,8 @@ export default function DataTable({
                     </MenuItem>
                 )}
 
-                {onEdit && (
+                {/* Edit action - shown second if authorized */}
+                {onEdit && selectedRow && canEdit && (
                     <MenuItem
                         onClick={() => {
                             onEdit(selectedRow);
@@ -319,20 +405,47 @@ export default function DataTable({
                     </MenuItem>
                 )}
 
-                {customActions.map((action, index) => (
-                    <MenuItem
-                        key={index}
-                        onClick={() => {
-                            action.onClick(selectedRow);
-                            handleMenuClose();
-                        }}
-                    >
-                        {action.icon && <Box sx={{ mr: 1 }}>{action.icon}</Box>}
-                        {action.label}
-                    </MenuItem>
-                ))}
+                {/* Custom actions - shown after standard actions if authorized */}
+                {selectedRow && customActions.map((action, index) => {
+                    // Check if action has permission requirement
+                    const actionCanShow = action.permission 
+                        ? (typeof action.permission === "function" ? action.permission(selectedRow) : action.permission)
+                        : true;
+                    
+                    if (!actionCanShow) return null;
 
-                {onDelete && (
+                    // Only evaluate disabled if selectedRow is not null
+                    const isDisabled = typeof action.disabled === "function" 
+                        ? action.disabled(selectedRow) 
+                        : (action.disabled || false);
+                    const actionColor = typeof action.color === "function" 
+                        ? action.color(selectedRow) 
+                        : (typeof action.color === "string" ? action.color : undefined);
+                    
+                    return (
+                        <MenuItem
+                            key={index}
+                            onClick={() => {
+                                if (!isDisabled && action.onClick) {
+                                    action.onClick(selectedRow);
+                                    handleMenuClose();
+                                }
+                            }}
+                            disabled={isDisabled}
+                            sx={actionColor ? { color: `${actionColor}.main` } : {}}
+                        >
+                            {typeof action.icon === "function" ? (
+                                <Box sx={{ mr: 1 }}>{action.icon(selectedRow)}</Box>
+                            ) : (
+                                action.icon && <Box sx={{ mr: 1 }}>{action.icon}</Box>
+                            )}
+                            {action.label}
+                        </MenuItem>
+                    );
+                })}
+
+                {/* Delete action - shown last if authorized */}
+                {onDelete && selectedRow && canDelete && (
                     <MenuItem
                         onClick={() => {
                             onDelete(selectedRow);

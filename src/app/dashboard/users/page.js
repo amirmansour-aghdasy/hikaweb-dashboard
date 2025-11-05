@@ -1,52 +1,157 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button } from "@mui/material";
-import { Add, Block } from "@mui/icons-material";
+import { Box, Typography, Chip, Button, Avatar, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Add } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
+import { usePageActions } from "@/hooks/usePageActions";
+import { formatDate, getPersianValue } from "@/lib/utils";
 import UserForm from "@/components/forms/UserForm";
 
 export default function UsersPage() {
     const [editingUser, setEditingUser] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [userToDelete, setUserToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [roleFilter, setRoleFilter] = useState("all");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
     // منطق هوشمند: حداقل 3 کاراکتر + debounce
     const shouldSearch = searchTerm.length === 0 || searchTerm.length >= 3;
     const debouncedSearchTerm = useDebounce(shouldSearch ? searchTerm : "", 800);
 
-    const { useFetchData, useUpdateData } = useApi();
+    const { useFetchData, useUpdateData, useDeleteData } = useApi();
+    const { canView, canEdit, canDelete, canCreate } = usePageActions("users");
 
-    // ساخت endpoint با search
-    const endpoint = debouncedSearchTerm ? `/users?search=${encodeURIComponent(debouncedSearchTerm)}` : "/users";
+    // Build query params
+    const queryParams = useMemo(() => {
+        const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
+        if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
+            params.append("search", debouncedSearchTerm);
+        }
+        if (roleFilter !== "all") {
+            params.append("role", roleFilter);
+        }
+        if (statusFilter !== "all") {
+            params.append("status", statusFilter);
+        }
+        return params.toString();
+    }, [debouncedSearchTerm, roleFilter, statusFilter, page, limit]);
 
-    // Fetch users با شرط enabled
-    const { data: usersData, isLoading } = useFetchData(["users", debouncedSearchTerm], endpoint, {
+    const endpoint = `/users?${queryParams}`;
+
+    // Fetch users
+    const { data: usersData, isLoading } = useFetchData(["users", queryParams], endpoint, {
         enabled: shouldSearch,
-        staleTime: 10 * 60 * 1000, // 10 دقیقه cache
     });
 
     // Update user mutation
     const updateUser = useUpdateData("/users", {
         successMessage: "کاربر با موفقیت به‌روزرسانی شد",
+        queryKey: "users",
+    });
+
+    // Delete user mutation
+    const deleteUser = useDeleteData("/users", {
+        successMessage: "کاربر با موفقیت حذف شد",
+        queryKey: "users",
     });
 
     const columns = [
-        { field: "name", headerName: "نام", align: "left" },
-        { field: "email", headerName: "ایمیل", align: "left" },
-        { field: "phoneNumber", headerName: "تلفن", align: "center" },
-        { field: "role", headerName: "نقش", align: "center" },
-        { field: "status", headerName: "وضعیت", type: "status", align: "center" },
-        { field: "lastLogin", headerName: "آخرین ورود", type: "date", align: "center" },
-        { field: "createdAt", headerName: "تاریخ عضویت", type: "date", align: "center" },
+        {
+            field: "avatar",
+            headerName: "تصویر",
+            width: 80,
+            render: (row) => (
+                <Avatar src={row.avatar} sx={{ width: 40, height: 40, mx: "auto" }}>
+                    {row.name?.charAt(0) || "?"}
+                </Avatar>
+            ),
+            align: "center"
+        },
+        {
+            field: "name",
+            headerName: "نام",
+            flex: 1,
+            align: "left"
+        },
+        {
+            field: "email",
+            headerName: "ایمیل",
+            flex: 1,
+            align: "left"
+        },
+        {
+            field: "phoneNumber",
+            headerName: "تلفن",
+            width: 150,
+            align: "center"
+        },
+        {
+            field: "role",
+            headerName: "نقش",
+            width: 150,
+            render: (row) => <Chip label={getPersianValue(row.role?.displayName || row.role?.name, row.role?.name || "-")} size="small" variant="outlined" />,
+            align: "center"
+        },
+        {
+            field: "status",
+            headerName: "وضعیت",
+            width: 120,
+            type: "status",
+            align: "center"
+        },
+        {
+            field: "lastLogin",
+            headerName: "آخرین ورود",
+            width: 150,
+            type: "date",
+            align: "center"
+        },
+        {
+            field: "createdAt",
+            headerName: "تاریخ عضویت",
+            width: 150,
+            type: "date",
+            align: "center"
+        },
     ];
 
     const handleEdit = (user) => {
+        if (!canEdit) return;
         setEditingUser(user);
         setIsModalOpen(true);
+    };
+
+    const handleDelete = (user) => {
+        if (!canDelete) return;
+        setUserToDelete(user);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (userToDelete) {
+            deleteUser.mutate(userToDelete._id, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setUserToDelete(null);
+                },
+            });
+        }
+    };
+
+    const handleView = (user) => {
+        if (!canView) return;
+        // User view page would go here if needed
+        console.log("View user:", user);
     };
 
     const handleToggleStatus = (user) => {
@@ -58,13 +163,71 @@ export default function UsersPage() {
     };
 
     const handleAdd = () => {
+        if (!canCreate) return;
         setEditingUser(null);
         setIsModalOpen(true);
     };
 
     const handleSearch = (searchValue) => {
         setSearchTerm(searchValue);
+        setPage(1); // Reset to first page on search
     };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (newLimit) => {
+        setLimit(newLimit);
+        setPage(1); // Reset to first page when changing limit
+    };
+
+    const handleSaveUser = () => {
+        setIsModalOpen(false);
+        setEditingUser(null);
+    };
+
+    // Filters for the data table
+    const filters = [
+        {
+            key: "status",
+            label: "وضعیت",
+            value: statusFilter,
+            onChange: (value) => {
+                setStatusFilter(value);
+                setPage(1);
+            },
+            options: [
+                { value: "all", label: "همه" },
+                { value: "active", label: "فعال" },
+                { value: "inactive", label: "غیرفعال" },
+            ],
+        },
+        // Role filter would be populated from roles API
+        // {
+        //     key: "role",
+        //     label: "نقش",
+        //     value: roleFilter,
+        //     onChange: (value) => {
+        //         setRoleFilter(value);
+        //         setPage(1);
+        //     },
+        //     options: [
+        //         { value: "all", label: "همه" },
+        //         // Populated from roles API
+        //     ],
+        // },
+    ];
+
+    // Custom actions - shown after standard actions
+    const customActions = [
+        {
+            label: "تغییر وضعیت",
+            icon: <Add />, // You can use a better icon here
+            onClick: handleToggleStatus,
+            permission: canEdit,
+        },
+    ];
 
     // تعیین loading state
     const isSearchLoading = searchTerm.length > 0 && searchTerm.length < 3 ? false : isLoading;
@@ -73,15 +236,14 @@ export default function UsersPage() {
         <Layout>
             <Box>
                 <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Box>
-                        <Typography variant="h4" fontWeight="bold">
-                            مدیریت کاربران
-                        </Typography>
-                    </Box>
-
-                    <Button variant="contained" startIcon={<Add />} onClick={handleAdd} size="large">
-                        کاربر جدید
-                    </Button>
+                    <Typography variant="h4" fontWeight="bold">
+                        مدیریت کاربران
+                    </Typography>
+                    {canCreate && (
+                        <Button variant="contained" startIcon={<Add />} onClick={handleAdd} size="large">
+                            کاربر جدید
+                        </Button>
+                    )}
                 </Box>
 
                 <DataTable
@@ -90,33 +252,57 @@ export default function UsersPage() {
                     columns={columns}
                     loading={isSearchLoading}
                     pagination={usersData?.pagination}
+                    onPageChange={handlePageChange}
+                    onRowsPerPageChange={handleRowsPerPageChange}
                     onSearch={handleSearch}
-                    onEdit={handleEdit}
-                    onAdd={handleAdd}
+                    onEdit={canEdit ? handleEdit : undefined}
+                    onDelete={canDelete ? handleDelete : undefined}
+                    onView={canView ? handleView : undefined}
+                    onAdd={canCreate ? handleAdd : undefined}
                     searchPlaceholder="جستجو در کاربران (حداقل 3 کاراکتر)..."
-                    enableSelection={true}
-                    customActions={[
-                        {
-                            label: "تغییر وضعیت",
-                            icon: <Block />,
-                            onClick: handleToggleStatus,
-                        },
-                    ]}
+                    enableSelection={false}
+                    customActions={customActions}
+                    filters={filters}
+                    canView={canView}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    canCreate={canCreate}
+                    emptyStateProps={{
+                        title: "کاربری یافت نشد",
+                        description: "هنوز کاربری ایجاد نشده است. اولین کاربر خود را ایجاد کنید!",
+                        action: canCreate
+                            ? {
+                                  label: "ایجاد کاربر جدید",
+                                  onClick: handleAdd,
+                              }
+                            : undefined,
+                    }}
                 />
 
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingUser ? "ویرایش کاربر" : "افزودن کاربر جدید"} maxWidth="lg">
-                    <UserForm
-                        user={editingUser}
-                        onSave={() => {
-                            setIsModalOpen(false);
-                            setEditingUser(null);
-                        }}
-                        onCancel={() => {
-                            setIsModalOpen(false);
-                            setEditingUser(null);
-                        }}
-                    />
+                <Modal open={isModalOpen} onClose={handleSaveUser} title={editingUser ? "ویرایش کاربر" : "افزودن کاربر جدید"} maxWidth="lg">
+                    <UserForm user={editingUser} onSave={handleSaveUser} onCancel={handleSaveUser} />
                 </Modal>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                    <DialogTitle>تأیید حذف</DialogTitle>
+                    <DialogContent>
+                        <Typography>
+                            آیا از حذف کاربر <strong>{userToDelete?.name}</strong> اطمینان دارید؟
+                            <br />
+                            <br />
+                            <Typography variant="caption" color="error">
+                                توجه: این عملیات قابل بازگشت نیست.
+                            </Typography>
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
+                        <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={deleteUser.isPending}>
+                            {deleteUser.isPending ? "در حال حذف..." : "حذف"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         </Layout>
     );

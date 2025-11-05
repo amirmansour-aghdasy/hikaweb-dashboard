@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button, Stack, Card, CardContent, Grid, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
-import { Security, Edit, Delete, Add, CheckCircle, Cancel, Lock } from "@mui/icons-material";
+import { Box, Typography, Chip, Button, Stack, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Security, Edit, Delete, Lock } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
@@ -9,12 +9,6 @@ import RoleForm from "@/components/forms/RoleForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatDate } from "@/lib/utils";
-import toast from "react-hot-toast";
-
-const STATUS_CONFIG = {
-    active: { label: "فعال", color: "success" },
-    inactive: { label: "غیرفعال", color: "error" },
-};
 
 const PERMISSION_GROUPS = {
     users: "کاربران",
@@ -36,91 +30,62 @@ const PERMISSION_GROUPS = {
 };
 
 export default function RolesPage() {
-    const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState("all");
-    const [selectedRole, setSelectedRole] = useState(null);
-    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingRole, setEditingRole] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [roleToDelete, setRoleToDelete] = useState(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all");
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
-    const debouncedSearch = useDebounce(searchTerm, 300);
+    const debouncedSearchTerm = useDebounce(searchTerm, 800);
     const { useFetchData, useDeleteData } = useApi();
 
-    // Fetch roles
-    const {
-        data: rolesData,
-        isLoading,
-        refetch,
-    } = useFetchData(["roles", debouncedSearch, statusFilter], `/roles?search=${debouncedSearch}&status=${statusFilter === "all" ? "" : statusFilter}&limit=100`);
+    // Build query params
+    const queryParams = useMemo(() => {
+        const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
+        if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
+            params.append("search", debouncedSearchTerm);
+        }
+        if (statusFilter !== "all") {
+            params.append("status", statusFilter);
+        }
+        return params.toString();
+    }, [debouncedSearchTerm, statusFilter, page, limit]);
 
-    // Delete mutation
+    const endpoint = `/roles?${queryParams}`;
+
+    // Fetch roles
+    const { data: rolesData, isLoading } = useFetchData(["roles", queryParams], endpoint);
+
+    // Delete role
     const deleteRole = useDeleteData("/roles", {
         successMessage: "نقش با موفقیت حذف شد",
         queryKey: "roles",
-        onSuccess: () => {
-            setIsDeleteDialogOpen(false);
-            setRoleToDelete(null);
-            refetch();
-        },
     });
-
-    const roles = rolesData?.data || [];
-
-    const handleEdit = (role) => {
-        setSelectedRole(role);
-        setIsFormOpen(true);
-    };
-
-    const handleDelete = (role) => {
-        setRoleToDelete(role);
-        setIsDeleteDialogOpen(true);
-    };
-
-    const handleConfirmDelete = () => {
-        if (roleToDelete) {
-            deleteRole.mutate(roleToDelete._id);
-        }
-    };
-
-    const handleCloseForm = () => {
-        setIsFormOpen(false);
-        setSelectedRole(null);
-        refetch();
-    };
-
-    const handleAddNew = () => {
-        setSelectedRole(null);
-        setIsFormOpen(true);
-    };
 
     const columns = [
         {
             field: "displayName",
             headerName: "نام نقش",
-            flex: 1,
-            renderCell: (params) => (
-                <Box>
-                    <Typography variant="body2" fontWeight={600}>
-                        {params.row.displayName?.fa || params.row.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {params.row.displayName?.en || params.row.name}
-                    </Typography>
-                </Box>
-            ),
+            align: "left",
         },
         {
             field: "name",
             headerName: "شناسه",
             width: 150,
-            renderCell: (params) => <Chip label={params.row.name} size="small" variant="outlined" />,
+            render: (row) => <Chip label={row.name} size="small" variant="outlined" />,
+            align: "center"
         },
         {
             field: "permissions",
             headerName: "دسترسی‌ها",
-            flex: 1,
-            renderCell: (params) => {
-                const permissions = params.row.permissions || [];
+            flex: 2,
+            render: (row) => {
+                const permissions = row.permissions || [];
                 const grouped = permissions.reduce((acc, perm) => {
                     const [group] = perm.split(".");
                     acc[group] = (acc[group] || 0) + 1;
@@ -138,129 +103,158 @@ export default function RolesPage() {
                     </Stack>
                 );
             },
-        },
-        {
-            field: "status",
-            headerName: "وضعیت",
-            width: 120,
-            renderCell: (params) => {
-                const status = params.row.status || "active";
-                const config = STATUS_CONFIG[status] || STATUS_CONFIG.active;
-                return <Chip label={config.label} color={config.color} size="small" />;
-            },
+            align: "left"
         },
         {
             field: "isSystem",
             headerName: "نوع",
-            width: 100,
-            renderCell: (params) =>
-                params.row.isSystem ? (
+            width: 120,
+            render: (row) =>
+                row.isSystem ? (
                     <Tooltip title="نقش سیستم - قابل ویرایش نیست">
                         <Chip icon={<Lock />} label="سیستم" size="small" color="warning" />
                     </Tooltip>
                 ) : (
                     <Chip label="سفارشی" size="small" color="default" />
                 ),
+                align: "center"
         },
         {
             field: "priority",
             headerName: "اولویت",
             width: 100,
+            render: (row) => <Typography variant="body2">{row.priority || 0}</Typography>,
+            align: "center"
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
             width: 150,
-            renderCell: (params) => formatDate(params.row.createdAt),
+            render: (row) => <Typography variant="caption">{formatDate(row.createdAt)}</Typography>,
+            align: "center"
+        },
+    ];
+
+    const handleEdit = (role) => {
+        setEditingRole(role);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = (role) => {
+        setRoleToDelete(role);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (roleToDelete) {
+            deleteRole.mutate(roleToDelete._id, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setRoleToDelete(null);
+                },
+            });
+        }
+    };
+
+    const handleAdd = () => {
+        setEditingRole(null);
+        setIsModalOpen(true);
+    };
+
+    const handleSearch = (searchValue) => {
+        setSearchTerm(searchValue);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (newLimit) => {
+        setLimit(newLimit);
+        setPage(1); // Reset to first page when changing limit
+    };
+
+    const handleSaveRole = () => {
+        setIsModalOpen(false);
+        setEditingRole(null);
+    };
+
+    // Filters for the data table
+    const filters = [
+        {
+            key: "status",
+            label: "وضعیت",
+            value: statusFilter,
+            onChange: (value) => {
+                setStatusFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
+            options: [
+                { value: "all", label: "همه" },
+                { value: "active", label: "فعال" },
+                { value: "inactive", label: "غیرفعال" },
+            ],
+        },
+    ];
+
+    // Custom actions
+    const customActions = [
+        {
+            label: "ویرایش",
+            icon: <Edit />,
+            onClick: handleEdit,
+            disabled: (role) => role.isSystem,
         },
         {
-            field: "actions",
-            headerName: "عملیات",
-            width: 150,
-            sortable: false,
-            renderCell: (params) => (
-                <Stack direction="row" spacing={1}>
-                    <Tooltip title="ویرایش">
-                        <IconButton size="small" color="primary" onClick={() => handleEdit(params.row)} disabled={params.row.isSystem}>
-                            <Edit fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title="حذف">
-                        <IconButton size="small" color="error" onClick={() => handleDelete(params.row)} disabled={params.row.isSystem}>
-                            <Delete fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
-                </Stack>
-            ),
+            label: "حذف",
+            icon: <Delete />,
+            onClick: handleDelete,
+            color: "error",
+            disabled: (role) => role.isSystem,
         },
     ];
 
     return (
         <Layout>
             <Box>
-                {/* Header */}
-                <Box sx={{ mb: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Box>
-                        <Typography variant="h4" fontWeight="bold" gutterBottom>
-                            مدیریت نقش‌ها
-                        </Typography>
-                        <Typography variant="body1" color="textSecondary">
-                            مدیریت نقش‌ها و دسترسی‌های کاربران
-                        </Typography>
-                    </Box>
-                    <Button variant="contained" startIcon={<Add />} onClick={handleAddNew}>
+                <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Typography variant="h4" fontWeight="bold">
+                        مدیریت نقش‌ها
+                    </Typography>
+                    <Button variant="contained" startIcon={<Security />} onClick={handleAdd} size="large">
                         نقش جدید
                     </Button>
                 </Box>
 
-                {/* Filters */}
-                <Card sx={{ mb: 3 }}>
-                    <CardContent>
-                        <Grid container spacing={2} alignItems="center">
-                            <Grid item size={{ xs: 12, md: 6 }}>
-                                <input
-                                    type="text"
-                                    placeholder="جستجو در نقش‌ها..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    style={{
-                                        width: "100%",
-                                        padding: "8px 12px",
-                                        border: "1px solid #ddd",
-                                        borderRadius: "4px",
-                                    }}
-                                />
-                            </Grid>
-                            <Grid item size={{ xs: 12, md: 6 }}>
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    style={{
-                                        width: "100%",
-                                        padding: "8px 12px",
-                                        border: "1px solid #ddd",
-                                        borderRadius: "4px",
-                                    }}
-                                >
-                                    <option value="all">همه وضعیت‌ها</option>
-                                    <option value="active">فعال</option>
-                                    <option value="inactive">غیرفعال</option>
-                                </select>
-                            </Grid>
-                        </Grid>
-                    </CardContent>
-                </Card>
-
-                {/* Roles Table */}
-                <Card>
-                    <CardContent>
-                        <DataTable data={roles} rows={roles} columns={columns} loading={isLoading} getRowId={(row) => row._id} />
-                    </CardContent>
-                </Card>
+                <DataTable
+                    title="لیست نقش‌ها"
+                    data={rolesData?.data || []}
+                    columns={columns}
+                    loading={isLoading}
+                    pagination={rolesData?.pagination}
+                    onPageChange={handlePageChange}
+                    onRowsPerPageChange={handleRowsPerPageChange}
+                    onSearch={handleSearch}
+                    onEdit={handleEdit}
+                    onAdd={handleAdd}
+                    searchPlaceholder="جستجو در نقش‌ها (حداقل 3 کاراکتر)..."
+                    enableSelection={true}
+                    customActions={customActions}
+                    filters={filters}
+                    emptyStateProps={{
+                        title: "نقشی یافت نشد",
+                        description: "هنوز نقشی ایجاد نشده است. اولین نقش خود را ایجاد کنید!",
+                        action: {
+                            label: "ایجاد نقش جدید",
+                            onClick: handleAdd,
+                        },
+                    }}
+                />
 
                 {/* Role Form Modal */}
-                <Modal open={isFormOpen} onClose={handleCloseForm} maxWidth="md" fullWidth>
-                    <RoleForm role={selectedRole} onSave={handleCloseForm} onCancel={handleCloseForm} />
+                <Modal open={isModalOpen} onClose={handleSaveRole} title={editingRole ? "ویرایش نقش" : "ایجاد نقش جدید"} maxWidth="md" fullWidth>
+                    <RoleForm role={editingRole} onSave={handleSaveRole} onCancel={handleSaveRole} />
                 </Modal>
 
                 {/* Delete Confirmation Dialog */}
@@ -269,7 +263,16 @@ export default function RolesPage() {
                     <DialogContent>
                         <Typography>
                             آیا از حذف نقش <strong>{roleToDelete?.displayName?.fa || roleToDelete?.name}</strong> اطمینان دارید؟
-                            {roleToDelete && (
+                            {roleToDelete?.isSystem && (
+                                <>
+                                    <br />
+                                    <br />
+                                    <Typography variant="caption" color="error">
+                                        توجه: این نقش یک نقش سیستم است و نمی‌توان آن را حذف کرد.
+                                    </Typography>
+                                </>
+                            )}
+                            {roleToDelete && !roleToDelete.isSystem && (
                                 <>
                                     <br />
                                     <br />
@@ -282,7 +285,7 @@ export default function RolesPage() {
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
-                        <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={deleteRole.isPending}>
+                        <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={deleteRole.isPending || roleToDelete?.isSystem}>
                             {deleteRole.isPending ? "در حال حذف..." : "حذف"}
                         </Button>
                     </DialogActions>

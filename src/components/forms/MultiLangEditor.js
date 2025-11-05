@@ -4,20 +4,17 @@ import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 
 // Dynamically import CKEditor to avoid SSR issues
-const CKEditor = dynamic(
-    () => import("@ckeditor/ckeditor5-react").then((mod) => mod.CKEditor),
-    { 
-        ssr: false,
-        loading: () => (
-            <Box sx={{ p: 2, textAlign: "center" }}>
-                <CircularProgress size={24} sx={{ mb: 1 }} />
-                <Typography variant="body2" color="text.secondary">
-                    در حال بارگذاری ویرایشگر...
-                </Typography>
-            </Box>
-        )
-    }
-);
+const CKEditor = dynamic(() => import("@ckeditor/ckeditor5-react").then((mod) => mod.CKEditor), {
+    ssr: false,
+    loading: () => (
+        <Box sx={{ p: 2, textAlign: "center" }}>
+            <CircularProgress size={24} sx={{ mb: 1 }} />
+            <Typography variant="body2" color="text.secondary">
+                در حال بارگذاری ویرایشگر...
+            </Typography>
+        </Box>
+    ),
+});
 
 import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
 
@@ -55,26 +52,11 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
 
     // CKEditor configuration with Persian support
     const editorConfig = {
+        fontFamily: {
+            options: ["IRANSans, Arial, sans-serif", "Tahoma, sans-serif", "Times New Roman, serif"],
+        },
         language: activeTab === 0 ? "fa" : "en",
-        toolbar: [
-            "heading",
-            "|",
-            "bold",
-            "italic",
-            "link",
-            "bulletedList",
-            "numberedList",
-            "|",
-            "outdent",
-            "indent",
-            "|",
-            "blockQuote",
-            "insertTable",
-            "mediaEmbed",
-            "|",
-            "undo",
-            "redo",
-        ],
+        toolbar: ["heading", "|", "bold", "italic", "link", "bulletedList", "numberedList", "|", "outdent", "indent", "|", "blockQuote", "insertTable", "mediaEmbed", "|", "undo", "redo"],
         heading: {
             options: [
                 { model: "paragraph", title: "پاراگراف", class: "ck-heading_paragraph" },

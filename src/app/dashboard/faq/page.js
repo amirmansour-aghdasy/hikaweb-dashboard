@@ -1,28 +1,36 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button, Stack, Accordion, AccordionSummary, AccordionDetails, Card, CardContent, IconButton, Tooltip } from "@mui/material";
-import { Help, Edit, Delete, Add, ExpandMore, DragIndicator, QuestionAnswer, Category, Reorder } from "@mui/icons-material";
+import { Box, Typography, Chip, Button, Stack, Accordion, AccordionSummary, AccordionDetails, Card, CardContent, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Help, Edit, Delete, Add, ExpandMore } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import FAQForm from "@/components/forms/FAQForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
-import { formatDate } from "@/lib/utils";
+import { usePageActions } from "@/hooks/usePageActions";
+import { formatDate, getPersianValue, formatNumber } from "@/lib/utils";
 
 export default function FAQPage() {
     const [editingFAQ, setEditingFAQ] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [faqToDelete, setFaqToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [viewMode, setViewMode] = useState("table"); // 'table' or 'preview'
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 800);
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
+    const { canView, canEdit, canDelete, canCreate } = usePageActions("faq");
 
     // Build query params
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
         if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
             params.append("search", debouncedSearchTerm);
         }
@@ -30,9 +38,9 @@ export default function FAQPage() {
             params.append("category", categoryFilter);
         }
         return params.toString();
-    }, [debouncedSearchTerm, categoryFilter]);
+    }, [debouncedSearchTerm, categoryFilter, page, limit]);
 
-    const endpoint = `/faq${queryParams ? `?${queryParams}` : ""}`;
+    const endpoint = `/faq?${queryParams}`;
 
     // Fetch FAQs
     const { data: faqData, isLoading } = useFetchData(["faq", queryParams], endpoint);
@@ -40,11 +48,13 @@ export default function FAQPage() {
     // Update FAQ
     const updateFAQ = useUpdateData("/faq", {
         successMessage: "سوال با موفقیت به‌روزرسانی شد",
+        queryKey: "faq",
     });
 
     // Delete FAQ
     const deleteFAQ = useDeleteData("/faq", {
         successMessage: "سوال با موفقیت حذف شد",
+        queryKey: "faq",
     });
 
     const columns = [
@@ -53,28 +63,39 @@ export default function FAQPage() {
             headerName: "سوال",
             flex: 2,
             render: (row) => (
-                <Box>
-                    <Typography variant="body2" fontWeight="bold">
-                        {row.question?.fa}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {row.question?.en}
-                    </Typography>
-                </Box>
+                <Typography variant="body2" fontWeight="bold">
+                    {getPersianValue(row.question, "-")}
+                </Typography>
             ),
         },
         {
             field: "answer",
             headerName: "پاسخ",
             flex: 2,
-            render: (row) => <Typography variant="body2">{row.answer?.fa?.length > 100 ? `${row.answer.fa.substring(0, 100)}...` : row.answer?.fa}</Typography>,
+            render: (row) => {
+                const answer = getPersianValue(row.answer, "");
+                return (
+                    <Typography variant="body2">
+                        {answer.length > 100 ? `${answer.substring(0, 100)}...` : answer || "-"}
+                    </Typography>
+                );
+            },
         },
         {
             field: "category",
             headerName: "دسته‌بندی",
             width: 150,
             render: (row) =>
-                row.category ? <Chip label={row.category.name?.fa || row.category.name} size="small" color="primary" variant="outlined" /> : <Chip label="بدون دسته" size="small" variant="outlined" />,
+                row.category ? (
+                    <Chip
+                        label={getPersianValue(row.category.name || row.category, "-")}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                    />
+                ) : (
+                    <Chip label="بدون دسته" size="small" variant="outlined" />
+                ),
         },
         {
             field: "order",
@@ -85,41 +106,64 @@ export default function FAQPage() {
         {
             field: "viewCount",
             headerName: "بازدید",
-            width: 80,
-            render: (row) => <Typography variant="caption">{row.viewCount || 0}</Typography>,
+            width: 100,
+            render: (row) => <Typography variant="caption">{formatNumber(row.viewCount || 0)}</Typography>,
         },
         {
             field: "status",
             headerName: "وضعیت",
-            width: 100,
+            width: 120,
             type: "status",
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
-            width: 120,
-            render: (row) => <Typography variant="caption">{formatDate(row.createdAt)}</Typography>,
+            width: 150,
+            type: "date",
         },
     ];
 
     const handleEdit = (faq) => {
+        if (!canEdit) return;
         setEditingFAQ(faq);
         setIsModalOpen(true);
     };
 
     const handleDelete = (faq) => {
-        if (window.confirm("آیا از حذف این سوال اطمینان دارید؟")) {
-            deleteFAQ.mutate(faq._id);
+        if (!canDelete) return;
+        setFaqToDelete(faq);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (faqToDelete) {
+            deleteFAQ.mutate(faqToDelete._id, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setFaqToDelete(null);
+                },
+            });
         }
     };
 
     const handleAdd = () => {
+        if (!canCreate) return;
         setEditingFAQ(null);
         setIsModalOpen(true);
     };
 
     const handleSearch = (searchValue) => {
         setSearchTerm(searchValue);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (newLimit) => {
+        setLimit(newLimit);
+        setPage(1); // Reset to first page when changing limit
     };
 
     const handleSaveFAQ = () => {
@@ -127,27 +171,16 @@ export default function FAQPage() {
         setEditingFAQ(null);
     };
 
-    const customActions = [
-        {
-            label: "ویرایش",
-            icon: <Edit />,
-            onClick: handleEdit,
-            color: "primary",
-        },
-        {
-            label: "حذف",
-            icon: <Delete />,
-            onClick: handleDelete,
-            color: "error",
-        },
-    ];
-
+    // Filters for the data table
     const filters = [
         {
             key: "category",
             label: "دسته‌بندی",
             value: categoryFilter,
-            onChange: setCategoryFilter,
+            onChange: (value) => {
+                setCategoryFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [{ value: "all", label: "همه دسته‌ها" }],
         },
     ];
@@ -155,33 +188,44 @@ export default function FAQPage() {
     // FAQ Preview Component
     const FAQPreview = ({ faqs }) => (
         <Stack spacing={2}>
-            {faqs.map((faq, index) => (
+            {faqs.map((faq) => (
                 <Card key={faq._id}>
                     <Accordion>
                         <AccordionSummary expandIcon={<ExpandMore />}>
                             <Box sx={{ display: "flex", alignItems: "center", width: "100%" }}>
-                                <QuestionAnswer sx={{ mr: 1, color: "primary.main" }} />
+                                <Help sx={{ mr: 1, color: "primary.main" }} />
                                 <Typography variant="body1" sx={{ flex: 1 }}>
-                                    {faq.question?.fa}
+                                    {getPersianValue(faq.question, "-")}
                                 </Typography>
                                 <Stack direction="row" spacing={1} sx={{ mr: 2 }}>
-                                    <IconButton size="small" onClick={() => handleEdit(faq)}>
-                                        <Edit />
-                                    </IconButton>
-                                    <IconButton size="small" onClick={() => handleDelete(faq)}>
-                                        <Delete />
-                                    </IconButton>
+                                    {canEdit && (
+                                        <IconButton size="small" onClick={() => handleEdit(faq)}>
+                                            <Edit />
+                                        </IconButton>
+                                    )}
+                                    {canDelete && (
+                                        <IconButton size="small" onClick={() => handleDelete(faq)}>
+                                            <Delete />
+                                        </IconButton>
+                                    )}
                                 </Stack>
                             </Box>
                         </AccordionSummary>
                         <AccordionDetails>
                             <Typography variant="body2" sx={{ mb: 2 }}>
-                                {faq.answer?.fa}
+                                {getPersianValue(faq.answer, "-")}
                             </Typography>
                             <Stack direction="row" spacing={1} alignItems="center">
-                                {faq.category && <Chip label={faq.category.name?.fa} size="small" color="primary" variant="outlined" />}
-                                <Chip label={`ترتیب: ${faq.order}`} size="small" variant="outlined" />
-                                <Chip label={`بازدید: ${faq.viewCount || 0}`} size="small" variant="outlined" />
+                                {faq.category && (
+                                    <Chip
+                                        label={getPersianValue(faq.category.name || faq.category, "-")}
+                                        size="small"
+                                        color="primary"
+                                        variant="outlined"
+                                    />
+                                )}
+                                <Chip label={`ترتیب: ${faq.order || 0}`} size="small" variant="outlined" />
+                                <Chip label={`بازدید: ${formatNumber(faq.viewCount || 0)}`} size="small" variant="outlined" />
                             </Stack>
                         </AccordionDetails>
                     </Accordion>
@@ -210,9 +254,11 @@ export default function FAQPage() {
                         <Button variant={viewMode === "preview" ? "contained" : "outlined"} onClick={() => setViewMode("preview")} size="small">
                             پیش‌نمایش
                         </Button>
-                        <Button variant="contained" startIcon={<Add />} onClick={handleAdd}>
-                            سوال جدید
-                        </Button>
+                        {canCreate && (
+                            <Button variant="contained" startIcon={<Add />} onClick={handleAdd}>
+                                سوال جدید
+                            </Button>
+                        )}
                     </Stack>
                 </Box>
 
@@ -223,13 +269,29 @@ export default function FAQPage() {
                         columns={columns}
                         loading={isLoading}
                         pagination={faqData?.pagination}
+                        onPageChange={handlePageChange}
+                        onRowsPerPageChange={handleRowsPerPageChange}
                         onSearch={handleSearch}
-                        onEdit={handleEdit}
-                        onAdd={handleAdd}
+                        onEdit={canEdit ? handleEdit : undefined}
+                        onDelete={canDelete ? handleDelete : undefined}
+                        onAdd={canCreate ? handleAdd : undefined}
                         searchPlaceholder="جستجو در سوالات (حداقل 3 کاراکتر)..."
-                        enableSelection={true}
-                        customActions={customActions}
+                        enableSelection={false}
                         filters={filters}
+                        canView={canView}
+                        canEdit={canEdit}
+                        canDelete={canDelete}
+                        canCreate={canCreate}
+                        emptyStateProps={{
+                            title: "سوالی یافت نشد",
+                            description: "هنوز سوالی ایجاد نشده است. اولین سوال خود را ایجاد کنید!",
+                            action: canCreate
+                                ? {
+                                      label: "ایجاد سوال جدید",
+                                      onClick: handleAdd,
+                                  }
+                                : undefined,
+                        }}
                     />
                 ) : (
                     <Box>
@@ -248,18 +310,52 @@ export default function FAQPage() {
                                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                                         اولین سوال متداول خود را اضافه کنید
                                     </Typography>
-                                    <Button variant="contained" startIcon={<Add />} onClick={handleAdd}>
-                                        افزودن سوال جدید
-                                    </Button>
+                                    {canCreate && (
+                                        <Button variant="contained" startIcon={<Add />} onClick={handleAdd}>
+                                            افزودن سوال جدید
+                                        </Button>
+                                    )}
                                 </CardContent>
                             </Card>
                         )}
                     </Box>
                 )}
 
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingFAQ ? "ویرایش سوال" : "افزودن سوال جدید"} maxWidth="lg" fullWidth>
-                    <FAQForm faq={editingFAQ} onSave={handleSaveFAQ} onCancel={() => setIsModalOpen(false)} />
+                <Modal
+                    open={isModalOpen}
+                    onClose={handleSaveFAQ}
+                    title={editingFAQ ? "ویرایش سوال" : "افزودن سوال جدید"}
+                    maxWidth="lg"
+                    fullWidth
+                >
+                    <FAQForm faq={editingFAQ} onSave={handleSaveFAQ} onCancel={handleSaveFAQ} />
                 </Modal>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                    <DialogTitle>تأیید حذف</DialogTitle>
+                    <DialogContent>
+                        <Typography>
+                            آیا از حذف سوال <strong>{getPersianValue(faqToDelete?.question, "-")}</strong> اطمینان دارید؟
+                            <br />
+                            <br />
+                            <Typography variant="caption" color="error">
+                                توجه: این عملیات قابل بازگشت نیست.
+                            </Typography>
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
+                        <Button
+                            onClick={handleConfirmDelete}
+                            color="error"
+                            variant="contained"
+                            disabled={deleteFAQ.isPending}
+                        >
+                            {deleteFAQ.isPending ? "در حال حذف..." : "حذف"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         </Layout>
     );

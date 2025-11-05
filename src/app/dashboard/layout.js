@@ -1,8 +1,11 @@
 "use client";
-import { useAuth } from "../../lib/auth";
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+
 import { Box, CircularProgress } from "@mui/material";
+
+import { iranSanse } from "@/lib/fonts";
+import { useAuth } from "../../lib/auth";
 
 export default function DashboardLayout({ children }) {
     const { user, loading } = useAuth();

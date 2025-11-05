@@ -1,14 +1,15 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button, Stack, Avatar, Card, CardContent, Grid } from "@mui/material";
-import { ViewCarousel, Edit, Delete, Add, Image, Visibility, Star, StarBorder } from "@mui/icons-material";
+import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { ViewCarousel, Edit, Delete, Add, Image, Star, StarBorder } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import CarouselForm from "@/components/forms/CarouselForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
-import { formatDate } from "@/lib/utils";
+import { usePageActions } from "@/hooks/usePageActions";
+import { formatDate, getPersianValue } from "@/lib/utils";
 
 const POSITION_CONFIG = {
     hero: { label: "قهرمان", color: "primary" },
@@ -20,16 +21,23 @@ const POSITION_CONFIG = {
 export default function CarouselPage() {
     const [editingCarousel, setEditingCarousel] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [carouselToDelete, setCarouselToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [positionFilter, setPositionFilter] = useState("all");
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 800);
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
+    const { canView, canEdit, canDelete, canCreate } = usePageActions("carousel");
 
     // Build query params
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
         if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
             params.append("search", debouncedSearchTerm);
         }
@@ -40,9 +48,9 @@ export default function CarouselPage() {
             params.append("position", positionFilter);
         }
         return params.toString();
-    }, [debouncedSearchTerm, statusFilter, positionFilter]);
+    }, [debouncedSearchTerm, statusFilter, positionFilter, page, limit]);
 
-    const endpoint = `/carousel${queryParams ? `?${queryParams}` : ""}`;
+    const endpoint = `/carousel?${queryParams}`;
 
     // Fetch carousel items
     const { data: carouselData, isLoading } = useFetchData(["carousel", queryParams], endpoint);
@@ -50,11 +58,13 @@ export default function CarouselPage() {
     // Update carousel
     const updateCarousel = useUpdateData("/carousel", {
         successMessage: "اسلاید با موفقیت به‌روزرسانی شد",
+        queryKey: "carousel",
     });
 
     // Delete carousel
     const deleteCarousel = useDeleteData("/carousel", {
         successMessage: "اسلاید با موفقیت حذف شد",
+        queryKey: "carousel",
     });
 
     const columns = [
@@ -75,14 +85,11 @@ export default function CarouselPage() {
             render: (row) => (
                 <Box>
                     <Typography variant="body2" fontWeight="bold">
-                        {row.title?.fa}
+                        {getPersianValue(row.title, "-")}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {row.title?.en}
-                    </Typography>
-                    {row.subtitle?.fa && (
-                        <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                            {row.subtitle.fa}
+                    {row.subtitle && (
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                            {getPersianValue(row.subtitle, "")}
                         </Typography>
                     )}
                 </Box>
@@ -98,83 +105,73 @@ export default function CarouselPage() {
             },
         },
         {
-            field: "link",
-            headerName: "لینک",
-            width: 150,
-            render: (row) => (
-                <Box>
-                    {row.link?.url ? (
-                        <Typography variant="caption" color="primary" sx={{ textDecoration: "underline", cursor: "pointer" }}>
-                            {row.link.url.substring(0, 30)}...
-                        </Typography>
-                    ) : (
-                        <Typography variant="caption" color="text.secondary">
-                            بدون لینک
-                        </Typography>
-                    )}
-                </Box>
-            ),
-        },
-        {
             field: "order",
             headerName: "ترتیب",
             width: 80,
-            render: (row) => <Typography variant="caption">{row.order || 0}</Typography>,
-        },
-        {
-            field: "metrics",
-            headerName: "آمار",
-            width: 120,
-            render: (row) => (
-                <Box>
-                    <Typography variant="caption" display="block">
-                        👀 {row.views || 0}
-                    </Typography>
-                    <Typography variant="caption" display="block">
-                        🖱️ {row.clicks || 0}
-                    </Typography>
-                </Box>
-            ),
+            render: (row) => <Typography variant="caption">{row.order || row.orderIndex || 0}</Typography>,
         },
         {
             field: "status",
             headerName: "وضعیت",
-            width: 100,
+            width: 120,
             type: "status",
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
-            width: 120,
-            render: (row) => <Typography variant="caption">{formatDate(row.createdAt)}</Typography>,
+            width: 150,
+            type: "date",
         },
     ];
 
     const handleEdit = (carousel) => {
+        if (!canEdit) return;
         setEditingCarousel(carousel);
         setIsModalOpen(true);
     };
 
     const handleDelete = (carousel) => {
-        if (window.confirm("آیا از حذف این اسلاید اطمینان دارید؟")) {
-            deleteCarousel.mutate(carousel._id);
+        if (!canDelete) return;
+        setCarouselToDelete(carousel);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (carouselToDelete) {
+            deleteCarousel.mutate(carouselToDelete._id, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setCarouselToDelete(null);
+                },
+            });
         }
     };
 
-    const handleToggleActive = (carousel) => {
+    const handleToggleFeatured = (carousel) => {
         updateCarousel.mutate({
             id: carousel._id,
-            data: { status: carousel.status === "active" ? "inactive" : "active" },
+            data: { isFeatured: !carousel.isFeatured },
         });
     };
 
     const handleAdd = () => {
+        if (!canCreate) return;
         setEditingCarousel(null);
         setIsModalOpen(true);
     };
 
     const handleSearch = (searchValue) => {
         setSearchTerm(searchValue);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (newLimit) => {
+        setLimit(newLimit);
+        setPage(1); // Reset to first page when changing limit
     };
 
     const handleSaveCarousel = () => {
@@ -182,37 +179,16 @@ export default function CarouselPage() {
         setEditingCarousel(null);
     };
 
-    const customActions = [
-        {
-            label: "مشاهده",
-            icon: <Visibility />,
-            onClick: (carousel) => {
-                if (carousel.link?.url) {
-                    window.open(carousel.link.url, carousel.link.target || "_blank");
-                }
-            },
-            show: (carousel) => !!carousel.link?.url,
-        },
-        {
-            label: "تغییر وضعیت",
-            icon: <Star />,
-            onClick: handleToggleActive,
-            color: (carousel) => (carousel.status === "active" ? "success" : "default"),
-        },
-        {
-            label: "حذف",
-            icon: <Delete />,
-            onClick: handleDelete,
-            color: "error",
-        },
-    ];
-
+    // Filters for the data table
     const filters = [
         {
             key: "status",
             label: "وضعیت",
             value: statusFilter,
-            onChange: setStatusFilter,
+            onChange: (value) => {
+                setStatusFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه" },
                 { value: "active", label: "فعال" },
@@ -223,7 +199,10 @@ export default function CarouselPage() {
             key: "position",
             label: "موقعیت",
             value: positionFilter,
-            onChange: setPositionFilter,
+            onChange: (value) => {
+                setPositionFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه موقعیت‌ها" },
                 ...Object.entries(POSITION_CONFIG).map(([key, config]) => ({
@@ -234,53 +213,99 @@ export default function CarouselPage() {
         },
     ];
 
+    // Custom actions - shown after standard actions
+    const customActions = [
+        {
+            label: "ویژه",
+            icon: (carousel) => (carousel.isFeatured ? <Star /> : <StarBorder />),
+            onClick: handleToggleFeatured,
+            color: (carousel) => (carousel.isFeatured ? "secondary" : "default"),
+            permission: canEdit,
+        },
+    ];
+
     return (
         <Layout>
             <Box>
                 <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Box>
-                        <Typography variant="h4" fontWeight="bold">
-                            مدیریت اسلایدرها
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            مدیریت اسلایدرها و بنرهای صفحه اصلی
-                        </Typography>
-                    </Box>
-
-                    <Button variant="contained" startIcon={<Add />} onClick={handleAdd} size="large">
-                        اسلاید جدید
-                    </Button>
+                    <Typography variant="h4" fontWeight="bold">
+                        مدیریت اسلایدر
+                    </Typography>
+                    {canCreate && (
+                        <Button variant="contained" startIcon={<Add />} onClick={handleAdd} size="large">
+                            اسلاید جدید
+                        </Button>
+                    )}
                 </Box>
 
                 <DataTable
-                    title="لیست اسلایدرها"
+                    title="لیست اسلایدها"
                     data={carouselData?.data || []}
                     columns={columns}
                     loading={isLoading}
                     pagination={carouselData?.pagination}
+                    onPageChange={handlePageChange}
+                    onRowsPerPageChange={handleRowsPerPageChange}
                     onSearch={handleSearch}
-                    onEdit={handleEdit}
-                    onAdd={handleAdd}
-                    searchPlaceholder="جستجو در اسلایدرها (حداقل 3 کاراکتر)..."
-                    enableSelection={true}
+                    onEdit={canEdit ? handleEdit : undefined}
+                    onDelete={canDelete ? handleDelete : undefined}
+                    onAdd={canCreate ? handleAdd : undefined}
+                    searchPlaceholder="جستجو در اسلایدها (حداقل 3 کاراکتر)..."
+                    enableSelection={false}
                     customActions={customActions}
                     filters={filters}
+                    canView={canView}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    canCreate={canCreate}
                     emptyStateProps={{
                         title: "اسلایدی یافت نشد",
-                        description: "هنوز اسلایدی ایجاد نشده است. اولین اسلاید خود را اضافه کنید!",
-                        action: {
-                            label: "افزودن اسلاید جدید",
-                            onClick: handleAdd,
-                        },
+                        description: "هنوز اسلایدی ایجاد نشده است. اولین اسلاید خود را ایجاد کنید!",
+                        action: canCreate
+                            ? {
+                                  label: "ایجاد اسلاید جدید",
+                                  onClick: handleAdd,
+                              }
+                            : undefined,
                     }}
                 />
 
-                {/* Carousel Form Modal */}
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingCarousel ? "ویرایش اسلاید" : "افزودن اسلاید جدید"} maxWidth="lg" fullWidth>
-                    <CarouselForm carousel={editingCarousel} onSave={handleSaveCarousel} onCancel={() => setIsModalOpen(false)} />
+                <Modal
+                    open={isModalOpen}
+                    onClose={handleSaveCarousel}
+                    title={editingCarousel ? "ویرایش اسلاید" : "ایجاد اسلاید جدید"}
+                    maxWidth="lg"
+                    fullWidth
+                >
+                    <CarouselForm carousel={editingCarousel} onSave={handleSaveCarousel} onCancel={handleSaveCarousel} />
                 </Modal>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                    <DialogTitle>تأیید حذف</DialogTitle>
+                    <DialogContent>
+                        <Typography>
+                            آیا از حذف اسلاید <strong>{getPersianValue(carouselToDelete?.title, "-")}</strong> اطمینان دارید؟
+                            <br />
+                            <br />
+                            <Typography variant="caption" color="error">
+                                توجه: این عملیات قابل بازگشت نیست.
+                            </Typography>
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
+                        <Button
+                            onClick={handleConfirmDelete}
+                            color="error"
+                            variant="contained"
+                            disabled={deleteCarousel.isPending}
+                        >
+                            {deleteCarousel.isPending ? "در حال حذف..." : "حذف"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         </Layout>
     );
 }
-

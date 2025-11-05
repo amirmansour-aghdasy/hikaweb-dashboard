@@ -1,14 +1,15 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button, Stack, Avatar, Card, CardContent, Grid, IconButton, Tooltip, Rating, Link } from "@mui/material";
-import { Business, Edit, Delete, Add, Language, Email, Phone, Star, Work, TrendingUp, Visibility, LinkedIn, Twitter, Instagram } from "@mui/icons-material";
+import { Box, Typography, Chip, Button, Stack, Avatar, Card, CardContent, Grid, IconButton, Link, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Business, Edit, Delete, Add, Language, Star, StarBorder } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import BrandForm from "@/components/forms/BrandForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
-import { formatDate } from "@/lib/utils";
+import { usePageActions } from "@/hooks/usePageActions";
+import { formatDate, getPersianValue, formatNumber } from "@/lib/utils";
 
 const INDUSTRY_CONFIG = {
     technology: { label: "فناوری", color: "primary", icon: "💻" },
@@ -32,17 +33,24 @@ const COMPANY_SIZES = {
 export default function BrandsPage() {
     const [editingBrand, setEditingBrand] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [brandToDelete, setBrandToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [industryFilter, setIndustryFilter] = useState("all");
     const [viewMode, setViewMode] = useState("table"); // 'table' or 'cards'
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 800);
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
+    const { canView, canEdit, canDelete, canCreate } = usePageActions("brands");
 
     // Build query params
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
         if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
             params.append("search", debouncedSearchTerm);
         }
@@ -53,9 +61,9 @@ export default function BrandsPage() {
             params.append("industry", industryFilter);
         }
         return params.toString();
-    }, [debouncedSearchTerm, statusFilter, industryFilter]);
+    }, [debouncedSearchTerm, statusFilter, industryFilter, page, limit]);
 
-    const endpoint = `/brands${queryParams ? `?${queryParams}` : ""}`;
+    const endpoint = `/brands?${queryParams}`;
 
     // Fetch brands
     const { data: brandsData, isLoading } = useFetchData(["brands", queryParams], endpoint);
@@ -63,11 +71,13 @@ export default function BrandsPage() {
     // Update brand
     const updateBrand = useUpdateData("/brands", {
         successMessage: "برند با موفقیت به‌روزرسانی شد",
+        queryKey: "brands",
     });
 
     // Delete brand
     const deleteBrand = useDeleteData("/brands", {
         successMessage: "برند با موفقیت حذف شد",
+        queryKey: "brands",
     });
 
     const columns = [
@@ -90,13 +100,13 @@ export default function BrandsPage() {
                     <Typography variant="body2" fontWeight="bold">
                         {row.name}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {row.website && (
-                            <Link href={row.website} target="_blank" rel="noopener">
+                    {row.website && (
+                        <Typography variant="caption" color="text.secondary">
+                            <Link href={row.website} target="_blank" rel="noopener" sx={{ textDecoration: "none" }}>
                                 {row.website.replace(/^https?:\/\//, "")}
                             </Link>
-                        )}
-                    </Typography>
+                        </Typography>
+                    )}
                 </Box>
             ),
         },
@@ -105,83 +115,67 @@ export default function BrandsPage() {
             headerName: "صنعت",
             width: 150,
             render: (row) => {
-                const config = INDUSTRY_CONFIG[row.industry] || INDUSTRY_CONFIG.other;
-                return <Chip label={config.label} size="small" color={config.color} icon={<span style={{ fontSize: "12px" }}>{config.icon}</span>} />;
+                const industry = getPersianValue(row.industry, row.industry || "other");
+                const config = INDUSTRY_CONFIG[industry] || INDUSTRY_CONFIG.other;
+                return (
+                    <Chip
+                        label={config.label}
+                        size="small"
+                        color={config.color}
+                        icon={<span style={{ fontSize: "12px" }}>{config.icon}</span>}
+                    />
+                );
             },
         },
         {
-            field: "companySize",
-            headerName: "اندازه شرکت",
+            field: "projectCount",
+            headerName: "تعداد پروژه",
             width: 120,
-            render: (row) => {
-                const config = COMPANY_SIZES[row.companySize] || COMPANY_SIZES.small;
-                return <Chip label={config.label} size="small" color={config.color} variant="outlined" />;
-            },
-        },
-        {
-            field: "contact",
-            headerName: "تماس",
-            width: 200,
             render: (row) => (
-                <Box>
-                    {row.contactPerson && (
-                        <Typography variant="caption" display="block" fontWeight="bold">
-                            {row.contactPerson}
-                        </Typography>
-                    )}
-                    {row.email && (
-                        <Typography variant="caption" display="block" color="text.secondary">
-                            📧 {row.email}
-                        </Typography>
-                    )}
-                    {row.phone && (
-                        <Typography variant="caption" display="block" color="text.secondary">
-                            📞 {row.phone}
-                        </Typography>
-                    )}
-                </Box>
-            ),
-        },
-        {
-            field: "collaboration",
-            headerName: "همکاری",
-            width: 150,
-            render: (row) => (
-                <Box>
-                    {row.startDate && (
-                        <Typography variant="caption" display="block">
-                            شروع: {formatDate(row.startDate)}
-                        </Typography>
-                    )}
-                    {row.rating && <Rating value={row.rating} readOnly size="small" precision={0.5} />}
-                    <Typography variant="caption" color="text.secondary">
-                        {row.projectsCount || 0} پروژه
-                    </Typography>
-                </Box>
+                <Typography variant="body2">{formatNumber(row.projectCount || row.projectsCount || 0)}</Typography>
             ),
         },
         {
             field: "status",
             headerName: "وضعیت",
-            width: 100,
+            width: 120,
             type: "status",
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
-            width: 120,
-            render: (row) => <Typography variant="caption">{formatDate(row.createdAt)}</Typography>,
+            width: 150,
+            type: "date",
         },
     ];
 
     const handleEdit = (brand) => {
+        if (!canEdit) return;
         setEditingBrand(brand);
         setIsModalOpen(true);
     };
 
     const handleDelete = (brand) => {
-        if (window.confirm("آیا از حذف این برند اطمینان دارید؟")) {
-            deleteBrand.mutate(brand._id);
+        if (!canDelete) return;
+        setBrandToDelete(brand);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (brandToDelete) {
+            deleteBrand.mutate(brandToDelete._id, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setBrandToDelete(null);
+                },
+            });
+        }
+    };
+
+    const handleView = (brand) => {
+        if (!canView) return;
+        if (brand.website) {
+            window.open(brand.website, "_blank");
         }
     };
 
@@ -193,12 +187,23 @@ export default function BrandsPage() {
     };
 
     const handleAdd = () => {
+        if (!canCreate) return;
         setEditingBrand(null);
         setIsModalOpen(true);
     };
 
     const handleSearch = (searchValue) => {
         setSearchTerm(searchValue);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (newLimit) => {
+        setLimit(newLimit);
+        setPage(1); // Reset to first page when changing limit
     };
 
     const handleSaveBrand = () => {
@@ -206,43 +211,16 @@ export default function BrandsPage() {
         setEditingBrand(null);
     };
 
-    const customActions = [
-        {
-            label: "مشاهده وب‌سایت",
-            icon: <Language />,
-            onClick: (brand) => {
-                if (brand.website) {
-                    window.open(brand.website, "_blank");
-                }
-            },
-            show: (brand) => !!brand.website,
-        },
-        {
-            label: "ویژه",
-            icon: (brand) => (brand.isFeatured ? <Star /> : <Star style={{ opacity: 0.3 }} />),
-            onClick: handleToggleFeatured,
-            color: (brand) => (brand.isFeatured ? "secondary" : "default"),
-        },
-        {
-            label: "ویرایش",
-            icon: <Edit />,
-            onClick: handleEdit,
-            color: "primary",
-        },
-        {
-            label: "حذف",
-            icon: <Delete />,
-            onClick: handleDelete,
-            color: "error",
-        },
-    ];
-
+    // Filters for the data table
     const filters = [
         {
             key: "status",
             label: "وضعیت",
             value: statusFilter,
-            onChange: setStatusFilter,
+            onChange: (value) => {
+                setStatusFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه" },
                 { value: "active", label: "فعال" },
@@ -253,7 +231,10 @@ export default function BrandsPage() {
             key: "industry",
             label: "صنعت",
             value: industryFilter,
-            onChange: setIndustryFilter,
+            onChange: (value) => {
+                setIndustryFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه صنایع" },
                 ...Object.entries(INDUSTRY_CONFIG).map(([key, config]) => ({
@@ -264,172 +245,99 @@ export default function BrandsPage() {
         },
     ];
 
-    // Brand Card Component
-    const BrandCard = ({ brand }) => (
-        <Card sx={{ height: "100%", transition: "transform 0.2s", "&:hover": { transform: "translateY(-4px)" } }}>
-            <CardContent>
-                <Box sx={{ textAlign: "center", mb: 2 }}>
-                    <Avatar src={brand.logo} variant="rounded" sx={{ width: 80, height: 80, mx: "auto", mb: 2 }}>
-                        <Business sx={{ fontSize: 40 }} />
-                    </Avatar>
-
-                    <Typography variant="h6" gutterBottom>
-                        {brand.name}
-                    </Typography>
-
-                    <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2 }}>
-                        <Chip label={INDUSTRY_CONFIG[brand.industry]?.label || "نامشخص"} size="small" color={INDUSTRY_CONFIG[brand.industry]?.color || "default"} />
-                        {brand.isFeatured && <Chip label="ویژه" size="small" color="secondary" icon={<Star />} />}
-                    </Stack>
-                </Box>
-
-                {brand.description && (
-                    <Typography variant="body2" sx={{ mb: 2, fontSize: "0.875rem", textAlign: "center" }}>
-                        {brand.description.length > 100 ? `${brand.description.substring(0, 100)}...` : brand.description}
-                    </Typography>
-                )}
-
-                <Box sx={{ mb: 2 }}>
-                    {brand.contactPerson && (
-                        <Typography variant="caption" display="block">
-                            👤 {brand.contactPerson}
-                        </Typography>
-                    )}
-                    {brand.email && (
-                        <Typography variant="caption" display="block">
-                            📧 {brand.email}
-                        </Typography>
-                    )}
-                    {brand.phone && (
-                        <Typography variant="caption" display="block">
-                            📞 {brand.phone}
-                        </Typography>
-                    )}
-                </Box>
-
-                {brand.rating && (
-                    <Box sx={{ textAlign: "center", mb: 2 }}>
-                        <Rating value={brand.rating} readOnly size="small" precision={0.5} />
-                        <Typography variant="caption" display="block" color="text.secondary">
-                            {brand.projectsCount || 0} پروژه انجام شده
-                        </Typography>
-                    </Box>
-                )}
-
-                {/* Social Media Links */}
-                {(brand.socialMedia?.linkedin || brand.socialMedia?.twitter || brand.socialMedia?.instagram) && (
-                    <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2 }}>
-                        {brand.socialMedia?.linkedin && (
-                            <IconButton size="small" component={Link} href={brand.socialMedia.linkedin} target="_blank">
-                                <LinkedIn fontSize="small" />
-                            </IconButton>
-                        )}
-                        {brand.socialMedia?.twitter && (
-                            <IconButton size="small" component={Link} href={brand.socialMedia.twitter} target="_blank">
-                                <Twitter fontSize="small" />
-                            </IconButton>
-                        )}
-                        {brand.socialMedia?.instagram && (
-                            <IconButton size="small" component={Link} href={brand.socialMedia.instagram} target="_blank">
-                                <Instagram fontSize="small" />
-                            </IconButton>
-                        )}
-                    </Stack>
-                )}
-
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Stack direction="row" spacing={0.5}>
-                        {brand.website && (
-                            <IconButton size="small" onClick={() => window.open(brand.website, "_blank")}>
-                                <Language fontSize="small" />
-                            </IconButton>
-                        )}
-                        <IconButton size="small" onClick={() => handleEdit(brand)}>
-                            <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton size="small" onClick={() => handleDelete(brand)}>
-                            <Delete fontSize="small" />
-                        </IconButton>
-                    </Stack>
-
-                    <Chip label={COMPANY_SIZES[brand.companySize]?.label || "نامشخص"} size="small" color={COMPANY_SIZES[brand.companySize]?.color || "default"} variant="outlined" />
-                </Box>
-            </CardContent>
-        </Card>
-    );
+    // Custom actions - shown after standard actions
+    const customActions = [
+        {
+            label: "ویژه",
+            icon: (brand) => (brand.isFeatured ? <Star /> : <StarBorder />),
+            onClick: handleToggleFeatured,
+            color: (brand) => (brand.isFeatured ? "secondary" : "default"),
+            permission: canEdit,
+        },
+    ];
 
     return (
         <Layout>
             <Box>
                 <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Box>
-                        <Typography variant="h4" fontWeight="bold">
-                            مدیریت برندها
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            مدیریت برندها و مشتریان آژانس
-                        </Typography>
-                    </Box>
-
-                    <Stack direction="row" spacing={2}>
-                        <Button variant={viewMode === "table" ? "contained" : "outlined"} onClick={() => setViewMode("table")} size="small">
-                            جدول
-                        </Button>
-                        <Button variant={viewMode === "cards" ? "contained" : "outlined"} onClick={() => setViewMode("cards")} size="small">
-                            کارت‌ها
-                        </Button>
-                        <Button variant="contained" startIcon={<Add />} onClick={handleAdd}>
+                    <Typography variant="h4" fontWeight="bold">
+                        مدیریت برندها
+                    </Typography>
+                    {canCreate && (
+                        <Button variant="contained" startIcon={<Add />} onClick={handleAdd} size="large">
                             برند جدید
                         </Button>
-                    </Stack>
+                    )}
                 </Box>
 
-                {viewMode === "table" ? (
-                    <DataTable
-                        title="لیست برندها"
-                        data={brandsData?.data || []}
-                        columns={columns}
-                        loading={isLoading}
-                        pagination={brandsData?.pagination}
-                        onSearch={handleSearch}
-                        onEdit={handleEdit}
-                        onAdd={handleAdd}
-                        searchPlaceholder="جستجو در برندها (حداقل 3 کاراکتر)..."
-                        enableSelection={true}
-                        customActions={customActions}
-                        filters={filters}
-                    />
-                ) : (
-                    <Box>
-                        <Grid container spacing={3}>
-                            {(brandsData?.data || []).map((brand) => (
-                                <Grid item xs={12} sm={6} md={4} lg={3} key={brand._id}>
-                                    <BrandCard brand={brand} />
-                                </Grid>
-                            ))}
-                        </Grid>
+                <DataTable
+                    title="لیست برندها"
+                    data={brandsData?.data || []}
+                    columns={columns}
+                    loading={isLoading}
+                    pagination={brandsData?.pagination}
+                    onPageChange={handlePageChange}
+                    onRowsPerPageChange={handleRowsPerPageChange}
+                    onSearch={handleSearch}
+                    onEdit={canEdit ? handleEdit : undefined}
+                    onDelete={canDelete ? handleDelete : undefined}
+                    onView={canView ? handleView : undefined}
+                    onAdd={canCreate ? handleAdd : undefined}
+                    searchPlaceholder="جستجو در برندها (حداقل 3 کاراکتر)..."
+                    enableSelection={false}
+                    customActions={customActions}
+                    filters={filters}
+                    canView={canView}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    canCreate={canCreate}
+                    emptyStateProps={{
+                        title: "برندی یافت نشد",
+                        description: "هنوز برندی ایجاد نشده است. اولین برند خود را ایجاد کنید!",
+                        action: canCreate
+                            ? {
+                                  label: "ایجاد برند جدید",
+                                  onClick: handleAdd,
+                              }
+                            : undefined,
+                    }}
+                />
 
-                        {(!brandsData?.data || brandsData.data.length === 0) && !isLoading && (
-                            <Box sx={{ textAlign: "center", py: 8 }}>
-                                <Business sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
-                                <Typography variant="h6" color="text.secondary" gutterBottom>
-                                    برندی یافت نشد
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                                    اولین برند خود را اضافه کنید
-                                </Typography>
-                                <Button variant="contained" startIcon={<Add />} onClick={handleAdd}>
-                                    افزودن برند جدید
-                                </Button>
-                            </Box>
-                        )}
-                    </Box>
-                )}
-
-                {/* Brand Form Modal */}
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingBrand ? "ویرایش برند" : "افزودن برند جدید"} maxWidth="lg" fullWidth>
-                    <BrandForm brand={editingBrand} onSave={handleSaveBrand} onCancel={() => setIsModalOpen(false)} />
+                <Modal
+                    open={isModalOpen}
+                    onClose={handleSaveBrand}
+                    title={editingBrand ? "ویرایش برند" : "ایجاد برند جدید"}
+                    maxWidth="lg"
+                    fullWidth
+                >
+                    <BrandForm brand={editingBrand} onSave={handleSaveBrand} onCancel={handleSaveBrand} />
                 </Modal>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                    <DialogTitle>تأیید حذف</DialogTitle>
+                    <DialogContent>
+                        <Typography>
+                            آیا از حذف برند <strong>{brandToDelete?.name}</strong> اطمینان دارید؟
+                            <br />
+                            <br />
+                            <Typography variant="caption" color="error">
+                                توجه: این عملیات قابل بازگشت نیست.
+                            </Typography>
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
+                        <Button
+                            onClick={handleConfirmDelete}
+                            color="error"
+                            variant="contained"
+                            disabled={deleteBrand.isPending}
+                        >
+                            {deleteBrand.isPending ? "در حال حذف..." : "حذف"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         </Layout>
     );

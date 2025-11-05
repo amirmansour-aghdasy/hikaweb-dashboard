@@ -1,42 +1,59 @@
 "use client";
 import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button, Stack, Avatar, Card, CardContent, Grid, IconButton, Rating, Link } from "@mui/material";
-import { Group, Edit, Delete, Add, LinkedIn, Twitter, Instagram, Language, Email, Phone, Star, Work, Person } from "@mui/icons-material";
+import { Box, Typography, Chip, Button, Stack, Avatar, Card, CardContent, Grid, IconButton, Link, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Group, Edit, Delete, Add, LinkedIn, Twitter, Instagram } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import TeamMemberForm from "@/components/forms/TeamMemberForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
-import { formatDate } from "@/lib/utils";
+import { usePageActions } from "@/hooks/usePageActions";
+import { formatDate, getPersianValue, formatNumber } from "@/lib/utils";
+
+const DEPARTMENT_LABELS = {
+    management: "مدیریت",
+    development: "توسعه",
+    design: "طراحی",
+    marketing: "بازاریابی",
+    sales: "فروش",
+    support: "پشتیبانی",
+};
 
 export default function TeamPage() {
     const [editingMember, setEditingMember] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [memberToDelete, setMemberToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
-    const [roleFilter, setRoleFilter] = useState("all");
+    const [departmentFilter, setDepartmentFilter] = useState("all");
     const [viewMode, setViewMode] = useState("table"); // 'table' or 'cards'
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 800);
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
+    const { canView, canEdit, canDelete, canCreate } = usePageActions("team");
 
     // Build query params
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
         if (debouncedSearchTerm && debouncedSearchTerm.length >= 3) {
             params.append("search", debouncedSearchTerm);
         }
         if (statusFilter !== "all") {
             params.append("status", statusFilter);
         }
-        if (roleFilter !== "all") {
-            params.append("role", roleFilter);
+        if (departmentFilter !== "all") {
+            params.append("department", departmentFilter);
         }
         return params.toString();
-    }, [debouncedSearchTerm, statusFilter, roleFilter]);
+    }, [debouncedSearchTerm, statusFilter, departmentFilter, page, limit]);
 
-    const endpoint = `/team${queryParams ? `?${queryParams}` : ""}`;
+    const endpoint = `/team?${queryParams}`;
 
     // Fetch team members
     const { data: teamData, isLoading } = useFetchData(["team", queryParams], endpoint);
@@ -44,11 +61,13 @@ export default function TeamPage() {
     // Update team member
     const updateMember = useUpdateData("/team", {
         successMessage: "عضو تیم با موفقیت به‌روزرسانی شد",
+        queryKey: "team",
     });
 
     // Delete team member
     const deleteMember = useDeleteData("/team", {
         successMessage: "عضو تیم با موفقیت حذف شد",
+        queryKey: "team",
     });
 
     const columns = [
@@ -58,7 +77,7 @@ export default function TeamPage() {
             width: 80,
             render: (row) => (
                 <Avatar src={row.avatar} sx={{ width: 40, height: 40 }}>
-                    {row.name?.charAt(0)}
+                    {getPersianValue(row.name, "?").charAt(0)}
                 </Avatar>
             ),
         },
@@ -69,11 +88,13 @@ export default function TeamPage() {
             render: (row) => (
                 <Box>
                     <Typography variant="body2" fontWeight="bold">
-                        {row.name}
+                        {getPersianValue(row.name, "-")}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {row.email}
-                    </Typography>
+                    {row.email && (
+                        <Typography variant="caption" color="text.secondary">
+                            {row.email}
+                        </Typography>
+                    )}
                 </Box>
             ),
         },
@@ -82,34 +103,46 @@ export default function TeamPage() {
             headerName: "سمت",
             width: 150,
             render: (row) => (
-                <Box>
-                    <Typography variant="body2">{row.position?.fa || row.position}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        {row.position?.en}
-                    </Typography>
-                </Box>
+                <Typography variant="body2">{getPersianValue(row.position, "-")}</Typography>
             ),
         },
         {
             field: "department",
             headerName: "بخش",
             width: 120,
-            render: (row) => <Chip label={row.department} size="small" color="primary" variant="outlined" />,
+            render: (row) => (
+                <Chip
+                    label={DEPARTMENT_LABELS[row.department] || row.department}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                />
+            ),
         },
         {
             field: "experience",
             headerName: "تجربه",
             width: 100,
-            render: (row) => <Typography variant="caption">{row.experience} سال</Typography>,
+            render: (row) => (
+                <Typography variant="caption">
+                    {row.experience?.years || row.experience || 0} سال
+                </Typography>
+            ),
         },
         {
             field: "skills",
             headerName: "مهارت‌ها",
             width: 200,
             render: (row) => (
-                <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" gap={0.5}>
                     {row.skills?.slice(0, 3).map((skill, index) => (
-                        <Chip key={index} label={skill} size="small" variant="outlined" sx={{ fontSize: "0.7rem", mb: 0.5 }} />
+                        <Chip
+                            key={index}
+                            label={getPersianValue(skill?.name || skill, "-")}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: "0.7rem" }}
+                        />
                     ))}
                     {row.skills?.length > 3 && (
                         <Typography variant="caption" color="text.secondary">
@@ -120,61 +153,60 @@ export default function TeamPage() {
             ),
         },
         {
-            field: "social",
-            headerName: "شبکه‌های اجتماعی",
-            width: 150,
-            render: (row) => (
-                <Stack direction="row" spacing={0.5}>
-                    {row.socialMedia?.linkedin && (
-                        <IconButton size="small" component={Link} href={row.socialMedia.linkedin}>
-                            <LinkedIn fontSize="small" />
-                        </IconButton>
-                    )}
-                    {row.socialMedia?.twitter && (
-                        <IconButton size="small" component={Link} href={row.socialMedia.twitter}>
-                            <Twitter fontSize="small" />
-                        </IconButton>
-                    )}
-                    {row.socialMedia?.instagram && (
-                        <IconButton size="small" component={Link} href={row.socialMedia.instagram}>
-                            <Instagram fontSize="small" />
-                        </IconButton>
-                    )}
-                </Stack>
-            ),
-        },
-        {
-            field: "order",
-            headerName: "ترتیب",
-            width: 80,
-            render: (row) => <Typography variant="caption">{row.order || 0}</Typography>,
-        },
-        {
             field: "status",
             headerName: "وضعیت",
-            width: 100,
+            width: 120,
             type: "status",
+        },
+        {
+            field: "createdAt",
+            headerName: "تاریخ ایجاد",
+            width: 150,
+            type: "date",
         },
     ];
 
     const handleEdit = (member) => {
+        if (!canEdit) return;
         setEditingMember(member);
         setIsModalOpen(true);
     };
 
     const handleDelete = (member) => {
-        if (window.confirm("آیا از حذف این عضو تیم اطمینان دارید؟")) {
-            deleteMember.mutate(member._id);
+        if (!canDelete) return;
+        setMemberToDelete(member);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleConfirmDelete = () => {
+        if (memberToDelete) {
+            deleteMember.mutate(memberToDelete._id, {
+                onSuccess: () => {
+                    setIsDeleteDialogOpen(false);
+                    setMemberToDelete(null);
+                },
+            });
         }
     };
 
     const handleAdd = () => {
+        if (!canCreate) return;
         setEditingMember(null);
         setIsModalOpen(true);
     };
 
     const handleSearch = (searchValue) => {
         setSearchTerm(searchValue);
+        setPage(1); // Reset to first page on search
+    };
+
+    const handlePageChange = (newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (newLimit) => {
+        setLimit(newLimit);
+        setPage(1); // Reset to first page when changing limit
     };
 
     const handleSaveMember = () => {
@@ -182,27 +214,16 @@ export default function TeamPage() {
         setEditingMember(null);
     };
 
-    const customActions = [
-        {
-            label: "ویرایش",
-            icon: <Edit />,
-            onClick: handleEdit,
-            color: "primary",
-        },
-        {
-            label: "حذف",
-            icon: <Delete />,
-            onClick: handleDelete,
-            color: "error",
-        },
-    ];
-
+    // Filters for the data table
     const filters = [
         {
             key: "status",
             label: "وضعیت",
             value: statusFilter,
-            onChange: setStatusFilter,
+            onChange: (value) => {
+                setStatusFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
                 { value: "all", label: "همه" },
                 { value: "active", label: "فعال" },
@@ -210,16 +231,19 @@ export default function TeamPage() {
             ],
         },
         {
-            key: "role",
-            label: "نقش",
-            value: roleFilter,
-            onChange: setRoleFilter,
+            key: "department",
+            label: "بخش",
+            value: departmentFilter,
+            onChange: (value) => {
+                setDepartmentFilter(value);
+                setPage(1); // Reset to first page on filter change
+            },
             options: [
-                { value: "all", label: "همه نقش‌ها" },
-                { value: "manager", label: "مدیر" },
-                { value: "developer", label: "توسعه‌دهنده" },
-                { value: "designer", label: "طراح" },
-                { value: "marketer", label: "بازاریاب" },
+                { value: "all", label: "همه بخش‌ها" },
+                ...Object.entries(DEPARTMENT_LABELS).map(([key, label]) => ({
+                    value: key,
+                    label,
+                })),
             ],
         },
     ];
@@ -230,63 +254,58 @@ export default function TeamPage() {
             <CardContent>
                 <Box sx={{ textAlign: "center", mb: 2 }}>
                     <Avatar src={member.avatar} sx={{ width: 80, height: 80, mx: "auto", mb: 2 }}>
-                        {member.name?.charAt(0)}
+                        {getPersianValue(member.name, "?").charAt(0)}
                     </Avatar>
                     <Typography variant="h6" gutterBottom>
-                        {member.name}
+                        {getPersianValue(member.name, "-")}
                     </Typography>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
-                        {member.position?.fa || member.position}
+                        {getPersianValue(member.position, "-")}
                     </Typography>
-                    <Chip label={member.department} size="small" color="primary" variant="outlined" />
+                    <Chip
+                        label={DEPARTMENT_LABELS[member.department] || member.department}
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                    />
                 </Box>
 
                 <Box sx={{ mb: 2 }}>
                     <Typography variant="caption" color="text.secondary">
-                        تجربه: {member.experience} سال
+                        تجربه: {member.experience?.years || member.experience || 0} سال
                     </Typography>
                 </Box>
 
-                {member.bio?.fa && (
-                    <Typography variant="body2" sx={{ mb: 2, fontSize: "0.875rem" }}>
-                        {member.bio.fa.substring(0, 100)}...
-                    </Typography>
-                )}
-
-                <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mb: 2 }}>
-                    {member.skills?.slice(0, 4).map((skill, index) => (
-                        <Chip key={index} label={skill} size="small" variant="outlined" sx={{ fontSize: "0.7rem", mb: 0.5 }} />
-                    ))}
+                <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 2 }}>
+                    {member.socialLinks?.linkedin && (
+                        <IconButton size="small" component={Link} href={member.socialLinks.linkedin} target="_blank">
+                            <LinkedIn fontSize="small" />
+                        </IconButton>
+                    )}
+                    {member.socialLinks?.twitter && (
+                        <IconButton size="small" component={Link} href={member.socialLinks.twitter} target="_blank">
+                            <Twitter fontSize="small" />
+                        </IconButton>
+                    )}
+                    {member.socialLinks?.instagram && (
+                        <IconButton size="small" component={Link} href={member.socialLinks.instagram} target="_blank">
+                            <Instagram fontSize="small" />
+                        </IconButton>
+                    )}
                 </Stack>
 
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Stack direction="row" spacing={1}>
-                        {member.socialMedia?.linkedin && (
-                            <IconButton size="small" component={Link} href={member.socialMedia.linkedin}>
-                                <LinkedIn fontSize="small" />
-                            </IconButton>
-                        )}
-                        {member.socialMedia?.twitter && (
-                            <IconButton size="small" component={Link} href={member.socialMedia.twitter}>
-                                <Twitter fontSize="small" />
-                            </IconButton>
-                        )}
-                        {member.email && (
-                            <IconButton size="small" component={Link} href={`mailto:${member.email}`}>
-                                <Email fontSize="small" />
-                            </IconButton>
-                        )}
-                    </Stack>
-
-                    <Stack direction="row" spacing={0.5}>
+                <Stack direction="row" spacing={1} justifyContent="center">
+                    {canEdit && (
                         <IconButton size="small" onClick={() => handleEdit(member)}>
                             <Edit fontSize="small" />
                         </IconButton>
+                    )}
+                    {canDelete && (
                         <IconButton size="small" onClick={() => handleDelete(member)}>
                             <Delete fontSize="small" />
                         </IconButton>
-                    </Stack>
-                </Box>
+                    )}
+                </Stack>
             </CardContent>
         </Card>
     );
@@ -300,7 +319,7 @@ export default function TeamPage() {
                             مدیریت تیم
                         </Typography>
                         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            معرفی اعضای تیم و مهارت‌های آن‌ها
+                            مدیریت اعضای تیم و اطلاعات آنها
                         </Typography>
                     </Box>
 
@@ -309,11 +328,13 @@ export default function TeamPage() {
                             جدول
                         </Button>
                         <Button variant={viewMode === "cards" ? "contained" : "outlined"} onClick={() => setViewMode("cards")} size="small">
-                            کارت‌ها
+                            کارت
                         </Button>
-                        <Button variant="contained" startIcon={<Add />} onClick={handleAdd}>
-                            عضو جدید
-                        </Button>
+                        {canCreate && (
+                            <Button variant="contained" startIcon={<Add />} onClick={handleAdd}>
+                                عضو جدید
+                            </Button>
+                        )}
                     </Stack>
                 </Box>
 
@@ -324,41 +345,75 @@ export default function TeamPage() {
                         columns={columns}
                         loading={isLoading}
                         pagination={teamData?.pagination}
+                        onPageChange={handlePageChange}
+                        onRowsPerPageChange={handleRowsPerPageChange}
                         onSearch={handleSearch}
-                        onEdit={handleEdit}
-                        onAdd={handleAdd}
+                        onEdit={canEdit ? handleEdit : undefined}
+                        onDelete={canDelete ? handleDelete : undefined}
+                        onAdd={canCreate ? handleAdd : undefined}
                         searchPlaceholder="جستجو در اعضای تیم (حداقل 3 کاراکتر)..."
-                        enableSelection={true}
-                        customActions={customActions}
+                        enableSelection={false}
                         filters={filters}
+                        canView={canView}
+                        canEdit={canEdit}
+                        canDelete={canDelete}
+                        canCreate={canCreate}
+                        emptyStateProps={{
+                            title: "عضو تیمی یافت نشد",
+                            description: "هنوز عضوی به تیم اضافه نشده است. اولین عضو خود را اضافه کنید!",
+                            action: canCreate
+                                ? {
+                                      label: "افزودن عضو جدید",
+                                      onClick: handleAdd,
+                                  }
+                                : undefined,
+                        }}
                     />
                 ) : (
-                    <Box>
-                        <Grid container spacing={3}>
-                            {(teamData?.data || []).map((member) => (
-                                <Grid item xs={12} sm={6} md={4} lg={3} key={member._id}>
-                                    <TeamMemberCard member={member} />
-                                </Grid>
-                            ))}
-                        </Grid>
-
-                        {(!teamData?.data || teamData.data.length === 0) && !isLoading && (
-                            <Box sx={{ textAlign: "center", py: 8 }}>
-                                <Typography variant="h6" color="text.secondary">
-                                    عضوی در تیم یافت نشد
-                                </Typography>
-                                <Button variant="contained" startIcon={<Add />} onClick={handleAdd} sx={{ mt: 2 }}>
-                                    اولین عضو تیم را اضافه کنید
-                                </Button>
-                            </Box>
-                        )}
-                    </Box>
+                    <Grid container spacing={3}>
+                        {teamData?.data?.map((member) => (
+                            <Grid item xs={12} sm={6} md={4} lg={3} key={member._id}>
+                                <TeamMemberCard member={member} />
+                            </Grid>
+                        ))}
+                    </Grid>
                 )}
 
-                {/* Team Member Form Modal */}
-                <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingMember ? "ویرایش عضو تیم" : "اضافه کردن عضو جدید"} maxWidth="lg" fullWidth>
-                    <TeamMemberForm member={editingMember} onSave={handleSaveMember} onCancel={() => setIsModalOpen(false)} />
+                <Modal
+                    open={isModalOpen}
+                    onClose={handleSaveMember}
+                    title={editingMember ? "ویرایش عضو تیم" : "افزودن عضو جدید"}
+                    maxWidth="lg"
+                    fullWidth
+                >
+                    <TeamMemberForm member={editingMember} onSave={handleSaveMember} onCancel={handleSaveMember} />
                 </Modal>
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
+                    <DialogTitle>تأیید حذف</DialogTitle>
+                    <DialogContent>
+                        <Typography>
+                            آیا از حذف عضو تیم <strong>{getPersianValue(memberToDelete?.name, "-")}</strong> اطمینان دارید؟
+                            <br />
+                            <br />
+                            <Typography variant="caption" color="error">
+                                توجه: این عملیات قابل بازگشت نیست.
+                            </Typography>
+                        </Typography>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
+                        <Button
+                            onClick={handleConfirmDelete}
+                            color="error"
+                            variant="contained"
+                            disabled={deleteMember.isPending}
+                        >
+                            {deleteMember.isPending ? "در حال حذف..." : "حذف"}
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         </Layout>
     );
