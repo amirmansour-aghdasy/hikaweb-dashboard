@@ -66,6 +66,8 @@ export default function MediaPage() {
     const [editingFile, setEditingFile] = useState(null);
     const [anchorEl, setAnchorEl] = useState(null);
     const [contextFile, setContextFile] = useState(null);
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(25);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -74,14 +76,16 @@ export default function MediaPage() {
     // Build query params
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
         if (debouncedSearchTerm) {
             params.append("search", debouncedSearchTerm);
         }
         if (typeFilter !== "all") {
-            params.append("type", typeFilter);
+            params.append("fileType", typeFilter);
         }
         return params.toString();
-    }, [debouncedSearchTerm, typeFilter]);
+    }, [debouncedSearchTerm, typeFilter, page, limit]);
 
     const endpoint = `/media${queryParams ? `?${queryParams}` : ""}`;
 

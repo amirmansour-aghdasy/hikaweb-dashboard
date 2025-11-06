@@ -8,7 +8,7 @@ import Modal from "@/components/ui/Modal";
 import RoleForm from "@/components/forms/RoleForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
-import { formatDate } from "@/lib/utils";
+import { formatDate, getPersianValue } from "@/lib/utils";
 
 const PERMISSION_GROUPS = {
     users: "کاربران",
@@ -72,6 +72,7 @@ export default function RolesPage() {
             field: "displayName",
             headerName: "نام نقش",
             align: "left",
+            render: (row) => <Typography variant="body2">{getPersianValue(row.displayName, row.name)}</Typography>,
         },
         {
             field: "name",
@@ -262,7 +263,7 @@ export default function RolesPage() {
                     <DialogTitle>تأیید حذف</DialogTitle>
                     <DialogContent>
                         <Typography>
-                            آیا از حذف نقش <strong>{roleToDelete?.displayName?.fa || roleToDelete?.name}</strong> اطمینان دارید؟
+                            آیا از حذف نقش <strong>{getPersianValue(roleToDelete?.displayName, roleToDelete?.name)}</strong> اطمینان دارید؟
                             {roleToDelete?.isSystem && (
                                 <>
                                     <br />
