@@ -1,0 +1,4 @@
+# Block all crawlers from indexing dashboard
+User-agent: *
+Disallow: /
+

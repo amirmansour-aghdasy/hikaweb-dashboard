@@ -8,6 +8,7 @@ import { CssBaseline } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "../lib/auth";
+import PWAInstallPrompt from "../components/ui/PWAInstallPrompt";
 
 // RTL cache
 const cacheRtl = createCache({
@@ -109,6 +110,7 @@ export function Providers({ children }) {
                 <QueryClientProvider client={queryClient}>
                     <AuthProvider>
                         {children}
+                        <PWAInstallPrompt />
                         <Toaster
                             position="top-center"
                             toastOptions={{

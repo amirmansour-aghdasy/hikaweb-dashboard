@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start -p 1281",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate-icons": "node scripts/generate-pwa-icons.js"
   },
   "dependencies": {
     "@ckeditor/ckeditor5-build-classic": "^43.2.0",
@@ -42,8 +43,10 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@eslint/eslintrc": "^3",
     "eslint": "^9",
-    "eslint-config-next": "15.5.2"
+    "eslint-config-next": "15.5.2",
+    "sharp": "^0.34.5"
   }
 }

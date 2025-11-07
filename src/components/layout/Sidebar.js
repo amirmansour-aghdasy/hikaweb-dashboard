@@ -20,10 +20,14 @@ import {
     ExpandMore,
     Analytics,
     AdminPanelSettings,
+    BugReport,
+    Assignment,
+    CalendarToday,
 } from "@mui/icons-material";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../lib/auth";
+import { usePermission } from "../../hooks/usePermission";
 
 const menuItems = [
     {
@@ -83,9 +87,25 @@ const menuItems = [
         path: "/dashboard/carousel",
     },
     {
+        title: "وظایف",
+        icon: <Assignment />,
+        path: "/dashboard/tasks",
+    },
+    {
+        title: "تقویم اجرایی",
+        icon: <CalendarToday />,
+        path: "/dashboard/calendar",
+    },
+    {
         title: "تنظیمات",
         icon: <Settings />,
         path: "/dashboard/settings",
+    },
+    {
+        title: "لاگ‌های سیستم",
+        icon: <BugReport />,
+        path: "/dashboard/logs",
+        superAdminOnly: true,
     },
 ];
 
@@ -94,6 +114,7 @@ export default function Sidebar({ open, onClose, isMobile }) {
     const router = useRouter();
     const theme = useTheme();
     const { user } = useAuth();
+    const { isSuperAdmin } = usePermission();
     const [expandedItems, setExpandedItems] = useState({});
 
     useEffect(() => {
@@ -184,7 +205,9 @@ export default function Sidebar({ open, onClose, isMobile }) {
             {/* Navigation Menu */}
             <Box sx={{ flex: 1, overflow: "auto" }}>
                 <List sx={{ py: 1 }}>
-                    {menuItems.map((item) => (
+                    {menuItems
+                        .filter((item) => !item.superAdminOnly || isSuperAdmin())
+                        .map((item) => (
                         <div key={item.title}>
                             <ListItem disablePadding>
                                 <ListItemButton
