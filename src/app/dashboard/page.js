@@ -88,7 +88,7 @@ export default function DashboardPage() {
 
                 {/* Stats Cards */}
                 <Grid container spacing={3} sx={{ mb: 3 }}>
-                    <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatsCard 
                             title="تعداد کاربران" 
                             value={formatNumber(stats.overview.totalUsers)} 
@@ -99,7 +99,7 @@ export default function DashboardPage() {
                         />
                     </Grid>
 
-                    <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatsCard 
                             title="تعداد مقالات" 
                             value={formatNumber(stats.overview.totalArticles)} 
@@ -110,7 +110,7 @@ export default function DashboardPage() {
                         />
                     </Grid>
 
-                    <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatsCard 
                             title="تعداد خدمات" 
                             value={formatNumber(stats.overview.totalServices)} 
@@ -121,7 +121,7 @@ export default function DashboardPage() {
                         />
                     </Grid>
 
-                    <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatsCard
                             title="تیکت‌های باز"
                             value={formatNumber(stats.overview.pendingTickets)}
@@ -136,7 +136,7 @@ export default function DashboardPage() {
                 {/* Charts and Activities */}
                 <Grid container spacing={3}>
                     {/* Recent Activities */}
-                    <Grid item size={{xs: 12, md: 6}}>
+                    <Grid size={{xs: 12, md: 6}}>
                         <Paper sx={{ p: 3, height: "100%" }}>
                             <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
                                 <Typography variant="h6" fontWeight="bold">
@@ -166,7 +166,7 @@ export default function DashboardPage() {
                     </Grid>
 
                     {/* Quick Stats */}
-                    <Grid item size={{xs: 12, md: 6}}>
+                    <Grid size={{xs: 12, md: 6}}>
                         <Paper sx={{ p: 3, height: "100%" }}>
                             <Typography variant="h6" fontWeight="bold" gutterBottom>
                                 آمار سریع

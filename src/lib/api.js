@@ -82,6 +82,15 @@ api.interceptors.response.use(
         return response;
     },
     async (error) => {
+        // Ignore network errors for logout endpoint (user is already logging out)
+        const isLogoutRequest = error.config?.url?.includes('/auth/logout');
+        const isNetworkError = error.code === 'ERR_NETWORK' || error.message === 'Network Error';
+        
+        if (isLogoutRequest && isNetworkError) {
+            // Silently ignore network errors for logout
+            return Promise.reject(error);
+        }
+
         const message = error.response?.data?.message || "خطایی رخ داده است";
 
         // Handle 401 Unauthorized
@@ -101,8 +110,8 @@ api.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        // Show error toast
-        if (error.response?.status !== 401 && error.response?.status !== 403) {
+        // Show error toast (but not for network errors on logout)
+        if (error.response?.status !== 401 && error.response?.status !== 403 && !(isLogoutRequest && isNetworkError)) {
             toast.error(message);
         }
 

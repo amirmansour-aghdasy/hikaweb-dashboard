@@ -75,16 +75,28 @@ export function AuthProvider({ children }) {
     };
 
     const logout = async () => {
-        try {
-            await api.post("/auth/logout");
-        } catch (error) {
-            console.error("Logout error:", error);
-        } finally {
-            Cookies.remove("token");
-            setUser(null);
-            router.push("/auth/login");
-            toast.success("با موفقیت خارج شدید");
+        // Get token before removing it (needed for logout API call)
+        const token = Cookies.get("token");
+        
+        // Perform cleanup immediately
+        Cookies.remove("token");
+        setUser(null);
+        
+        // Try to call logout API with token (if available), but don't wait for it
+        // This ensures logout always succeeds even if API fails
+        if (token) {
+            // Create a temporary axios instance with the token for this request
+            api.post("/auth/logout", {}, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            }).catch(() => {
+                // Silently ignore all errors (network, CORS, etc.)
+            });
         }
+        
+        router.push("/auth/login");
+        toast.success("با موفقیت خارج شدید");
     };
 
     const value = { user, loading, login, logout, checkAuth, setUser };

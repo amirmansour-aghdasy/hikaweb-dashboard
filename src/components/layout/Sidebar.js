@@ -23,6 +23,7 @@ import {
     BugReport,
     Assignment,
     CalendarToday,
+    Person,
 } from "@mui/icons-material";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -100,6 +101,11 @@ const menuItems = [
         title: "تنظیمات",
         icon: <Settings />,
         path: "/dashboard/settings",
+    },
+    {
+        title: "پروفایل",
+        icon: <Person />,
+        path: "/dashboard/profile",
     },
     {
         title: "لاگ‌های سیستم",

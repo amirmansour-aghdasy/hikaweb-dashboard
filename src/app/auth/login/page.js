@@ -15,18 +15,19 @@ import {
     Link,
     Divider,
 } from "@mui/material";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { validateEmail } from "../../../lib/utils";
 import api from "@/lib/api";
 import Cookies from "js-cookie";
 import toast from "react-hot-toast";
+import { startAuthentication } from "@simplewebauthn/browser";
 
 export default function LoginPage() {
     const router = useRouter();
     const { login } = useAuth();
-    const [tabValue, setTabValue] = useState(0); // 0: Password, 1: OTP
+    const [tabValue, setTabValue] = useState(0); // 0: Password, 1: OTP, 2: Biometric
     const [formData, setFormData] = useState({
         email: "",
         password: "",
@@ -35,8 +36,10 @@ export default function LoginPage() {
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [otpLoading, setOtpLoading] = useState(false);
+    const [biometricLoading, setBiometricLoading] = useState(false);
     const [otpSent, setOtpSent] = useState(false);
     const [message, setMessage] = useState("");
+    const [isWebAuthnSupported, setIsWebAuthnSupported] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -53,6 +56,14 @@ export default function LoginPage() {
             }));
         }
     };
+
+    useEffect(() => {
+        // Check if WebAuthn is supported
+        setIsWebAuthnSupported(
+            typeof window !== "undefined" &&
+            typeof window.PublicKeyCredential !== "undefined"
+        );
+    }, []);
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
@@ -194,6 +205,74 @@ export default function LoginPage() {
         setLoading(false);
     };
 
+    const handleBiometricLogin = async () => {
+        const validationErrors = validateEmailField();
+        if (Object.keys(validationErrors).length > 0) {
+            setErrors(validationErrors);
+            return;
+        }
+
+        if (!isWebAuthnSupported) {
+            setMessage("مرورگر شما از احراز هویت بایومتریک پشتیبانی نمی‌کند");
+            toast.error("مرورگر شما از احراز هویت بایومتریک پشتیبانی نمی‌کند");
+            return;
+        }
+
+        setBiometricLoading(true);
+        setMessage("");
+
+        try {
+            // Get authentication options
+            const optionsResponse = await api.post("/auth/webauthn/authenticate/options", {
+                email: formData.email,
+            });
+
+            if (!optionsResponse.data.success) {
+                throw new Error(optionsResponse.data.message || "خطا در دریافت گزینه‌های احراز هویت");
+            }
+
+            const options = optionsResponse.data.data;
+
+            // Start authentication
+            const authenticationResponse = await startAuthentication(options);
+
+            // Verify authentication
+            const verifyResponse = await api.post("/auth/webauthn/authenticate", {
+                email: formData.email,
+                response: authenticationResponse,
+            });
+
+            if (verifyResponse.data.success) {
+                const { user, tokens } = verifyResponse.data.data;
+                const token = tokens.accessToken || tokens.token;
+
+                if (!token) {
+                    toast.error("خطا در دریافت توکن احراز هویت");
+                    return;
+                }
+
+                Cookies.set("token", token, {
+                    expires: 7,
+                    secure: process.env.NODE_ENV === "production",
+                    sameSite: "lax",
+                    path: "/",
+                });
+
+                toast.success("با موفقیت وارد شدید");
+                router.push("/dashboard");
+            }
+        } catch (error) {
+            const errorMessage =
+                error.response?.data?.message ||
+                error.message ||
+                "خطا در احراز هویت بایومتریک";
+            setMessage(errorMessage);
+            toast.error(errorMessage);
+        } finally {
+            setBiometricLoading(false);
+        }
+    };
+
     return (
         <Container maxWidth="sm">
             <Box
@@ -229,6 +308,7 @@ export default function LoginPage() {
                             >
                                 <Tab label="رمز عبور" />
                                 <Tab label="کد یکبار مصرف" />
+                                {isWebAuthnSupported && <Tab label="اثر انگشت" />}
                             </Tabs>
                         </Box>
 
@@ -248,6 +328,7 @@ export default function LoginPage() {
                                         label="ایمیل"
                                         name="email"
                                         type="email"
+                                        autoComplete="username"
                                         value={formData.email}
                                         onChange={handleChange}
                                         error={!!errors.email}
@@ -314,6 +395,7 @@ export default function LoginPage() {
                                         label="ایمیل"
                                         name="email"
                                         type="email"
+                                        autoComplete="username"
                                         value={formData.email}
                                         onChange={handleChange}
                                         error={!!errors.email}
@@ -399,6 +481,57 @@ export default function LoginPage() {
                                     )}
                                 </Box>
                             </form>
+                        )}
+
+                        {/* Biometric Login Form */}
+                        {tabValue === 2 && (
+                            <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                                <TextField
+                                    fullWidth
+                                    label="ایمیل"
+                                    name="email"
+                                    type="email"
+                                    autoComplete="username"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    error={!!errors.email}
+                                    helperText={errors.email}
+                                    disabled={biometricLoading}
+                                    variant="outlined"
+                                />
+
+                                {!isWebAuthnSupported && (
+                                    <Alert severity="warning" sx={{ mb: 2 }}>
+                                        مرورگر شما از احراز هویت بایومتریک پشتیبانی نمی‌کند. لطفاً از مرورگرهای مدرن استفاده کنید.
+                                    </Alert>
+                                )}
+
+                                <Button
+                                    fullWidth
+                                    variant="contained"
+                                    size="large"
+                                    onClick={handleBiometricLogin}
+                                    disabled={biometricLoading || !isWebAuthnSupported}
+                                    sx={{
+                                        py: 1.5,
+                                        fontSize: "1.1rem",
+                                        fontWeight: 600,
+                                    }}
+                                >
+                                    {biometricLoading ? (
+                                        <>
+                                            <CircularProgress size={20} sx={{ mr: 2 }} />
+                                            در حال احراز هویت...
+                                        </>
+                                    ) : (
+                                        "ورود با اثر انگشت"
+                                    )}
+                                </Button>
+
+                                <Typography variant="body2" color="textSecondary" sx={{ textAlign: "center", mt: 2 }}>
+                                    برای استفاده از این روش، ابتدا باید اثر انگشت خود را در تنظیمات حساب ثبت کنید.
+                                </Typography>
+                            </Box>
                         )}
 
                         {/* Footer */}
