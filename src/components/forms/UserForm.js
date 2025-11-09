@@ -29,8 +29,8 @@ export default function UserForm({ user, onSave, onCancel }) {
             status: "active",
             avatar: "",
             bio: "",
-            emailVerified: false,
-            phoneNumberVerified: false,
+            isEmailVerified: false,
+            isPhoneNumberVerified: false,
         },
     });
 
@@ -62,8 +62,8 @@ export default function UserForm({ user, onSave, onCancel }) {
                 status: user.status || "active",
                 avatar: user.avatar || "",
                 bio: user.bio || "",
-                emailVerified: user.emailVerified || user.isEmailVerified || false,
-                phoneNumberVerified: user.phoneNumberVerified || user.isPhoneNumberVerified || false,
+                isEmailVerified: user.isEmailVerified || false,
+                isPhoneNumberVerified: user.isPhoneNumberVerified || false,
                 password: "",
                 confirmPassword: "",
             });
@@ -79,8 +79,8 @@ export default function UserForm({ user, onSave, onCancel }) {
                 status: "active",
                 avatar: "",
                 bio: "",
-                emailVerified: false,
-                phoneNumberVerified: false,
+                isEmailVerified: false,
+                isPhoneNumberVerified: false,
             });
         }
     }, [user, reset]);
@@ -293,7 +293,7 @@ export default function UserForm({ user, onSave, onCancel }) {
 
                                 <Grid size={{ xs: 12, md: 4 }}>
                                     <Controller
-                                        name="emailVerified"
+                                        name="isEmailVerified"
                                         control={control}
                                         render={({ field }) => <FormControlLabel control={<Switch {...field} checked={field.value} />} label="ایمیل تایید شده" />}
                                     />
@@ -301,7 +301,7 @@ export default function UserForm({ user, onSave, onCancel }) {
 
                                 <Grid size={{ xs: 12, md: 4 }}>
                                     <Controller
-                                        name="phoneNumberVerified"
+                                        name="isPhoneNumberVerified"
                                         control={control}
                                         render={({ field }) => <FormControlLabel control={<Switch {...field} checked={field.value} />} label="تلفن تایید شده" />}
                                     />

@@ -68,43 +68,60 @@ export default function LogsPage() {
     });
 
     const debouncedSearch = useDebounce(filters.search, 500);
+    const { useFetchData } = useApi();
+
+    // Build query params for system logs
+    const systemQueryParams = useMemo(() => {
+        const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
+        if (filters.level) params.append("level", filters.level);
+        if (filters.type) params.append("type", filters.type);
+        if (debouncedSearch) params.append("search", debouncedSearch);
+        if (filters.startDate) params.append("startDate", filters.startDate);
+        if (filters.endDate) params.append("endDate", filters.endDate);
+        return params.toString();
+    }, [page, limit, filters.level, filters.type, debouncedSearch, filters.startDate, filters.endDate]);
+
+    // Build query params for activity logs
+    const activityQueryParams = useMemo(() => {
+        const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("limit", limit.toString());
+        if (filters.action) params.append("action", filters.action);
+        if (filters.resource) params.append("resource", filters.resource);
+        if (filters.user) params.append("user", filters.user);
+        if (debouncedSearch) params.append("search", debouncedSearch);
+        if (filters.startDate) params.append("startDate", filters.startDate);
+        if (filters.endDate) params.append("endDate", filters.endDate);
+        return params.toString();
+    }, [page, limit, filters.action, filters.resource, filters.user, debouncedSearch, filters.startDate, filters.endDate]);
 
     // System Logs
     const {
         data: systemLogsData,
-        loading: systemLoading,
+        isLoading: systemLoading,
         refetch: refetchSystem,
-    } = useApi("/logs/system", {
-        params: {
-            page,
-            limit,
-            ...(filters.level && { level: filters.level }),
-            ...(filters.type && { type: filters.type }),
-            ...(debouncedSearch && { search: debouncedSearch }),
-            ...(filters.startDate && { startDate: filters.startDate }),
-            ...(filters.endDate && { endDate: filters.endDate }),
-        },
-        enabled: tabValue === 0 && isSuperAdmin(),
-    });
+    } = useFetchData(
+        ["logs-system", systemQueryParams],
+        `/logs/system?${systemQueryParams}`,
+        {
+            enabled: tabValue === 0 && isSuperAdmin(),
+        }
+    );
 
     // Activity Logs
     const {
         data: activityLogsData,
-        loading: activityLoading,
+        isLoading: activityLoading,
         refetch: refetchActivity,
-    } = useApi("/logs/activity", {
-        params: {
-            page,
-            limit,
-            ...(filters.action && { action: filters.action }),
-            ...(filters.resource && { resource: filters.resource }),
-            ...(filters.user && { user: filters.user }),
-            ...(debouncedSearch && { search: debouncedSearch }),
-            ...(filters.startDate && { startDate: filters.startDate }),
-            ...(filters.endDate && { endDate: filters.endDate }),
-        },
-        enabled: tabValue === 1 && isSuperAdmin(),
-    });
+    } = useFetchData(
+        ["logs-activity", activityQueryParams],
+        `/logs/activity?${activityQueryParams}`,
+        {
+            enabled: tabValue === 1 && isSuperAdmin(),
+        }
+    );
 
     const systemLogs = systemLogsData?.data || [];
     const systemPagination = systemLogsData?.pagination || {};

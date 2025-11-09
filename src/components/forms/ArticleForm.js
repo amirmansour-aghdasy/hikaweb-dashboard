@@ -7,7 +7,7 @@ import MultiLangTextField from "./MultiLangTextField";
 import MultiLangEditor from "./MultiLangEditor";
 import CategorySelector from "./CategorySelector";
 import TagInput from "./TagInput";
-import MediaUploader from "../media/MediaUploader";
+import MediaPicker from "../media/MediaPicker";
 import { useApi } from "../../hooks/useApi";
 import toast from "react-hot-toast";
 
@@ -144,9 +144,14 @@ export default function ArticleForm({ article, onSave, onCancel }) {
         }
     };
 
-    const handleImageUpload = (images) => {
-        if (images.length > 0) {
-            setValue("featuredImage", images[0].url);
+    // Handle image selection
+    const handleImageSelect = (selected) => {
+        if (selected) {
+            // If selected is an object with url, use url; otherwise use the value directly
+            const imageUrl = typeof selected === 'object' && selected.url ? selected.url : selected;
+            setValue("featuredImage", imageUrl);
+        } else {
+            setValue("featuredImage", "");
         }
     };
 
@@ -283,7 +288,19 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                 name="featuredImage"
                                 control={control}
                                 render={({ field }) => (
-                                    <MediaUploader value={field.value ? [{ url: field.value, type: "image/*" }] : []} onChange={handleImageUpload} single acceptedTypes={["image/*"]} maxSizeInMB={2} />
+                                    <MediaPicker
+                                        value={field.value || null}
+                                        onChange={(selected) => {
+                                            const imageUrl = typeof selected === 'object' && selected.url ? selected.url : selected;
+                                            field.onChange(imageUrl);
+                                            handleImageSelect(selected);
+                                        }}
+                                        label="انتخاب تصویر شاخص"
+                                        accept="image/*"
+                                        multiple={false}
+                                        showPreview={true}
+                                        showEdit={true}
+                                    />
                                 )}
                             />
                         </Box>

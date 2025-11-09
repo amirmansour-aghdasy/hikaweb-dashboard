@@ -21,15 +21,7 @@ import {
     CardContent,
     Grid,
 } from "@mui/material";
-import {
-    Add,
-    Assignment,
-    CheckCircle,
-    Cancel,
-    Schedule,
-    Person,
-    Flag,
-} from "@mui/icons-material";
+import { Add, Assignment, CheckCircle, Cancel, Schedule, Person, Flag } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
@@ -80,6 +72,7 @@ export default function TasksPage() {
     const [statistics, setStatistics] = useState(null);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
+    const { useFetchData } = useApi();
 
     // Build query params
     const queryParams = useMemo(() => {
@@ -101,20 +94,16 @@ export default function TasksPage() {
     const endpoint = `/tasks?${queryParams}`;
 
     // Fetch tasks
-    const {
-        data: tasksData,
-        loading: isLoading,
-        refetch,
-    } = useApi(endpoint);
+    const { data: tasksData, isLoading, refetch } = useFetchData(["tasks", queryParams], endpoint);
 
     // Fetch statistics
-    useApi("/tasks/statistics", {
-        onSuccess: (data) => {
-            if (data?.success) {
-                setStatistics(data.data);
-            }
-        },
-    });
+    const { data: statisticsData } = useFetchData("tasks-statistics", "/tasks/statistics");
+
+    useEffect(() => {
+        if (statisticsData?.success && statisticsData.data) {
+            setStatistics(statisticsData.data);
+        }
+    }, [statisticsData]);
 
     const tasks = tasksData?.data || [];
     const pagination = tasksData?.pagination || {};
@@ -161,9 +150,7 @@ export default function TasksPage() {
             setEditingTask(null);
             refetch();
         } catch (error) {
-            toast.error(
-                error.response?.data?.message || "خطا در ذخیره وظیفه"
-            );
+            toast.error(error.response?.data?.message || "خطا در ذخیره وظیفه");
         }
     };
 
@@ -173,9 +160,7 @@ export default function TasksPage() {
             toast.success("وضعیت وظیفه تغییر کرد");
             refetch();
         } catch (error) {
-            toast.error(
-                error.response?.data?.message || "خطا در تغییر وضعیت"
-            );
+            toast.error(error.response?.data?.message || "خطا در تغییر وضعیت");
         }
     };
 
@@ -210,15 +195,10 @@ export default function TasksPage() {
             width: 180,
             render: (row) => (
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Avatar
-                        sx={{ width: 32, height: 32 }}
-                        src={row.assignee?.avatar}
-                    >
+                    <Avatar sx={{ width: 32, height: 32 }} src={row.assignee?.avatar}>
                         {row.assignee?.name?.charAt(0) || "?"}
                     </Avatar>
-                    <Typography variant="body2">
-                        {row.assignee?.name || "-"}
-                    </Typography>
+                    <Typography variant="body2">{row.assignee?.name || "-"}</Typography>
                 </Box>
             ),
         },
@@ -226,46 +206,25 @@ export default function TasksPage() {
             field: "status",
             headerName: "وضعیت",
             width: 140,
-            render: (row) => (
-                <Chip
-                    label={STATUS_LABELS[row.status] || row.status}
-                    color={STATUS_COLORS[row.status] || "default"}
-                    size="small"
-                />
-            ),
+            render: (row) => <Chip label={STATUS_LABELS[row.status] || row.status} color={STATUS_COLORS[row.status] || "default"} size="small" />,
         },
         {
             field: "priority",
             headerName: "اولویت",
             width: 120,
-            render: (row) => (
-                <Chip
-                    label={PRIORITY_LABELS[row.priority] || row.priority}
-                    color={PRIORITY_COLORS[row.priority] || "default"}
-                    size="small"
-                    icon={<Flag />}
-                />
-            ),
+            render: (row) => <Chip label={PRIORITY_LABELS[row.priority] || row.priority} color={PRIORITY_COLORS[row.priority] || "default"} size="small" icon={<Flag />} />,
         },
         {
             field: "dueDate",
             headerName: "مهلت",
             width: 150,
-            render: (row) => (
-                <Typography variant="body2">
-                    {row.dueDate ? formatDate(row.dueDate) : "-"}
-                </Typography>
-            ),
+            render: (row) => <Typography variant="body2">{row.dueDate ? formatDate(row.dueDate) : "-"}</Typography>,
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
             width: 150,
-            render: (row) => (
-                <Typography variant="body2">
-                    {formatDate(row.createdAt)}
-                </Typography>
-            ),
+            render: (row) => <Typography variant="body2">{formatDate(row.createdAt)}</Typography>,
         },
     ];
 
@@ -334,19 +293,17 @@ export default function TasksPage() {
                 {/* Statistics Cards */}
                 {statistics && (
                     <Grid container spacing={2} sx={{ mb: 3 }}>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
                                         کل وظایف
                                     </Typography>
-                                    <Typography variant="h4">
-                                        {statistics.total || 0}
-                                    </Typography>
+                                    <Typography variant="h4">{statistics.total || 0}</Typography>
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -358,7 +315,7 @@ export default function TasksPage() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -370,7 +327,7 @@ export default function TasksPage() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item xs={12} sm={6} md={3}>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -396,12 +353,7 @@ export default function TasksPage() {
                     <Typography variant="h4" fontWeight="bold">
                         مدیریت وظایف
                     </Typography>
-                    <Button
-                        variant="contained"
-                        startIcon={<Add />}
-                        onClick={handleAdd}
-                        size="large"
-                    >
+                    <Button variant="contained" startIcon={<Add />} onClick={handleAdd} size="large">
                         وظیفه جدید
                     </Button>
                 </Box>
@@ -428,8 +380,7 @@ export default function TasksPage() {
                     canCreate={true}
                     emptyStateProps={{
                         title: "وظیفه‌ای یافت نشد",
-                        description:
-                            "هنوز وظیفه‌ای ایجاد نشده است. اولین وظیفه خود را ایجاد کنید!",
+                        description: "هنوز وظیفه‌ای ایجاد نشده است. اولین وظیفه خود را ایجاد کنید!",
                         action: {
                             label: "ایجاد وظیفه جدید",
                             onClick: handleAdd,
@@ -449,27 +400,16 @@ export default function TasksPage() {
                 />
 
                 {/* Delete Confirmation Dialog */}
-                <Dialog
-                    open={isDeleteDialogOpen}
-                    onClose={() => setIsDeleteDialogOpen(false)}
-                >
+                <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>
                     <DialogTitle>تایید حذف</DialogTitle>
                     <DialogContent>
                         <Typography>
-                            آیا از حذف وظیفه{" "}
-                            <strong>{taskToDelete?.title}</strong> اطمینان
-                            دارید؟
+                            آیا از حذف وظیفه <strong>{taskToDelete?.title}</strong> اطمینان دارید؟
                         </Typography>
                     </DialogContent>
                     <DialogActions>
-                        <Button onClick={() => setIsDeleteDialogOpen(false)}>
-                            انصراف
-                        </Button>
-                        <Button
-                            onClick={handleDeleteConfirm}
-                            color="error"
-                            variant="contained"
-                        >
+                        <Button onClick={() => setIsDeleteDialogOpen(false)}>انصراف</Button>
+                        <Button onClick={handleDeleteConfirm} color="error" variant="contained">
                             حذف
                         </Button>
                     </DialogActions>
@@ -497,9 +437,10 @@ function TaskFormModal({ open, onClose, onSave, task }) {
 
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
+    const { useFetchData } = useApi();
 
     // Fetch users for assignee dropdown
-    const { data: usersData } = useApi("/users?limit=100", {
+    const { data: usersData } = useFetchData("task-form-users", "/users?limit=100", {
         enabled: open,
     });
 
@@ -516,9 +457,7 @@ function TaskFormModal({ open, onClose, onSave, task }) {
                 description: task.description || "",
                 assignee: task.assignee?._id || task.assignee || "",
                 priority: task.priority || "normal",
-                dueDate: task.dueDate
-                    ? new Date(task.dueDate).toISOString().split("T")[0]
-                    : "",
+                dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "",
                 tags: task.tags || [],
                 notifications: task.notifications || {
                     dashboard: true,
@@ -564,15 +503,7 @@ function TaskFormModal({ open, onClose, onSave, task }) {
         <Modal open={open} onClose={onClose} title={task ? "ویرایش وظیفه" : "وظیفه جدید"}>
             <form onSubmit={handleSubmit}>
                 <Stack spacing={3}>
-                    <TextField
-                        label="عنوان"
-                        value={formData.title}
-                        onChange={(e) =>
-                            setFormData({ ...formData, title: e.target.value })
-                        }
-                        required
-                        fullWidth
-                    />
+                    <TextField label="عنوان" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required fullWidth />
 
                     <TextField
                         label="توضیحات"
@@ -705,11 +636,7 @@ function TaskFormModal({ open, onClose, onSave, task }) {
 
                     <Stack direction="row" spacing={2} justifyContent="flex-end">
                         <Button onClick={onClose}>انصراف</Button>
-                        <Button
-                            type="submit"
-                            variant="contained"
-                            disabled={loading}
-                        >
+                        <Button type="submit" variant="contained" disabled={loading}>
                             {loading ? "در حال ذخیره..." : "ذخیره"}
                         </Button>
                     </Stack>
@@ -718,4 +645,3 @@ function TaskFormModal({ open, onClose, onSave, task }) {
         </Modal>
     );
 }
-

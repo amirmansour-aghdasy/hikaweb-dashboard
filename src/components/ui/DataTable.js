@@ -62,6 +62,15 @@ export default function DataTable({
     
     const [selected, setSelected] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
+    
+    // Check if filters are active (not "all" or empty)
+    const hasActiveFilters = filters && filters.some(filter => {
+        const value = filter.value;
+        return value !== "all" && value !== "" && value !== null && value !== undefined;
+    });
+    
+    // Determine if search is active
+    const hasActiveSearch = onSearch && searchTerm && searchTerm.length > 0;
     const [anchorEl, setAnchorEl] = useState(null);
     const [selectedRow, setSelectedRow] = useState(null);
     const [filterAnchorEl, setFilterAnchorEl] = useState(null);
@@ -300,14 +309,21 @@ export default function DataTable({
                                 <TableCell colSpan={columns.length + (enableSelection ? 1 : 0) + (enableActions ? 1 : 0)}>
                                     <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 4 }}>
                                         <Typography variant="body1" color="text.secondary" gutterBottom>
-                                            {emptyStateProps?.title || "داده‌ای یافت نشد"}
+                                            {emptyStateProps?.title || (hasActiveFilters || hasActiveSearch ? "نتیجه‌ای یافت نشد" : "داده‌ای یافت نشد")}
                                         </Typography>
-                                        {emptyStateProps?.description && (
+                                        {emptyStateProps?.description ? (
                                             <Typography variant="body2" color="text.secondary">
-                                                {emptyStateProps.description}
+                                                {hasActiveFilters || hasActiveSearch 
+                                                    ? "با فیلترهای اعمال شده، نتیجه‌ای یافت نشد. لطفاً فیلترها را تغییر دهید."
+                                                    : emptyStateProps.description
+                                                }
                                             </Typography>
-                                        )}
-                                        {emptyStateProps?.action && (
+                                        ) : hasActiveFilters || hasActiveSearch ? (
+                                            <Typography variant="body2" color="text.secondary">
+                                                با فیلترهای اعمال شده، نتیجه‌ای یافت نشد. لطفاً فیلترها را تغییر دهید.
+                                            </Typography>
+                                        ) : null}
+                                        {emptyStateProps?.action && !hasActiveFilters && !hasActiveSearch && (
                                             <Button
                                                 variant="contained"
                                                 onClick={emptyStateProps.action.onClick}
@@ -373,7 +389,12 @@ export default function DataTable({
                     }}
                     rowsPerPageOptions={[10, 25, 50, 100]}
                     labelRowsPerPage="تعداد در هر صفحه:"
-                    labelDisplayedRows={({ from, to, count }) => `${from}-${to} از ${count}`}
+                    labelDisplayedRows={({ from, to, count }) => {
+                        // Always show total count if available, even if it's 0
+                        const total = pagination.total ?? count;
+                        if (total === 0) return "هیچ موردی یافت نشد";
+                        return `${from}-${to} از ${total}`;
+                    }}
                 />
             )}
 

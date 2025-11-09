@@ -22,7 +22,17 @@ import { useState, useRef, useCallback } from "react";
 import { useApi } from "../../hooks/useApi";
 import toast from "react-hot-toast";
 
-export default function MediaUploader({ value = [], onChange, maxFiles = 10, acceptedTypes = ["image/*"], maxSizeInMB = 5, gallery = false, single = false, showPreview = true }) {
+export default function MediaUploader({ 
+    value = [], 
+    onChange, 
+    maxFiles = 10, 
+    acceptedTypes = ["image/*"], 
+    maxSizeInMB = 5, 
+    gallery = false, 
+    single = false, 
+    showPreview = true,
+    onUploadSuccess = null
+}) {
     const [uploading, setUploading] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
     const [previewFile, setPreviewFile] = useState(null);
@@ -30,10 +40,6 @@ export default function MediaUploader({ value = [], onChange, maxFiles = 10, acc
     const fileInputRef = useRef();
 
     const { useCreateData } = useApi();
-
-    const uploadMutation = useCreateData("/api/v1/media", {
-        successMessage: "فایل با موفقیت آپلود شد",
-    });
 
     const handleFileSelect = useCallback(
         (event) => {
@@ -81,50 +87,83 @@ export default function MediaUploader({ value = [], onChange, maxFiles = 10, acc
     const uploadFile = async (file) => {
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("type", getFileType(file.type));
 
         setUploading(true);
         setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }));
 
         try {
-            const response = await fetch("/api/v1/media", {
-                method: "POST",
-                body: formData,
-                headers: {
-                    Authorization: `Bearer ${document.cookie.match(/token=([^;]+)/)?.[1]}`,
-                },
-                onUploadProgress: (progressEvent) => {
-                    const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            const token = document.cookie.match(/token=([^;]+)/)?.[1];
+            if (!token) {
+                throw new Error("لطفاً ابتدا وارد شوید");
+            }
+
+            const xhr = new XMLHttpRequest();
+
+            // Track upload progress
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percentCompleted = Math.round((e.loaded * 100) / e.total);
                     setUploadProgress((prev) => ({ ...prev, [file.name]: percentCompleted }));
-                },
+                }
             });
 
-            const result = await response.json();
+            // Handle response
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 201 || xhr.status === 200) {
+                    try {
+                        const result = JSON.parse(xhr.responseText);
 
-            if (result.success) {
-                const newFile = {
-                    id: result.data._id,
-                    url: result.data.url,
-                    name: result.data.originalName,
-                    type: result.data.mimeType,
-                    size: result.data.size,
-                    alt: "",
-                    caption: "",
-                };
+                        if (result.success) {
+                            const newFile = {
+                                _id: result.data.media._id,
+                                id: result.data.media._id,
+                                url: result.data.media.url,
+                                originalName: result.data.media.originalName,
+                                name: result.data.media.originalName,
+                                mimeType: result.data.media.mimeType,
+                                type: result.data.media.mimeType,
+                                fileType: result.data.media.fileType,
+                                size: result.data.media.size,
+                                thumbnailUrl: result.data.media.thumbnailUrl,
+                                dimensions: result.data.media.dimensions,
+                                alt: result.data.media.altText?.fa || "",
+                                caption: result.data.media.caption?.fa || "",
+                            };
 
-                if (single) {
-                    onChange([newFile]);
+                            if (single) {
+                                onChange([newFile]);
+                            } else {
+                                onChange([...value, newFile]);
+                            }
+
+                            // Call onUploadSuccess callback if provided
+                            if (onUploadSuccess) {
+                                onUploadSuccess([newFile]);
+                            }
+
+                            toast.success(`${file.name} آپلود شد`);
+                        } else {
+                            throw new Error(result.message || "خطا در آپلود فایل");
+                        }
+                    } catch (parseError) {
+                        console.error("Parse error:", parseError);
+                        throw new Error("خطا در پردازش پاسخ سرور");
+                    }
                 } else {
-                    onChange([...value, newFile]);
+                    throw new Error(`خطای سرور: ${xhr.status}`);
                 }
+            });
 
-                toast.success(`${file.name} آپلود شد`);
-            } else {
-                throw new Error(result.message);
-            }
+            xhr.addEventListener('error', () => {
+                throw new Error("خطا در ارتباط با سرور");
+            });
+
+            xhr.open('POST', '/api/v1/media/upload');
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            xhr.send(formData);
         } catch (error) {
             console.error("Upload error:", error);
-            toast.error(`خطا در آپلود ${file.name}`);
+            toast.error(error.message || `خطا در آپلود ${file.name}`);
         } finally {
             setUploading(false);
             setUploadProgress((prev) => {

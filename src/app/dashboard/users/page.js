@@ -15,6 +15,8 @@ export default function UsersPage() {
     const [editingUser, setEditingUser] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+    const [viewingUser, setViewingUser] = useState(null);
     const [userToDelete, setUserToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
@@ -150,8 +152,8 @@ export default function UsersPage() {
 
     const handleView = (user) => {
         if (!canView) return;
-        // User view page would go here if needed
-        console.log("View user:", user);
+        setViewingUser(user);
+        setIsViewDialogOpen(true);
     };
 
     const handleToggleStatus = (user) => {
@@ -282,6 +284,73 @@ export default function UsersPage() {
                 <Modal open={isModalOpen} onClose={handleSaveUser} title={editingUser ? "ویرایش کاربر" : "افزودن کاربر جدید"} maxWidth="lg">
                     <UserForm user={editingUser} onSave={handleSaveUser} onCancel={handleSaveUser} />
                 </Modal>
+
+                {/* View User Dialog */}
+                <Dialog 
+                    open={isViewDialogOpen} 
+                    onClose={() => {
+                        setIsViewDialogOpen(false);
+                        setViewingUser(null);
+                    }}
+                    maxWidth="md"
+                    fullWidth
+                >
+                    <DialogTitle>مشاهده اطلاعات کاربر</DialogTitle>
+                    <DialogContent>
+                        {viewingUser && (
+                            <Box sx={{ mt: 2 }}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+                                    <Avatar src={viewingUser.avatar} sx={{ width: 64, height: 64 }}>
+                                        {viewingUser.name?.charAt(0) || "?"}
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="h6">{viewingUser.name}</Typography>
+                                        <Typography variant="body2" color="text.secondary">{viewingUser.email}</Typography>
+                                    </Box>
+                                </Box>
+                                
+                                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">نام</Typography>
+                                        <Typography variant="body1">{viewingUser.name || "-"}</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">ایمیل</Typography>
+                                        <Typography variant="body1">{viewingUser.email || "-"}</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">شماره تلفن</Typography>
+                                        <Typography variant="body1">{viewingUser.phoneNumber || "-"}</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">نقش</Typography>
+                                        <Typography variant="body1">
+                                            {viewingUser.role ? (typeof viewingUser.role === "object" ? getPersianValue(viewingUser.role.displayName, viewingUser.role.name) : viewingUser.role) : "-"}
+                                        </Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">وضعیت</Typography>
+                                        <Typography variant="body1">
+                                            {viewingUser.status === "active" ? "فعال" : "غیرفعال"}
+                                        </Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">تاریخ ایجاد</Typography>
+                                        <Typography variant="body1">{formatDate(viewingUser.createdAt)}</Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        )}
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => {
+                            setIsViewDialogOpen(false);
+                            setViewingUser(null);
+                        }}>
+                            بستن
+                        </Button>
+                    </DialogActions>
+                </Dialog>
 
                 {/* Delete Confirmation Dialog */}
                 <Dialog open={isDeleteDialogOpen} onClose={() => setIsDeleteDialogOpen(false)}>

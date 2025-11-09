@@ -354,7 +354,7 @@ export default function CategoriesPage() {
                         data={categoriesData?.data?.categories || categoriesData?.data || []}
                         columns={columns}
                         loading={isLoading}
-                        pagination={categoriesData?.pagination}
+                        pagination={categoriesData?.pagination || {}}
                         onPageChange={handlePageChange}
                         onRowsPerPageChange={handleRowsPerPageChange}
                         onSearch={handleSearch}

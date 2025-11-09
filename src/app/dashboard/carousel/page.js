@@ -240,10 +240,10 @@ export default function CarouselPage() {
 
                 <DataTable
                     title="لیست اسلایدها"
-                    data={carouselData?.data || []}
+                    data={carouselData?.data?.carousels || carouselData?.data || []}
                     columns={columns}
                     loading={isLoading}
-                    pagination={carouselData?.pagination}
+                    pagination={carouselData?.pagination || {}}
                     onPageChange={handlePageChange}
                     onRowsPerPageChange={handleRowsPerPageChange}
                     onSearch={handleSearch}

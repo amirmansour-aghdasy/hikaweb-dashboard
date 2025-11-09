@@ -171,8 +171,8 @@ export const userValidation = Joi.object({
     status: Joi.string().valid("active", "inactive", "suspended").default("active"),
     avatar: Joi.string().uri().allow(""),
     bio: Joi.string().allow("").max(500),
-    emailVerified: Joi.boolean().default(false),
-    phoneVerified: Joi.boolean().default(false),
+    isEmailVerified: Joi.boolean().default(false),
+    isPhoneVerified: Joi.boolean().default(false),
 });
 
 // Login validation schema

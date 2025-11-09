@@ -67,6 +67,7 @@ export default function CalendarPage() {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(25);
     const [upcomingEvents, setUpcomingEvents] = useState([]);
+    const [statistics, setStatistics] = useState(null);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -85,22 +86,32 @@ export default function CalendarPage() {
     }, [debouncedSearchTerm, typeFilter, page, limit]);
 
     const endpoint = `/calendar?${queryParams}`;
+    const { useFetchData } = useApi();
 
     // Fetch events
     const {
         data: eventsData,
-        loading: isLoading,
+        isLoading,
         refetch,
-    } = useApi(endpoint);
+    } = useFetchData(["calendar", queryParams], endpoint);
 
     // Fetch upcoming events
-    useApi("/calendar/upcoming?limit=5", {
-        onSuccess: (data) => {
-            if (data?.success) {
-                setUpcomingEvents(data.data || []);
-            }
-        },
-    });
+    const { data: upcomingEventsData } = useFetchData("calendar-upcoming", "/calendar/upcoming?limit=5");
+
+    // Fetch statistics
+    const { data: statisticsData } = useFetchData("calendar-statistics", "/calendar/statistics");
+
+    useEffect(() => {
+        if (statisticsData?.success && statisticsData.data) {
+            setStatistics(statisticsData.data);
+        }
+    }, [statisticsData]);
+    
+    useEffect(() => {
+        if (upcomingEventsData?.success && upcomingEventsData.data) {
+            setUpcomingEvents(upcomingEventsData.data || []);
+        }
+    }, [upcomingEventsData]);
 
     const events = eventsData?.data || [];
     const pagination = eventsData?.pagination || {};
@@ -276,6 +287,57 @@ export default function CalendarPage() {
     return (
         <Layout>
             <Box>
+                {/* Statistics Cards */}
+                {statistics && (
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        کل رویدادها
+                                    </Typography>
+                                    <Typography variant="h4">{statistics.total || 0}</Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        رویدادهای آینده
+                                    </Typography>
+                                    <Typography variant="h4" color="info.main">
+                                        {statistics.upcoming || 0}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        رویدادهای گذشته
+                                    </Typography>
+                                    <Typography variant="h4" color="text.secondary">
+                                        {statistics.past || 0}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        جلسات
+                                    </Typography>
+                                    <Typography variant="h4" color="primary.main">
+                                        {statistics.byType?.meeting || 0}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    </Grid>
+                )}
                 {/* Upcoming Events */}
                 {upcomingEvents.length > 0 && (
                     <Paper sx={{ p: 2, mb: 3 }}>
@@ -426,9 +488,10 @@ function EventFormModal({ open, onClose, onSave, event }) {
 
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
+    const { useFetchData: useFetchDataModal } = useApi();
 
     // Fetch users for attendees dropdown
-    const { data: usersData } = useApi("/users?limit=100", {
+    const { data: usersData } = useFetchDataModal("calendar-form-users", "/users?limit=100", {
         enabled: open,
     });
 

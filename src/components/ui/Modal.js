@@ -16,6 +16,8 @@ export default function Modal({ open, onClose, title, children, actions, maxWidt
                     },
                 },
             }}
+            disableEnforceFocus={false}
+            disableAutoFocus={false}
         >
             {title && (
                 <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

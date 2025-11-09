@@ -1,6 +1,6 @@
 "use client";
-import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { useState, useMemo, useEffect } from "react";
+import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Card, CardContent } from "@mui/material";
 import { SupportAgent, Edit, Delete, Add, Assignment, Reply, Close, CheckCircle, Person } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
@@ -36,6 +36,7 @@ export default function TicketsPage() {
     const [priorityFilter, setPriorityFilter] = useState("all");
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(25);
+    const [statistics, setStatistics] = useState(null);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 800);
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
@@ -62,6 +63,15 @@ export default function TicketsPage() {
 
     // Fetch tickets
     const { data: ticketsData, isLoading } = useFetchData(["tickets", queryParams], endpoint);
+
+    // Fetch statistics
+    const { data: statisticsData } = useFetchData("tickets-statistics", "/tickets/stats/overview");
+
+    useEffect(() => {
+        if (statisticsData?.success && statisticsData.data) {
+            setStatistics(statisticsData.data);
+        }
+    }, [statisticsData]);
 
     // Update ticket
     const updateTicket = useUpdateData("/tickets", {
@@ -314,6 +324,58 @@ export default function TicketsPage() {
     return (
         <Layout>
             <Box>
+                {/* Statistics Cards */}
+                {statistics?.overview && (
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        کل تیکت‌ها
+                                    </Typography>
+                                    <Typography variant="h4">{statistics.overview.total || 0}</Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        باز
+                                    </Typography>
+                                    <Typography variant="h4" color="info.main">
+                                        {statistics.overview.open || 0}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        در حال بررسی
+                                    </Typography>
+                                    <Typography variant="h4" color="warning.main">
+                                        {statistics.overview.inProgress || 0}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        حل شده
+                                    </Typography>
+                                    <Typography variant="h4" color="success.main">
+                                        {statistics.overview.resolved || 0}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    </Grid>
+                )}
+
                 <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <Typography variant="h4" fontWeight="bold">
                         مدیریت تیکت‌ها

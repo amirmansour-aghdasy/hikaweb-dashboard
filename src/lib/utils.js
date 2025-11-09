@@ -1,6 +1,7 @@
 /**
  * Utility functions for dashboard
  */
+import { toJalali, format as jalaaliFormat } from "jalaali-js";
 
 /**
  * Get Persian value from multi-language object
@@ -30,7 +31,40 @@ export const getPersianArray = (arr, field = "name") => {
 };
 
 /**
- * Format date for display
+ * Format number for display
+ * @param {number} num - Number to format
+ * @returns {string}
+ */
+export const formatNumber = (num) => {
+    if (num === null || num === undefined) return "0";
+    return new Intl.NumberFormat("fa-IR").format(num);
+};
+
+/**
+ * Get Persian month name
+ * @param {number} month - Month number (1-12)
+ * @returns {string}
+ */
+const getPersianMonthName = (month) => {
+    const months = [
+        "فروردین",
+        "اردیبهشت",
+        "خرداد",
+        "تیر",
+        "مرداد",
+        "شهریور",
+        "مهر",
+        "آبان",
+        "آذر",
+        "دی",
+        "بهمن",
+        "اسفند",
+    ];
+    return months[month - 1] || "";
+};
+
+/**
+ * Format date for display (Jalali/Persian calendar)
  * @param {Date|string} date - Date to format
  * @returns {string}
  */
@@ -39,15 +73,22 @@ export const formatDate = (date) => {
     const d = new Date(date);
     if (isNaN(d.getTime())) return "-";
     
-    return new Intl.DateTimeFormat("fa-IR", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-    }).format(d);
+    try {
+        const jalali = toJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+        const monthName = getPersianMonthName(jalali.jm);
+        return `${formatNumber(jalali.jd)} ${monthName} ${formatNumber(jalali.jy)}`;
+    } catch (error) {
+        // Fallback to Intl if conversion fails
+        return new Intl.DateTimeFormat("fa-IR", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+        }).format(d);
+    }
 };
 
 /**
- * Format date with time
+ * Format date with time (Jalali/Persian calendar)
  * @param {Date|string} date - Date to format
  * @returns {string}
  */
@@ -56,23 +97,22 @@ export const formatDateTime = (date) => {
     const d = new Date(date);
     if (isNaN(d.getTime())) return "-";
     
-    return new Intl.DateTimeFormat("fa-IR", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    }).format(d);
-};
-
-/**
- * Format number for display
- * @param {number} num - Number to format
- * @returns {string}
- */
-export const formatNumber = (num) => {
-    if (num === null || num === undefined) return "0";
-    return new Intl.NumberFormat("fa-IR").format(num);
+    try {
+        const jalali = toJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+        const monthName = getPersianMonthName(jalali.jm);
+        const hours = String(d.getHours()).padStart(2, "0");
+        const minutes = String(d.getMinutes()).padStart(2, "0");
+        return `${formatNumber(jalali.jd)} ${monthName} ${formatNumber(jalali.jy)}، ${formatNumber(hours)}:${formatNumber(minutes)}`;
+    } catch (error) {
+        // Fallback to Intl if conversion fails
+        return new Intl.DateTimeFormat("fa-IR", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        }).format(d);
+    }
 };
 
 /**

@@ -11,7 +11,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { usePageActions } from "@/hooks/usePageActions";
 import { formatDate, getPersianValue, formatNumber } from "@/lib/utils";
 
-export default function ArticlesPage() {
+export default function ArticlesPage({ params = {} }) {
     const [editingArticle, setEditingArticle] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
     Box,
     Typography,
@@ -68,6 +68,7 @@ export default function MediaPage() {
     const [contextFile, setContextFile] = useState(null);
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(25);
+    const [statistics, setStatistics] = useState(null);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -91,6 +92,15 @@ export default function MediaPage() {
 
     // Fetch media files
     const { data: mediaData, isLoading, refetch } = useFetchData(["media", queryParams], endpoint);
+
+    // Fetch statistics
+    const { data: statisticsData } = useFetchData("media-statistics", "/media/statistics");
+
+    useEffect(() => {
+        if (statisticsData?.success && statisticsData.data) {
+            setStatistics(statisticsData.data);
+        }
+    }, [statisticsData]);
 
     // Update media
     const updateMedia = useUpdateData("/media", {
@@ -195,6 +205,58 @@ export default function MediaPage() {
     return (
         <Layout>
             <Box sx={{ p: 3 }}>
+                {/* Statistics Cards */}
+                {statistics && (
+                    <Grid container spacing={2} sx={{ mb: 3 }}>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        کل فایل‌ها
+                                    </Typography>
+                                    <Typography variant="h4">{statistics.total || 0}</Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        تصاویر
+                                    </Typography>
+                                    <Typography variant="h4" color="primary.main">
+                                        {statistics.byFileType?.image?.count || 0}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        ویدیوها
+                                    </Typography>
+                                    <Typography variant="h4" color="error.main">
+                                        {statistics.byFileType?.video?.count || 0}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Card>
+                                <CardContent>
+                                    <Typography color="textSecondary" gutterBottom>
+                                        حجم کل
+                                    </Typography>
+                                    <Typography variant="h4" color="info.main">
+                                        {formatFileSize(statistics.totalSize || 0)}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    </Grid>
+                )}
+
                 {/* Header */}
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
                     <Box>
