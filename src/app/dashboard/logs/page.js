@@ -17,6 +17,7 @@ import {
     Paper,
     Alert,
 } from "@mui/material";
+import PersianDatePicker from "@/components/ui/PersianDatePicker";
 import {
     BugReport,
     History,
@@ -412,27 +413,23 @@ export default function LogsPage() {
                             </>
                         )}
 
-                        <TextField
+                        <PersianDatePicker
                             label="از تاریخ"
-                            type="date"
-                            value={filters.startDate}
-                            onChange={(e) =>
-                                handleFilterChange("startDate", e.target.value)
+                            value={filters.startDate ? new Date(filters.startDate) : null}
+                            onChange={(date) =>
+                                handleFilterChange("startDate", date ? date.toISOString().split('T')[0] : "")
                             }
                             size="small"
-                            InputLabelProps={{ shrink: true }}
                             sx={{ minWidth: 150 }}
                         />
 
-                        <TextField
+                        <PersianDatePicker
                             label="تا تاریخ"
-                            type="date"
-                            value={filters.endDate}
-                            onChange={(e) =>
-                                handleFilterChange("endDate", e.target.value)
+                            value={filters.endDate ? new Date(filters.endDate) : null}
+                            onChange={(date) =>
+                                handleFilterChange("endDate", date ? date.toISOString().split('T')[0] : "")
                             }
                             size="small"
-                            InputLabelProps={{ shrink: true }}
                             sx={{ minWidth: 150 }}
                         />
 

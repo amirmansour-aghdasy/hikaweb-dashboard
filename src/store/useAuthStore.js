@@ -8,16 +8,21 @@ export const useAuthStore = create(
             token: null,
             isAuthenticated: false,
             loading: false,
+            hasCheckedAuth: false, // Global flag to track if auth has been checked
+            isCheckingAuth: false, // Global flag to prevent multiple simultaneous checks
 
             setUser: (user) => set({ user, isAuthenticated: !!user }),
             setToken: (token) => set({ token }),
             setLoading: (loading) => set({ loading }),
+            setHasCheckedAuth: (hasChecked) => set({ hasCheckedAuth: hasChecked }),
+            setIsCheckingAuth: (isChecking) => set({ isCheckingAuth: isChecking }),
 
             clearAuth: () =>
                 set({
                     user: null,
                     token: null,
                     isAuthenticated: false,
+                    hasCheckedAuth: false,
                 }),
 
             updateUser: (userData) =>

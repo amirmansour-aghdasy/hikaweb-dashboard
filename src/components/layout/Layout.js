@@ -3,7 +3,7 @@ import { Box, useMediaQuery, useTheme } from "@mui/material";
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Layout({ children }) {
     const theme = useTheme();

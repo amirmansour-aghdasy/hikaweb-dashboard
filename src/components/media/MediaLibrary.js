@@ -246,7 +246,7 @@ export default function MediaLibrary({
                                     {mediaItems.map((item) => {
                                         const isSelected = selectedItems.find((i) => i._id === item._id);
                                         return (
-                                            <Grid item xs={6} sm={4} md={3} key={item._id}>
+                                            <Grid item size={{ xs: 6, sm: 4, md: 3 }} key={item._id}>
                                                 <Card
                                                     sx={{
                                                         position: "relative",

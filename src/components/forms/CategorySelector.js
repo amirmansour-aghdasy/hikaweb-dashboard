@@ -47,21 +47,24 @@ export default function CategorySelector({
         return option.name?.fa || option.name || "";
     };
 
-    const renderOption = (props, option) => (
-        <Box component="li" {...props}>
-            <Avatar sx={{ width: 24, height: 24, mr: 1, bgcolor: option.color || "primary.main" }}>
-                <Category sx={{ fontSize: 16 }} />
-            </Avatar>
-            <Box>
-                <Typography variant="body2">{option.name?.fa || option.name}</Typography>
-                {option.description?.fa && (
-                    <Typography variant="caption" color="text.secondary">
-                        {option.description.fa}
-                    </Typography>
-                )}
+    const renderOption = (props, option) => {
+        const { key, ...otherProps } = props;
+        return (
+            <Box component="li" key={key} {...otherProps}>
+                <Avatar sx={{ width: 24, height: 24, mr: 1, bgcolor: option.color || "primary.main" }}>
+                    <Category sx={{ fontSize: 16 }} />
+                </Avatar>
+                <Box>
+                    <Typography variant="body2">{option.name?.fa || option.name}</Typography>
+                    {option.description?.fa && (
+                        <Typography variant="caption" color="text.secondary">
+                            {option.description.fa}
+                        </Typography>
+                    )}
+                </Box>
             </Box>
-        </Box>
-    );
+        );
+    };
 
     const renderTags = (tagValue, getTagProps) =>
         tagValue.map((option, index) => (

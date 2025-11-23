@@ -1,21 +1,24 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 import { Box, CircularProgress, Alert, Typography } from "@mui/material";
 
 import { iranSanse } from "@/lib/fonts";
-import { useAuth } from "../../lib/auth";
-
-// Allowed roles for dashboard access
-const ALLOWED_ROLES = ["super_admin", "admin", "editor", "moderator"];
+import { useAuth } from "../../hooks/useAuth";
+import { ALLOWED_ROLES } from "@/lib/constants";
+import Cookies from "js-cookie";
 
 export default function DashboardLayout({ children }) {
-    const { user, loading } = useAuth();
+    const { user, loading, logout } = useAuth();
     const router = useRouter();
+    const hasRedirected = useRef(false);
 
     useEffect(() => {
+        if (hasRedirected.current) return;
+
         if (!loading && !user) {
+            hasRedirected.current = true;
             router.push("/auth/login");
             return;
         }
@@ -24,11 +27,14 @@ export default function DashboardLayout({ children }) {
         if (!loading && user) {
             const userRole = user.role?.name || user.role;
             if (!ALLOWED_ROLES.includes(userRole)) {
-                // User doesn't have dashboard access
+                // User doesn't have dashboard access - clear token and logout
+                hasRedirected.current = true;
+                Cookies.remove("token");
+                logout();
                 router.push("/auth/login");
             }
         }
-    }, [user, loading, router]);
+    }, [user, loading, router, logout]);
 
     if (loading) {
         return (

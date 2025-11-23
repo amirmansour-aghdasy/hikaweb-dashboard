@@ -20,8 +20,11 @@ export const useApi = () => {
             },
             retry: 3,
             staleTime: options.staleTime || 5 * 60 * 1000,
+            cacheTime: options.cacheTime || 10 * 60 * 1000, // 10 minutes default cache
             refetchOnWindowFocus: false,
             enabled: options.enabled !== false,
+            // Use select to transform data and prevent unnecessary re-renders
+            select: options.select || undefined,
             onError: (error) => {
                 // Error toast is handled by api interceptor
                 if (options.onError) {
@@ -106,11 +109,21 @@ export const useApi = () => {
 
     const useDeleteData = (endpoint, options = {}) => {
         return useMutation({
-            mutationFn: async (id) => {
+            mutationFn: async (idOrObject) => {
+                // Support both direct ID (string/number) and object with id property
+                const id = typeof idOrObject === 'object' && idOrObject !== null && 'id' in idOrObject
+                    ? idOrObject.id
+                    : idOrObject;
                 const response = await api.delete(`${endpoint}/${id}`);
-                return response.data;
+                return { data: response.data, id };
             },
-            onSuccess: (data, id) => {
+            onSuccess: (result, idOrObject) => {
+                // Extract id from result or idOrObject
+                const id = result?.id || (typeof idOrObject === 'object' && idOrObject !== null && 'id' in idOrObject
+                    ? idOrObject.id
+                    : idOrObject);
+                const data = result?.data || result;
+                
                 // Invalidate related queries
                 const queryKey = options.queryKey || endpoint.split("/")[1] || "data";
                 queryClient.invalidateQueries({ 
@@ -131,7 +144,12 @@ export const useApi = () => {
                     options.onSuccess(data, id);
                 }
             },
-            onError: (error, id) => {
+            onError: (error, idOrObject) => {
+                // Extract id from idOrObject
+                const id = typeof idOrObject === 'object' && idOrObject !== null && 'id' in idOrObject
+                    ? idOrObject.id
+                    : idOrObject;
+                
                 // Error toast is handled by api interceptor
                 if (options.onError) {
                     options.onError(error, id);

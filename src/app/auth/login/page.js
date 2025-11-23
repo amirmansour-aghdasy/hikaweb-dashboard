@@ -17,8 +17,9 @@ import {
 } from "@mui/material";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 import { validateEmail } from "../../../lib/utils";
+import { ALLOWED_ROLES } from "@/lib/constants";
 import api from "@/lib/api";
 import Cookies from "js-cookie";
 import toast from "react-hot-toast";
@@ -29,7 +30,7 @@ export default function LoginPage() {
     const { login } = useAuth();
     const [tabValue, setTabValue] = useState(0); // 0: Password, 1: OTP, 2: Biometric
     const [formData, setFormData] = useState({
-        email: "",
+        emailOrPhone: "",
         password: "",
         otp: "",
     });
@@ -67,24 +68,28 @@ export default function LoginPage() {
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
-        setFormData({ email: formData.email, password: "", otp: "" });
+        setFormData({ emailOrPhone: formData.emailOrPhone, password: "", otp: "" });
         setErrors({});
         setMessage("");
         setOtpSent(false);
     };
 
-    const validateEmailField = () => {
+    const validateEmailOrPhoneField = () => {
         const newErrors = {};
-        if (!formData.email) {
-            newErrors.email = "ایمیل الزامی است";
-        } else if (!validateEmail(formData.email)) {
-            newErrors.email = "فرمت ایمیل نادرست است";
+        if (!formData.emailOrPhone) {
+            newErrors.emailOrPhone = "ایمیل یا شماره موبایل الزامی است";
+        } else {
+            const isEmail = validateEmail(formData.emailOrPhone);
+            const isPhone = /^(\+98|0)?9\d{9}$/.test(formData.emailOrPhone);
+            if (!isEmail && !isPhone) {
+                newErrors.emailOrPhone = "لطفاً ایمیل یا شماره موبایل معتبر وارد کنید";
+            }
         }
         return newErrors;
     };
 
     const validatePasswordForm = () => {
-        const newErrors = validateEmailField();
+        const newErrors = validateEmailOrPhoneField();
         if (!formData.password) {
             newErrors.password = "رمز عبور الزامی است";
         } else if (formData.password.length < 6) {
@@ -94,7 +99,7 @@ export default function LoginPage() {
     };
 
     const validateOTPForm = () => {
-        const newErrors = validateEmailField();
+        const newErrors = validateEmailOrPhoneField();
         if (!formData.otp) {
             newErrors.otp = "کد تایید الزامی است";
         } else if (formData.otp.length !== 6 || !/^\d+$/.test(formData.otp)) {
@@ -104,7 +109,7 @@ export default function LoginPage() {
     };
 
     const handleRequestOTP = async () => {
-        const validationErrors = validateEmailField();
+        const validationErrors = validateEmailOrPhoneField();
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
             return;
@@ -114,9 +119,15 @@ export default function LoginPage() {
         setMessage("");
 
         try {
-            const response = await api.post("/auth/dashboard/otp/request", {
-                email: formData.email,
-            });
+            // Determine if input is email or phone number
+            const isEmail = validateEmail(formData.emailOrPhone);
+            const isPhone = /^(\+98|0)?9\d{9}$/.test(formData.emailOrPhone);
+            
+            const requestBody = isEmail 
+                ? { email: formData.emailOrPhone }
+                : { phoneNumber: formData.emailOrPhone };
+
+            const response = await api.post("/auth/dashboard/otp/request", requestBody);
 
             if (response.data.success) {
                 setOtpSent(true);
@@ -150,10 +161,15 @@ export default function LoginPage() {
         setMessage("");
 
         try {
-            const response = await api.post("/auth/dashboard/otp/verify", {
-                email: formData.email,
-                otp: formData.otp,
-            });
+            // Determine if input is email or phone number
+            const isEmail = validateEmail(formData.emailOrPhone);
+            const isPhone = /^(\+98|0)?9\d{9}$/.test(formData.emailOrPhone);
+            
+            const requestBody = isEmail 
+                ? { email: formData.emailOrPhone, otp: formData.otp }
+                : { phoneNumber: formData.emailOrPhone, otp: formData.otp };
+
+            const response = await api.post("/auth/dashboard/otp/verify", requestBody);
 
             if (response.data.success) {
                 const { user, tokens } = response.data.data;
@@ -161,6 +177,15 @@ export default function LoginPage() {
 
                 if (!token) {
                     toast.error("خطا در دریافت توکن احراز هویت");
+                    return;
+                }
+
+                // Check if user has dashboard access
+                const userRole = user.role?.name || user.role;
+                
+                if (!ALLOWED_ROLES.includes(userRole)) {
+                    toast.error("شما دسترسی به پنل مدیریت ندارید");
+                    setMessage("شما دسترسی به پنل مدیریت ندارید");
                     return;
                 }
 
@@ -196,7 +221,15 @@ export default function LoginPage() {
         setLoading(true);
         setMessage("");
 
-        const result = await login(formData.email, formData.password);
+        // For password login, we still need email
+        const isEmail = validateEmail(formData.emailOrPhone);
+        if (!isEmail) {
+            setMessage("برای ورود با رمز عبور، لطفاً ایمیل خود را وارد کنید");
+            setLoading(false);
+            return;
+        }
+
+        const result = await login(formData.emailOrPhone, formData.password);
 
         if (!result.success) {
             setMessage(result.message);
@@ -206,9 +239,17 @@ export default function LoginPage() {
     };
 
     const handleBiometricLogin = async () => {
-        const validationErrors = validateEmailField();
+        const validationErrors = validateEmailOrPhoneField();
         if (Object.keys(validationErrors).length > 0) {
             setErrors(validationErrors);
+            return;
+        }
+
+        // For biometric login, we need email
+        const isEmail = validateEmail(formData.emailOrPhone);
+        if (!isEmail) {
+            setMessage("برای ورود با اثر انگشت، لطفاً ایمیل خود را وارد کنید");
+            setErrors({ emailOrPhone: "برای این روش ورود، ایمیل الزامی است" });
             return;
         }
 
@@ -224,7 +265,7 @@ export default function LoginPage() {
         try {
             // Get authentication options
             const optionsResponse = await api.post("/auth/webauthn/authenticate/options", {
-                email: formData.email,
+                email: formData.emailOrPhone,
             });
 
             if (!optionsResponse.data.success) {
@@ -238,7 +279,7 @@ export default function LoginPage() {
 
             // Verify authentication
             const verifyResponse = await api.post("/auth/webauthn/authenticate", {
-                email: formData.email,
+                email: formData.emailOrPhone,
                 response: authenticationResponse,
             });
 
@@ -248,6 +289,15 @@ export default function LoginPage() {
 
                 if (!token) {
                     toast.error("خطا در دریافت توکن احراز هویت");
+                    return;
+                }
+
+                // Check if user has dashboard access
+                const userRole = user.role?.name || user.role;
+                
+                if (!ALLOWED_ROLES.includes(userRole)) {
+                    toast.error("شما دسترسی به پنل مدیریت ندارید");
+                    setMessage("شما دسترسی به پنل مدیریت ندارید");
                     return;
                 }
 
@@ -329,10 +379,21 @@ export default function LoginPage() {
                                         name="email"
                                         type="email"
                                         autoComplete="username"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        error={!!errors.email}
-                                        helperText={errors.email}
+                                        value={formData.emailOrPhone}
+                                        onChange={(e) => {
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                emailOrPhone: e.target.value,
+                                            }));
+                                            if (errors.emailOrPhone) {
+                                                setErrors((prev) => ({
+                                                    ...prev,
+                                                    emailOrPhone: "",
+                                                }));
+                                            }
+                                        }}
+                                        error={!!errors.emailOrPhone}
+                                        helperText={errors.emailOrPhone}
                                         disabled={loading}
                                         variant="outlined"
                                     />
@@ -392,14 +453,14 @@ export default function LoginPage() {
                                 <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
                                     <TextField
                                         fullWidth
-                                        label="ایمیل"
-                                        name="email"
-                                        type="email"
+                                        label="ایمیل یا شماره موبایل"
+                                        name="emailOrPhone"
+                                        type="text"
                                         autoComplete="username"
-                                        value={formData.email}
+                                        value={formData.emailOrPhone}
                                         onChange={handleChange}
-                                        error={!!errors.email}
-                                        helperText={errors.email}
+                                        error={!!errors.emailOrPhone}
+                                        helperText={errors.emailOrPhone || "ایمیل یا شماره موبایل خود را وارد کنید"}
                                         disabled={loading || otpSent}
                                         variant="outlined"
                                     />
@@ -489,13 +550,13 @@ export default function LoginPage() {
                                 <TextField
                                     fullWidth
                                     label="ایمیل"
-                                    name="email"
+                                    name="emailOrPhone"
                                     type="email"
                                     autoComplete="username"
-                                    value={formData.email}
+                                    value={formData.emailOrPhone}
                                     onChange={handleChange}
-                                    error={!!errors.email}
-                                    helperText={errors.email}
+                                    error={!!errors.emailOrPhone}
+                                    helperText={errors.emailOrPhone}
                                     disabled={biometricLoading}
                                     variant="outlined"
                                 />

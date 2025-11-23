@@ -1,15 +1,17 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
-import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Card, CardContent } from "@mui/material";
+import { useState, useMemo, useEffect, Suspense, lazy } from "react";
+import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Card, CardContent, CircularProgress } from "@mui/material";
 import { SupportAgent, Edit, Delete, Add, Assignment, Reply, Close, CheckCircle, Person } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
-import TicketForm from "@/components/forms/TicketForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePageActions } from "@/hooks/usePageActions";
 import { formatDate, formatRelativeDate } from "@/lib/utils";
+
+// Lazy load TicketForm for better performance
+const TicketForm = lazy(() => import("@/components/forms/TicketForm"));
 
 const PRIORITY_CONFIG = {
     low: { label: "کم", color: "success", icon: "🟢" },
@@ -95,6 +97,7 @@ export default function TicketsPage() {
                     #{row.ticketNumber}
                 </Typography>
             ),
+            align: "center"
         },
         {
             field: "subject",
@@ -112,6 +115,7 @@ export default function TicketsPage() {
                     )}
                 </Box>
             ),
+            align: "left"
         },
         {
             field: "customer",
@@ -132,6 +136,7 @@ export default function TicketsPage() {
                     </Box>
                 </Box>
             ),
+            align: "left"
         },
         {
             field: "priority",
@@ -148,6 +153,7 @@ export default function TicketsPage() {
                     />
                 );
             },
+            align: "center"
         },
         {
             field: "status",
@@ -164,6 +170,7 @@ export default function TicketsPage() {
                     />
                 );
             },
+            align: "center"
         },
         {
             field: "assignee",
@@ -180,12 +187,14 @@ export default function TicketsPage() {
                 ) : (
                     <Chip label="تخصیص نیافته" size="small" variant="outlined" />
                 ),
+            align: "center"
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
             width: 150,
             type: "date",
+            align: "center"
         },
     ];
 
@@ -420,7 +429,9 @@ export default function TicketsPage() {
                     maxWidth="lg"
                     fullWidth
                 >
-                    <TicketForm ticket={editingTicket} onSave={handleSaveTicket} onCancel={handleSaveTicket} />
+                    <Suspense fallback={<Box display="flex" justifyContent="center" p={3}><CircularProgress /></Box>}>
+                        <TicketForm ticket={editingTicket} onSave={handleSaveTicket} onCancel={handleSaveTicket} />
+                    </Suspense>
                 </Modal>
 
                 {/* Delete Confirmation Dialog */}

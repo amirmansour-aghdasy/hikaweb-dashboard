@@ -73,10 +73,11 @@ export default function CarouselPage() {
             headerName: "تصویر",
             width: 120,
             render: (row) => (
-                <Avatar src={row.image} variant="rounded" sx={{ width: 80, height: 50 }}>
+                <Avatar src={row.image} variant="rounded" sx={{ width: 80, height: 50, mx: "auto" }}>
                     <Image />
                 </Avatar>
             ),
+            align: "center"
         },
         {
             field: "title",
@@ -94,6 +95,7 @@ export default function CarouselPage() {
                     )}
                 </Box>
             ),
+            align: "left"
         },
         {
             field: "position",
@@ -103,24 +105,28 @@ export default function CarouselPage() {
                 const config = POSITION_CONFIG[row.position] || POSITION_CONFIG.hero;
                 return <Chip label={config.label} size="small" color={config.color} variant="outlined" />;
             },
+            align: "center"
         },
         {
             field: "order",
             headerName: "ترتیب",
             width: 80,
             render: (row) => <Typography variant="caption">{row.order || row.orderIndex || 0}</Typography>,
+            align: "center"
         },
         {
             field: "status",
             headerName: "وضعیت",
             width: 120,
             type: "status",
+            align: "center"
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
             width: 150,
             type: "date",
+            align: "center"
         },
     ];
 

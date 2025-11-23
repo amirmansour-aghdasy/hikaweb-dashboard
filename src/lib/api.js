@@ -14,32 +14,57 @@ const api = axios.create({
 
 // CSRF Token Management
 let csrfToken = null;
+let csrfTokenPromise = null;
+let isFetchingCsrf = false;
 
 const getCsrfToken = async () => {
+    // Return cached token if available
     if (csrfToken) return csrfToken;
+    
+    // If already fetching, return the existing promise to prevent duplicate requests
+    if (isFetchingCsrf && csrfTokenPromise) {
+        return csrfTokenPromise;
+    }
     
     try {
         const token = Cookies.get("token");
         if (!token) return null;
         
-        const response = await axios.get(
+        isFetchingCsrf = true;
+        csrfTokenPromise = axios.get(
             `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1"}/auth/csrf-token`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
             }
-        );
+        ).then(response => {
+            if (response.data.success && response.data.data.csrfToken) {
+                csrfToken = response.data.data.csrfToken;
+                return csrfToken;
+            }
+            return null;
+        }).catch(error => {
+            // Don't log rate limit errors (429) - they're expected during high load
+            if (error.response?.status !== 429) {
+                console.error("Failed to get CSRF token:", error);
+            }
+            return null;
+        }).finally(() => {
+            isFetchingCsrf = false;
+            csrfTokenPromise = null;
+        });
         
-        if (response.data.success && response.data.data.csrfToken) {
-            csrfToken = response.data.data.csrfToken;
-            return csrfToken;
-        }
+        return await csrfTokenPromise;
     } catch (error) {
-        console.error("Failed to get CSRF token:", error);
+        isFetchingCsrf = false;
+        csrfTokenPromise = null;
+        // Don't log rate limit errors
+        if (error.response?.status !== 429) {
+            console.error("Failed to get CSRF token:", error);
+        }
+        return null;
     }
-    
-    return null;
 };
 
 // Request interceptor
@@ -103,14 +128,31 @@ api.interceptors.response.use(
             return Promise.reject(error);
         }
 
-        // Handle 403 Forbidden (CSRF token issue)
-        if (error.response?.status === 403 && error.response?.data?.message?.includes("CSRF")) {
-            csrfToken = null; // Reset CSRF token to fetch a new one
-            toast.error("خطای امنیتی. لطفاً دوباره تلاش کنید.");
+        // Handle 403 Forbidden
+        if (error.response?.status === 403) {
+            // Check if it's a CSRF token issue
+            if (error.response?.data?.message?.includes("CSRF")) {
+                csrfToken = null; // Reset CSRF token to fetch a new one
+                toast.error("خطای امنیتی. لطفاً دوباره تلاش کنید.");
+                return Promise.reject(error);
+            }
+            
+            // For other 403 errors (like dashboard access), silently handle
+            // Don't show toast for auth-related 403s (they're expected)
+            const isAuthEndpoint = error.config?.url?.includes('/auth/');
+            if (isAuthEndpoint) {
+                // Silently handle auth-related 403s (like /auth/me without proper access)
+                Cookies.remove("token");
+                csrfToken = null;
+                return Promise.reject(error);
+            }
+            
+            // For non-auth 403s, show error
+            toast.error(message || "شما دسترسی به این بخش ندارید");
             return Promise.reject(error);
         }
 
-        // Show error toast (but not for network errors on logout)
+        // Show error toast (but not for network errors on logout or auth errors)
         if (error.response?.status !== 401 && error.response?.status !== 403 && !(isLogoutRequest && isNetworkError)) {
             toast.error(message);
         }

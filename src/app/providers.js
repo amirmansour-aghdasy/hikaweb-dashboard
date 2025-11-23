@@ -7,7 +7,6 @@ import createCache from "@emotion/cache";
 import { CssBaseline } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
-import { AuthProvider } from "../lib/auth";
 import PWAInstallPrompt from "../components/ui/PWAInstallPrompt";
 
 // RTL cache
@@ -108,20 +107,18 @@ export function Providers({ children }) {
             <ThemeProvider theme={theme}>
                 <CssBaseline />
                 <QueryClientProvider client={queryClient}>
-                    <AuthProvider>
-                        {children}
-                        <PWAInstallPrompt />
-                        <Toaster
-                            position="top-center"
-                            toastOptions={{
-                                duration: 4000,
-                                style: {
-                                    background: "#363636",
-                                    color: "#fff",
-                                },
-                            }}
-                        />
-                    </AuthProvider>
+                    {children}
+                    <PWAInstallPrompt />
+                    <Toaster
+                        position="top-center"
+                        toastOptions={{
+                            duration: 4000,
+                            style: {
+                                background: "#363636",
+                                color: "#fff",
+                            },
+                        }}
+                    />
                 </QueryClientProvider>
             </ThemeProvider>
         </CacheProvider>

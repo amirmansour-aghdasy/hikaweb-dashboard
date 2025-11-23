@@ -253,7 +253,7 @@ export default function ImageEditor({ open, onClose, image, onSave }) {
                                 { name: "سپیا", filter: "sepia(100%)" },
                                 { name: "نوستالژی", filter: "sepia(50%) contrast(120%)" },
                             ].map((filter) => (
-                                <Grid item xs={6} sm={3} key={filter.name}>
+                                <Grid item size={{ xs: 6, sm: 3 }} key={filter.name}>
                                     <Box
                                         sx={{
                                             border: 1,

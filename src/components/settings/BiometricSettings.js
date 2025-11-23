@@ -74,6 +74,20 @@ export default function BiometricSettings() {
             return;
         }
 
+        // Check if device actually supports authenticators
+        if (typeof window !== "undefined" && window.PublicKeyCredential) {
+            try {
+                const available = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+                if (!available) {
+                    toast.error("دستگاه شما از احراز هویت بایومتریک پشتیبانی نمی‌کند. لطفاً از دستگاهی با قابلیت اثر انگشت یا Face ID استفاده کنید.");
+                    return;
+                }
+            } catch (error) {
+                // If check fails, still try to register (some browsers don't support this check)
+                console.warn("Could not check for platform authenticator availability:", error);
+            }
+        }
+
         setRegistering(true);
 
         try {
@@ -93,7 +107,7 @@ export default function BiometricSettings() {
                 throw new Error("گزینه‌های ثبت‌نام نامعتبر است");
             }
 
-            // Start registration with proper options
+            // Start registration with proper options and timeout
             const registrationResponse = await startRegistration({
                 ...options,
                 // Ensure challenge is present
@@ -105,7 +119,9 @@ export default function BiometricSettings() {
                     id: options.userID,
                     name: options.userName,
                     displayName: options.userDisplayName
-                }
+                },
+                // Add timeout to prevent hanging
+                timeout: 60000 // 60 seconds
             });
 
             // Verify registration

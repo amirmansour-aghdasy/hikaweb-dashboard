@@ -1,5 +1,5 @@
 "use client";
-import { useAuth } from "../lib/auth";
+import { useAuth } from "./useAuth";
 
 /**
  * Hook for checking user permissions

@@ -62,8 +62,8 @@ export default function UserForm({ user, onSave, onCancel }) {
                 status: user.status || "active",
                 avatar: user.avatar || "",
                 bio: user.bio || "",
-                isEmailVerified: user.isEmailVerified || false,
-                isPhoneNumberVerified: user.isPhoneNumberVerified || false,
+                isEmailVerified: user.isEmailVerified,
+                isPhoneNumberVerified: user.isPhoneNumberVerified,
                 password: "",
                 confirmPassword: "",
             });

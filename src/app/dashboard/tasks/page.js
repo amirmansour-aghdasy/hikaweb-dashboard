@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 import { Add, Assignment, CheckCircle, Cancel, Schedule, Person, Flag } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
+import PersianDatePicker from "@/components/ui/PersianDatePicker";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
 import { useApi } from "@/hooks/useApi";
@@ -188,6 +189,7 @@ export default function TasksPage() {
                     {row.title}
                 </Typography>
             ),
+            align: "left"
         },
         {
             field: "assignee",
@@ -201,30 +203,35 @@ export default function TasksPage() {
                     <Typography variant="body2">{row.assignee?.name || "-"}</Typography>
                 </Box>
             ),
+            align: "left"
         },
         {
             field: "status",
             headerName: "وضعیت",
             width: 140,
             render: (row) => <Chip label={STATUS_LABELS[row.status] || row.status} color={STATUS_COLORS[row.status] || "default"} size="small" />,
+            align: "center"
         },
         {
             field: "priority",
             headerName: "اولویت",
             width: 120,
             render: (row) => <Chip label={PRIORITY_LABELS[row.priority] || row.priority} color={PRIORITY_COLORS[row.priority] || "default"} size="small" icon={<Flag />} />,
+            align: "center"
         },
         {
             field: "dueDate",
             headerName: "مهلت",
             width: 150,
             render: (row) => <Typography variant="body2">{row.dueDate ? formatDate(row.dueDate) : "-"}</Typography>,
+            align: "center"
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
             width: 150,
             render: (row) => <Typography variant="body2">{formatDate(row.createdAt)}</Typography>,
+            align: "center"
         },
     ];
 
@@ -558,17 +565,15 @@ function TaskFormModal({ open, onClose, onSave, task }) {
                         </Select>
                     </FormControl>
 
-                    <TextField
+                    <PersianDatePicker
                         label="مهلت"
-                        type="date"
-                        value={formData.dueDate}
-                        onChange={(e) =>
+                        value={formData.dueDate ? new Date(formData.dueDate) : null}
+                        onChange={(date) =>
                             setFormData({
                                 ...formData,
-                                dueDate: e.target.value,
+                                dueDate: date ? date.toISOString().split('T')[0] : "",
                             })
                         }
-                        InputLabelProps={{ shrink: true }}
                         fullWidth
                     />
 

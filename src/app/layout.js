@@ -1,5 +1,6 @@
 import { iranSanse } from "@/lib/fonts";
 import { Providers } from "./providers";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import "./globals.css";
 
 export const metadata = {
@@ -41,7 +42,11 @@ export default function RootLayout({ children }) {
     return (
         <html lang="fa" dir="rtl">
             <body className={iranSanse.className} suppressHydrationWarning={true}>
-                <Providers>{children}</Providers>
+                <Providers>
+                    <ErrorBoundary>
+                        {children}
+                    </ErrorBoundary>
+                </Providers>
             </body>
         </html>
     );

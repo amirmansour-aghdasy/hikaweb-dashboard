@@ -411,14 +411,30 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                 <Controller
                                     name="startDate"
                                     control={control}
-                                    render={({ field }) => <TextField {...field} label="تاریخ شروع همکاری" type="date" InputLabelProps={{ shrink: true }} fullWidth />}
+                                    render={({ field }) => (
+                                        <PersianDatePicker
+                                            label="تاریخ شروع همکاری"
+                                            value={field.value}
+                                            onChange={(date) => field.onChange(date)}
+                                            error={!!errors.startDate}
+                                            helperText={errors.startDate?.message}
+                                            fullWidth
+                                        />
+                                    )}
                                 />
 
                                 <Controller
                                     name="endDate"
                                     control={control}
                                     render={({ field }) => (
-                                        <TextField {...field} label="تاریخ پایان همکاری" type="date" InputLabelProps={{ shrink: true }} fullWidth helperText="اختیاری - فقط در صورت پایان همکاری" />
+                                        <PersianDatePicker
+                                            label="تاریخ پایان همکاری"
+                                            value={field.value}
+                                            onChange={(date) => field.onChange(date)}
+                                            error={!!errors.endDate}
+                                            helperText={errors.endDate?.message || "اختیاری - فقط در صورت پایان همکاری"}
+                                            fullWidth
+                                        />
                                     )}
                                 />
                             </Stack>

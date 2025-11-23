@@ -38,7 +38,7 @@ export default function GalleryManager({ value = [], onChange, showAltText = tru
 
                     <Grid container spacing={2}>
                         {value.map((item, index) => (
-                            <Grid item xs={12} sm={6} md={4} key={item.id || index}>
+                            <Grid item size={{ xs: 12, sm: 6, md: 4 }} key={item.id || index}>
                                 <Paper sx={{ p: 2 }}>
                                     {/* Image Preview */}
                                     <Box sx={{ position: "relative", mb: 2 }}>

@@ -8,14 +8,22 @@ import {
     Tab,
     Tabs,
     Grid,
+    Divider,
 } from "@mui/material";
 import {
     Person,
     Security,
     Fingerprint,
+    Devices,
+    History,
 } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import BiometricSettings from "@/components/settings/BiometricSettings";
+import ProfileInfo from "@/components/profile/ProfileInfo";
+import ProfileAvatar from "@/components/profile/ProfileAvatar";
+import SecuritySettings from "@/components/profile/SecuritySettings";
+import ConnectedDevices from "@/components/profile/ConnectedDevices";
+import ActivityHistory from "@/components/profile/ActivityHistory";
 
 export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState(0);
@@ -25,8 +33,10 @@ export default function ProfilePage() {
     };
 
     const tabs = [
-        { label: "پروفایل", icon: <Person /> },
+        { label: "اطلاعات پروفایل", icon: <Person /> },
         { label: "امنیت", icon: <Security /> },
+        { label: "دستگاه‌های متصل", icon: <Devices /> },
+        { label: "تاریخچه فعالیت‌ها", icon: <History /> },
         { label: "احراز هویت بایومتریک", icon: <Fingerprint /> },
     ];
 
@@ -56,20 +66,24 @@ export default function ProfilePage() {
                                     sx={{
                                         borderRight: 1,
                                         borderColor: "divider",
-                                        minHeight: 400,
+                                        "& .MuiTab-root": {
+                                            alignItems: "flex-start",
+                                            textAlign: "left",
+                                            minHeight: 60,
+                                            px: 3,
+                                        },
                                     }}
                                 >
                                     {tabs.map((tab, index) => (
                                         <Tab
                                             key={index}
-                                            icon={tab.icon}
-                                            iconPosition="start"
-                                            label={tab.label}
-                                            sx={{
-                                                textAlign: "right",
-                                                alignItems: "flex-start",
-                                                minHeight: 64,
-                                            }}
+                                        
+                                            label={
+                                                <Box display="flex" alignItems="center" width="100%">
+                                                    <Box sx={{ mr: 2, color: "text.secondary" }}>{tab.icon}</Box>
+                                                    <Typography variant="body2">{tab.label}</Typography>
+                                                </Box>
+                                            }
                                         />
                                     ))}
                                 </Tabs>
@@ -84,29 +98,23 @@ export default function ProfilePage() {
                                 {/* Profile Tab */}
                                 {activeTab === 0 && (
                                     <Box>
-                                        <Typography variant="h6" gutterBottom>
-                                            اطلاعات پروفایل
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            این بخش به زودی اضافه خواهد شد
-                                        </Typography>
+                                        <ProfileAvatar />
+                                        <Divider sx={{ my: 4 }} />
+                                        <ProfileInfo />
                                     </Box>
                                 )}
 
                                 {/* Security Tab */}
-                                {activeTab === 1 && (
-                                    <Box>
-                                        <Typography variant="h6" gutterBottom>
-                                            تنظیمات امنیتی
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            این بخش به زودی اضافه خواهد شد
-                                        </Typography>
-                                    </Box>
-                                )}
+                                {activeTab === 1 && <SecuritySettings />}
+
+                                {/* Connected Devices Tab */}
+                                {activeTab === 2 && <ConnectedDevices />}
+
+                                {/* Activity History Tab */}
+                                {activeTab === 3 && <ActivityHistory />}
 
                                 {/* Biometric Settings Tab */}
-                                {activeTab === 2 && <BiometricSettings />}
+                                {activeTab === 4 && <BiometricSettings />}
                             </CardContent>
                         </Card>
                     </Grid>

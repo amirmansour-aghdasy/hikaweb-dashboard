@@ -27,6 +27,7 @@ import { useState, useEffect } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import MediaUploader from "../media/MediaUploader";
 import { useApi } from "../../hooks/useApi";
+import api from "../../lib/api";
 import { formatDate, formatRelativeDate } from "../../lib/utils";
 import toast from "react-hot-toast";
 
@@ -61,7 +62,8 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
 
     const createTicket = useCreateData("/tickets");
     const updateTicket = useUpdateData("/tickets");
-    const createResponse = useCreateData("/tickets/responses");
+    // Note: Backend uses /tickets/:id/messages, not /tickets/responses
+    // We'll handle this in onSubmit function
 
     // Fetch users for assignment
     const { data: usersData } = useFetchData("support-users", "/users?role=admin,support");
@@ -133,13 +135,11 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
 
         try {
             if (responseMode && ticket) {
-                // Create response
+                // Create response using correct endpoint: /tickets/:id/messages
                 if (data.responseText.trim()) {
-                    await createResponse.mutateAsync({
-                        ticketId: ticket._id,
-                        message: data.responseText,
-                        type: data.responseType,
-                        attachments: data.responseAttachments,
+                    await api.post(`/tickets/${ticket._id}/messages`, {
+                        content: data.responseText,
+                        isInternal: data.responseType === "internal" || data.responseType === "private",
                     });
                 }
 

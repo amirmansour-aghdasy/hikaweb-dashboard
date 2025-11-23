@@ -86,6 +86,7 @@ export default function ConsultationsPage() {
                     )}
                 </Box>
             ),
+            align: "left"
         },
         {
             field: "contact",
@@ -105,6 +106,7 @@ export default function ConsultationsPage() {
                     )}
                 </Box>
             ),
+            align: "left"
         },
         {
             field: "services",
@@ -126,6 +128,7 @@ export default function ConsultationsPage() {
                     )}
                 </Stack>
             ),
+            align: "left"
         },
         {
             field: "status",
@@ -135,6 +138,7 @@ export default function ConsultationsPage() {
                 const config = STATUS_CONFIG[row.status] || STATUS_CONFIG.pending;
                 return <Chip label={config.label} size="small" color={config.color} variant="outlined" />;
             },
+            align: "center"
         },
         {
             field: "assignee",
@@ -151,12 +155,14 @@ export default function ConsultationsPage() {
                 ) : (
                     <Chip label="تخصیص نیافته" size="small" variant="outlined" />
                 ),
+            align: "center"
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
             width: 150,
             type: "date",
+            align: "center"
         },
     ];
 

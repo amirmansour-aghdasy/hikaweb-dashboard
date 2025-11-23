@@ -1,15 +1,17 @@
 "use client";
-import { useState, useMemo } from "react";
-import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { useState, useMemo, Suspense, lazy } from "react";
+import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from "@mui/material";
 import { Article, Publish, UnpublishedSharp, Star, StarBorder } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
-import ArticleForm from "@/components/forms/ArticleForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePageActions } from "@/hooks/usePageActions";
 import { formatDate, getPersianValue, formatNumber } from "@/lib/utils";
+
+// Lazy load ArticleForm for better performance
+const ArticleForm = lazy(() => import("@/components/forms/ArticleForm"));
 
 export default function ArticlesPage({ params = {} }) {
     const [editingArticle, setEditingArticle] = useState(null);
@@ -66,10 +68,11 @@ export default function ArticlesPage({ params = {} }) {
             headerName: "تصویر",
             width: 80,
             render: (row) => (
-                <Avatar src={row.featuredImage} variant="rounded" sx={{ width: 40, height: 40 }}>
+                <Avatar src={row.featuredImage} variant="rounded" sx={{ width: 40, height: 40, mx: "auto" }}>
                     <Article />
                 </Avatar>
             ),
+            align: "center"
         },
         {
             field: "title",
@@ -80,6 +83,7 @@ export default function ArticlesPage({ params = {} }) {
                     {getPersianValue(row.title, "-")}
                 </Typography>
             ),
+            align: "left"
         },
         {
             field: "author",
@@ -93,6 +97,7 @@ export default function ArticlesPage({ params = {} }) {
                     <Typography variant="caption">{row.author?.name || "-"}</Typography>
                 </Box>
             ),
+            align: "center"
         },
         {
             field: "categories",
@@ -119,6 +124,7 @@ export default function ArticlesPage({ params = {} }) {
                     )}
                 </Stack>
             ),
+            align: "center"
         },
         {
             field: "status",
@@ -142,6 +148,7 @@ export default function ArticlesPage({ params = {} }) {
                     )}
                 </Stack>
             ),
+            align: "center"
         },
         {
             field: "metrics",
@@ -160,12 +167,14 @@ export default function ArticlesPage({ params = {} }) {
                     </Typography>
                 </Box>
             ),
+            align: "center"
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
             width: 150,
             type: "date",
+            align: "center"
         },
     ];
 
@@ -343,7 +352,9 @@ export default function ArticlesPage({ params = {} }) {
                     maxWidth="lg"
                     fullWidth
                 >
-                    <ArticleForm article={editingArticle} onSave={handleSaveArticle} onCancel={handleSaveArticle} />
+                    <Suspense fallback={<Box display="flex" justifyContent="center" p={3}><CircularProgress /></Box>}>
+                        <ArticleForm article={editingArticle} onSave={handleSaveArticle} onCancel={handleSaveArticle} />
+                    </Suspense>
                 </Modal>
 
                 {/* Delete Confirmation Dialog */}

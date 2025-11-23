@@ -21,6 +21,7 @@ import {
     Card,
     CardContent,
 } from "@mui/material";
+import PersianDatePicker from "@/components/ui/PersianDatePicker";
 import {
     Add,
     Event,
@@ -193,6 +194,7 @@ export default function CalendarPage() {
                     )}
                 </Box>
             ),
+            align: "left"
         },
         {
             field: "type",
@@ -205,19 +207,21 @@ export default function CalendarPage() {
                     size="small"
                 />
             ),
+            align: "center"
         },
         {
             field: "startDate",
             headerName: "تاریخ شروع",
             width: 180,
             render: (row) => (
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
                     <Schedule fontSize="small" color="action" />
                     <Typography variant="body2">
                         {formatDate(row.startDate)}
                     </Typography>
                 </Box>
             ),
+            align: "center"
         },
         {
             field: "endDate",
@@ -228,6 +232,7 @@ export default function CalendarPage() {
                     {row.endDate ? formatDate(row.endDate) : "-"}
                 </Typography>
             ),
+            align: "center"
         },
         {
             field: "location",
@@ -245,6 +250,7 @@ export default function CalendarPage() {
                     <Typography variant="body2" color="textSecondary">-</Typography>
                 )
             ),
+            align: "center"
         },
         {
             field: "organizer",
@@ -260,6 +266,7 @@ export default function CalendarPage() {
                     </Typography>
                 </Box>
             ),
+            align: "left"
         },
     ];
 
@@ -290,7 +297,7 @@ export default function CalendarPage() {
                 {/* Statistics Cards */}
                 {statistics && (
                     <Grid container spacing={2} sx={{ mb: 3 }}>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -300,7 +307,7 @@ export default function CalendarPage() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -312,7 +319,7 @@ export default function CalendarPage() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -324,7 +331,7 @@ export default function CalendarPage() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -346,7 +353,7 @@ export default function CalendarPage() {
                         </Typography>
                         <Grid container spacing={2}>
                             {upcomingEvents.map((event) => (
-                                <Grid item xs={12} sm={6} md={4} key={event._id}>
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={event._id}>
                                     <Card>
                                         <CardContent>
                                             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "start", mb: 1 }}>
@@ -589,34 +596,30 @@ function EventFormModal({ open, onClose, onSave, event }) {
                     />
 
                     <Grid container spacing={2}>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                label="تاریخ و زمان شروع"
-                                type="datetime-local"
-                                value={formData.startDate}
-                                onChange={(e) =>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <PersianDatePicker
+                                label="تاریخ شروع"
+                                value={formData.startDate ? new Date(formData.startDate) : null}
+                                onChange={(date) =>
                                     setFormData({
                                         ...formData,
-                                        startDate: e.target.value,
+                                        startDate: date ? date.toISOString() : "",
                                     })
                                 }
-                                InputLabelProps={{ shrink: true }}
                                 required
                                 fullWidth
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                label="تاریخ و زمان پایان"
-                                type="datetime-local"
-                                value={formData.endDate}
-                                onChange={(e) =>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <PersianDatePicker
+                                label="تاریخ پایان"
+                                value={formData.endDate ? new Date(formData.endDate) : null}
+                                onChange={(date) =>
                                     setFormData({
                                         ...formData,
-                                        endDate: e.target.value,
+                                        endDate: date ? date.toISOString() : "",
                                     })
                                 }
-                                InputLabelProps={{ shrink: true }}
                                 fullWidth
                             />
                         </Grid>

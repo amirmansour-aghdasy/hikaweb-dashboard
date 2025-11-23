@@ -66,10 +66,11 @@ export default function PortfolioPage() {
             headerName: "تصویر",
             width: 80,
             render: (row) => (
-                <Avatar src={row.featuredImage} variant="rounded" sx={{ width: 40, height: 40 }}>
+                <Avatar src={row.featuredImage} variant="rounded" sx={{ width: 40, height: 40, mx: "auto" }}>
                     <Work />
                 </Avatar>
             ),
+            align: "center"
         },
         {
             field: "title",
@@ -88,6 +89,7 @@ export default function PortfolioPage() {
                     )}
                 </Box>
             ),
+            align: "left"
         },
         {
             field: "client",
@@ -105,6 +107,7 @@ export default function PortfolioPage() {
                     )}
                 </Box>
             ),
+            align: "center"
         },
         {
             field: "categories",
@@ -131,18 +134,21 @@ export default function PortfolioPage() {
                     )}
                 </Stack>
             ),
+            align: "center"
         },
         {
             field: "status",
             headerName: "وضعیت",
             width: 120,
             type: "status",
+            align: "center"
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
             width: 150,
             type: "date",
+            align: "center"
         },
     ];
 

@@ -449,7 +449,16 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                         <Controller
                                             name="project.completedAt"
                                             control={control}
-                                            render={({ field }) => <TextField {...field} label="تاریخ تکمیل" type="date" InputLabelProps={{ shrink: true }} fullWidth />}
+                                            render={({ field }) => (
+                                                <PersianDatePicker
+                                                    label="تاریخ تکمیل"
+                                                    value={field.value}
+                                                    onChange={(date) => field.onChange(date)}
+                                                    error={!!errors.project?.completedAt}
+                                                    helperText={errors.project?.completedAt?.message}
+                                                    fullWidth
+                                                />
+                                            )}
                                         />
                                     </Grid>
 

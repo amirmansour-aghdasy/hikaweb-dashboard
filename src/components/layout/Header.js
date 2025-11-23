@@ -2,7 +2,7 @@
 import { AppBar, Toolbar, IconButton, Typography, Box, Menu, MenuItem, Avatar, Divider, Button, useTheme, useMediaQuery } from "@mui/material";
 import { Menu as MenuIcon, AccountCircle, Logout, Settings, Person, Language } from "@mui/icons-material";
 import { useState } from "react";
-import { useAuth } from "../../lib/auth";
+import { useAuth } from "../../hooks/useAuth";
 import { useRouter } from "next/navigation";
 import NotificationButton from "./NotificationButton";
 import NotificationsMenu from "./NotificationsMenu";

@@ -31,7 +31,9 @@ export default function MediaUploader({
     gallery = false, 
     single = false, 
     showPreview = true,
-    onUploadSuccess = null
+    onUploadSuccess = null,
+    bucketId = null,
+    folder = '/'
 }) {
     const [uploading, setUploading] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
@@ -87,6 +89,14 @@ export default function MediaUploader({
     const uploadFile = async (file) => {
         const formData = new FormData();
         formData.append("file", file);
+        
+        // Add bucket and folder if provided
+        if (bucketId) {
+            formData.append("bucketId", bucketId);
+        }
+        if (folder && folder !== '/') {
+            formData.append("folder", folder);
+        }
 
         setUploading(true);
         setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }));
@@ -95,6 +105,23 @@ export default function MediaUploader({
             const token = document.cookie.match(/token=([^;]+)/)?.[1];
             if (!token) {
                 throw new Error("لطفاً ابتدا وارد شوید");
+            }
+
+            // Get CSRF token
+            let csrfToken = null;
+            try {
+                const csrfResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1'}/auth/csrf-token`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (csrfResponse.ok) {
+                    const csrfData = await csrfResponse.json();
+                    csrfToken = csrfData.data?.csrfToken;
+                }
+            } catch (csrfError) {
+                // CSRF token is optional, continue without it
+                console.warn("Could not fetch CSRF token:", csrfError);
             }
 
             const xhr = new XMLHttpRequest();
@@ -130,10 +157,13 @@ export default function MediaUploader({
                                 caption: result.data.media.caption?.fa || "",
                             };
 
-                            if (single) {
-                                onChange([newFile]);
-                            } else {
-                                onChange([...value, newFile]);
+                            // Only call onChange if it's provided (it's optional)
+                            if (onChange && typeof onChange === 'function') {
+                                if (single) {
+                                    onChange([newFile]);
+                                } else {
+                                    onChange([...value, newFile]);
+                                }
                             }
 
                             // Call onUploadSuccess callback if provided
@@ -158,8 +188,12 @@ export default function MediaUploader({
                 throw new Error("خطا در ارتباط با سرور");
             });
 
-            xhr.open('POST', '/api/v1/media/upload');
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+            xhr.open('POST', `${apiBaseUrl}/media/upload`);
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            if (csrfToken) {
+                xhr.setRequestHeader('X-CSRF-Token', csrfToken);
+            }
             xhr.send(formData);
         } catch (error) {
             console.error("Upload error:", error);
@@ -188,12 +222,16 @@ export default function MediaUploader({
 
     const removeFile = (index) => {
         const newFiles = value.filter((_, i) => i !== index);
-        onChange(newFiles);
+        if (onChange && typeof onChange === 'function') {
+            onChange(newFiles);
+        }
     };
 
     const updateFileInfo = (index, updates) => {
         const newFiles = value.map((file, i) => (i === index ? { ...file, ...updates } : file));
-        onChange(newFiles);
+        if (onChange && typeof onChange === 'function') {
+            onChange(newFiles);
+        }
     };
 
     const openPreview = (file) => {
@@ -293,7 +331,7 @@ export default function MediaUploader({
                     ) : (
                         <Grid container spacing={2}>
                             {value.map((file, index) => (
-                                <Grid item xs={12} sm={6} md={4} key={file.id || index}>
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={file.id || index}>
                                     <Paper sx={{ p: 2 }}>
                                         <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
                                             {getFileIcon(file.type)}

@@ -372,7 +372,7 @@ export default function TeamPage() {
                 ) : (
                     <Grid container spacing={3}>
                         {teamData?.data?.map((member) => (
-                            <Grid item xs={12} sm={6} md={4} lg={3} key={member._id}>
+                            <Grid item size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={member._id}>
                                 <TeamMemberCard member={member} />
                             </Grid>
                         ))}

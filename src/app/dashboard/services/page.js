@@ -66,10 +66,11 @@ export default function ServicesPage() {
             headerName: "آیکون",
             width: 80,
             render: (row) => (
-                <Avatar src={row.icon || row.featuredImage} sx={{ width: 40, height: 40, bgcolor: "primary.main" }}>
+                <Avatar src={row.icon || row.featuredImage} sx={{ width: 40, height: 40, bgcolor: "primary.main", mx: "auto" }}>
                     <BusinessCenter />
                 </Avatar>
             ),
+            align: "center"
         },
         {
             field: "name",
@@ -88,6 +89,7 @@ export default function ServicesPage() {
                     )}
                 </Box>
             ),
+            align: "left"
         },
         {
             field: "categories",
@@ -114,6 +116,7 @@ export default function ServicesPage() {
                     )}
                 </Stack>
             ),
+            align: "left"
         },
         {
             field: "pricing",
@@ -134,18 +137,21 @@ export default function ServicesPage() {
                     )}
                 </Box>
             ),
+            align: "center"
         },
         {
             field: "status",
             headerName: "وضعیت",
             width: 120,
             type: "status",
+            align: "center"
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
             width: 150,
             type: "date",
+            align: "center"
         },
     ];
 

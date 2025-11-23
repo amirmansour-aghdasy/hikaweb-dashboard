@@ -1,3 +1,5 @@
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+
 export const API_ENDPOINTS = {
     AUTH: {
         LOGIN: "/auth/login",
@@ -22,12 +24,21 @@ export const API_ENDPOINTS = {
     CAROUSEL: "/carousel",
 };
 
-export const USER_ROLES = {
+// User Roles
+export const ROLES = {
     SUPER_ADMIN: "super_admin",
     ADMIN: "admin",
     EDITOR: "editor",
     MODERATOR: "moderator",
 };
+
+// Allowed roles for dashboard access
+export const ALLOWED_ROLES = [
+    ROLES.SUPER_ADMIN,
+    ROLES.ADMIN,
+    ROLES.EDITOR,
+    ROLES.MODERATOR,
+];
 
 export const STATUS_OPTIONS = [
     { value: "active", label: "فعال" },

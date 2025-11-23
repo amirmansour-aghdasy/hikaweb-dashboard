@@ -91,15 +91,22 @@ export const useDataStore = create((set, get) => ({
         })),
 
     removeItem: (type, id) =>
-        set((state) => ({
-            cache: {
-                ...state.cache,
-                [type]: {
-                    ...state.cache[type],
-                    data: state.cache[type].data.filter((item) => item._id !== id),
+        set((state) => {
+            // Check if cache entry exists for this type
+            if (!state.cache[type] || !state.cache[type].data) {
+                return state; // Return unchanged state if cache doesn't exist
+            }
+            
+            return {
+                cache: {
+                    ...state.cache,
+                    [type]: {
+                        ...state.cache[type],
+                        data: state.cache[type].data.filter((item) => item._id !== id && item.id !== id),
+                    },
                 },
-            },
-        })),
+            };
+        }),
 
     setFilter: (type, filters) =>
         set((state) => ({

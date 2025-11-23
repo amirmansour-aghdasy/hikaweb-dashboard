@@ -52,6 +52,7 @@ import {
 import Layout from "@/components/layout/Layout";
 import MediaUploader from "@/components/media/MediaUploader";
 import GalleryManager from "@/components/media/GalleryManager";
+import BucketManager from "@/components/media/BucketManager";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatDate, formatFileSize } from "@/lib/utils";
@@ -69,6 +70,9 @@ export default function MediaPage() {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(25);
     const [statistics, setStatistics] = useState(null);
+    const [selectedBucket, setSelectedBucket] = useState(null);
+    const [selectedFolder, setSelectedFolder] = useState("/");
+    const [showBucketManager, setShowBucketManager] = useState(false);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -85,8 +89,14 @@ export default function MediaPage() {
         if (typeFilter !== "all") {
             params.append("fileType", typeFilter);
         }
+        if (selectedBucket) {
+            params.append("bucket", selectedBucket);
+        }
+        if (selectedFolder && selectedFolder !== "/") {
+            params.append("folder", selectedFolder);
+        }
         return params.toString();
-    }, [debouncedSearchTerm, typeFilter, page, limit]);
+    }, [debouncedSearchTerm, typeFilter, page, limit, selectedBucket, selectedFolder]);
 
     const endpoint = `/media${queryParams ? `?${queryParams}` : ""}`;
 
@@ -201,6 +211,8 @@ export default function MediaPage() {
             </Layout>
         );
     }
+    
+    console.log(files);
 
     return (
         <Layout>
@@ -208,7 +220,7 @@ export default function MediaPage() {
                 {/* Statistics Cards */}
                 {statistics && (
                     <Grid container spacing={2} sx={{ mb: 3 }}>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -218,7 +230,7 @@ export default function MediaPage() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -230,7 +242,7 @@ export default function MediaPage() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -242,7 +254,7 @@ export default function MediaPage() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -267,16 +279,38 @@ export default function MediaPage() {
                             مدیریت فایل‌ها، تصاویر و اسناد
                         </Typography>
                     </Box>
-                    <Button variant="contained" startIcon={<CloudUpload />} onClick={() => setUploadDialogOpen(true)}>
-                        آپلود فایل
-                    </Button>
+                    <Stack direction="row" spacing={2}>
+                        <Button
+                            variant="outlined"
+                            startIcon={<Folder />}
+                            onClick={() => setShowBucketManager(!showBucketManager)}
+                        >
+                            {showBucketManager ? "مخفی کردن" : "مدیریت Bucket"}
+                        </Button>
+                        <Button variant="contained" startIcon={<CloudUpload />} onClick={() => setUploadDialogOpen(true)}>
+                            آپلود فایل
+                        </Button>
+                    </Stack>
                 </Box>
 
-                {/* Controls */}
-                <Card sx={{ mb: 3 }}>
+                {/* Bucket Manager and Content */}
+                <Grid container spacing={3}>
+                    {showBucketManager && (
+                        <Grid size={{ xs: 12, md: 3 }}>
+                            <BucketManager
+                                selectedBucket={selectedBucket}
+                                onBucketSelect={setSelectedBucket}
+                                selectedFolder={selectedFolder}
+                                onFolderSelect={setSelectedFolder}
+                            />
+                        </Grid>
+                    )}
+                    <Grid size={{ xs: 12, md: showBucketManager ? 9 : 12 }}>
+                        {/* Controls */}
+                        <Card sx={{ mb: 3 }}>
                     <CardContent>
                         <Grid container spacing={2} alignItems="center">
-                            <Grid item xs={12} md={4}>
+                            <Grid size={{ xs: 12, md: 4 }}>
                                 <TextField
                                     fullWidth
                                     size="small"
@@ -289,7 +323,7 @@ export default function MediaPage() {
                                 />
                             </Grid>
 
-                            <Grid item xs={12} md={3}>
+                            <Grid size={{ xs: 12, md: 3 }}>
                                 <FormControl fullWidth size="small">
                                     <InputLabel>نوع فایل</InputLabel>
                                     <Select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} label="نوع فایل">
@@ -302,7 +336,7 @@ export default function MediaPage() {
                                 </FormControl>
                             </Grid>
 
-                            <Grid item xs={12} md={5}>
+                            <Grid size={{ xs: 12, md: 5 }}>
                                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                                     <Box>
                                         {selectedFiles.length > 0 && (
@@ -333,17 +367,19 @@ export default function MediaPage() {
                                 هیچ فایلی یافت نشد
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                                برای شروع، اولین فایل خود را آپلود کنید
+                                {selectedBucket
+                                    ? `در bucket انتخاب شده و پوشه "${selectedFolder}" فایلی وجود ندارد`
+                                    : "برای شروع، اولین فایل خود را آپلود کنید"}
                             </Typography>
                             <Button variant="contained" startIcon={<CloudUpload />} onClick={() => setUploadDialogOpen(true)}>
                                 آپلود فایل
                             </Button>
                         </CardContent>
                     </Card>
-                ) : (
-                    <Grid container spacing={2}>
-                        {files.map((file) => (
-                            <Grid item xs={12} sm={6} md={4} lg={3} key={file._id}>
+                        ) : (
+                            <Grid container spacing={2}>
+                                {files.map((file) => (
+                            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={file._id}>
                                 <Card
                                     sx={{
                                         cursor: "pointer",
@@ -355,7 +391,7 @@ export default function MediaPage() {
                                     onContextMenu={(e) => handleContextMenu(e, file)}
                                 >
                                     {/* File Preview */}
-                                    {file.type?.startsWith("image/") ? (
+                                    {file.fileType?.startsWith("image") ? (
                                         <CardMedia component="img" height="200" image={file.url} alt={file.originalName} sx={{ objectFit: "cover" }} />
                                     ) : (
                                         <Box
@@ -418,6 +454,8 @@ export default function MediaPage() {
                         ))}
                     </Grid>
                 )}
+                    </Grid>
+                </Grid>
 
                 {/* Context Menu */}
                 <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
@@ -445,12 +483,21 @@ export default function MediaPage() {
                 <Dialog open={uploadDialogOpen} onClose={() => setUploadDialogOpen(false)} maxWidth="lg" fullWidth>
                     <DialogTitle>آپلود فایل جدید</DialogTitle>
                     <DialogContent>
+                        <Box sx={{ mb: 2 }}>
+                            <Alert severity="info">
+                                {selectedBucket
+                                    ? `فایل‌ها در bucket انتخاب شده و پوشه "${selectedFolder}" آپلود می‌شوند`
+                                    : "فایل‌ها در bucket پیش‌فرض آپلود می‌شوند"}
+                            </Alert>
+                        </Box>
                         <MediaUploader
                             onUploadSuccess={() => {
                                 setUploadDialogOpen(false);
                                 refetch();
                             }}
                             multiple
+                            bucketId={selectedBucket}
+                            folder={selectedFolder}
                         />
                     </DialogContent>
                     <DialogActions>
@@ -504,11 +551,11 @@ function EditFileForm({ file, onSave }) {
     return (
         <form onSubmit={handleSubmit}>
             <Grid container spacing={3}>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <TextField fullWidth label="نام فایل" value={formData.originalName} onChange={(e) => setFormData((prev) => ({ ...prev, originalName: e.target.value }))} />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <TextField
                         fullWidth
                         label="متن جایگزین (Alt)"
@@ -518,11 +565,11 @@ function EditFileForm({ file, onSave }) {
                     />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <TextField fullWidth multiline rows={3} label="توضیحات" value={formData.description} onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))} />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <TextField
                         fullWidth
                         label="برچسب‌ها"
@@ -532,7 +579,7 @@ function EditFileForm({ file, onSave }) {
                     />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <Button type="submit" variant="contained" fullWidth>
                         ذخیره تغییرات
                     </Button>

@@ -1,9 +1,11 @@
 "use client";
+import { useState } from "react";
 import { Menu, MenuItem, Box, Typography, Divider, Button, IconButton, Chip, Avatar, useTheme } from "@mui/material";
 import { useApi } from "../../hooks/useApi";
 import { formatRelativeDate } from "../../lib/utils";
 import { CheckCircle, Delete } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
+import NotificationDetailModal from "../notifications/NotificationDetailModal";
 import toast from "react-hot-toast";
 
 const NOTIFICATION_ICONS = {
@@ -20,6 +22,9 @@ const NOTIFICATION_ICONS = {
     article_published: "📝",
     service_created: "⚙️",
     portfolio_created: "🎨",
+    task_assigned: "📝",
+    task_updated: "🔄",
+    calendar_event: "📅",
     system_alert: "⚠️",
     other: "📢",
 };
@@ -28,6 +33,8 @@ export default function NotificationsMenu({ anchorEl, open, onClose }) {
     const theme = useTheme();
     const router = useRouter();
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
+    const [selectedNotification, setSelectedNotification] = useState(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
     // Fetch notifications
     const { data: notificationsData, refetch } = useFetchData(
@@ -71,16 +78,40 @@ export default function NotificationsMenu({ anchorEl, open, onClose }) {
     };
 
     const handleNotificationClick = (notification) => {
-        // Mark as read if not already read
-        if (!notification.isRead) {
-            handleMarkAsRead(notification._id, { stopPropagation: () => {} });
-        }
+        setSelectedNotification(notification);
+        setIsDetailModalOpen(true);
+    };
 
-        // Navigate to related entity if actionUrl exists
-        if (notification.actionUrl) {
-            router.push(notification.actionUrl);
-            onClose();
+    const handleDetailModalClose = () => {
+        setIsDetailModalOpen(false);
+        setSelectedNotification(null);
+    };
+
+    const handleDetailModalMarkAsRead = async (notificationId) => {
+        try {
+            await markAsRead.mutateAsync({
+                id: notificationId,
+                data: { isRead: true },
+            });
+            refetch();
+        } catch (error) {
+            console.error("Error marking notification as read:", error);
         }
+    };
+
+    const handleDetailModalDelete = async (notificationId) => {
+        try {
+            await deleteNotification.mutateAsync(notificationId);
+            refetch();
+        } catch (error) {
+            console.error("Error deleting notification:", error);
+        }
+    };
+
+    const handleDetailModalNavigate = (url) => {
+        router.push(url);
+        onClose();
+        handleDetailModalClose();
     };
 
     const notifications = notificationsData?.data || [];
@@ -116,7 +147,7 @@ export default function NotificationsMenu({ anchorEl, open, onClose }) {
                     </Typography>
                 </Box>
             ) : (
-                <>
+                <Box>
                     {notifications.map((notification) => (
                         <MenuItem
                             key={notification._id}
@@ -177,14 +208,22 @@ export default function NotificationsMenu({ anchorEl, open, onClose }) {
                             </Box>
                         </MenuItem>
                     ))}
-                    <Divider />
-                    <MenuItem sx={{ justifyContent: "center", py: 1.5 }}>
-                        <Button size="small" variant="outlined" onClick={() => router.push("/dashboard/notifications")}>
-                            مشاهده همه اعلان‌ها
-                        </Button>
-                    </MenuItem>
-                </>
+                </Box>
             )}
+            <Divider />
+            <MenuItem sx={{ justifyContent: "center", py: 1.5 }}>
+                <Button size="small" variant="outlined" onClick={() => router.push("/dashboard/notifications")}>
+                    مشاهده همه اعلان‌ها
+                </Button>
+            </MenuItem>
+            <NotificationDetailModal
+                notification={selectedNotification}
+                open={isDetailModalOpen}
+                onClose={handleDetailModalClose}
+                onMarkAsRead={handleDetailModalMarkAsRead}
+                onDelete={handleDetailModalDelete}
+                onNavigate={handleDetailModalNavigate}
+            />
         </Menu>
     );
 }
