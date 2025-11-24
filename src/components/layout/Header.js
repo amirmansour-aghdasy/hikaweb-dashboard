@@ -67,10 +67,6 @@ export default function Header({ onMenuClick, sidebarOpen }) {
                     </Typography>
 
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        {/* Language Toggle */}
-                        <IconButton color="inherit">
-                            <Language />
-                        </IconButton>
 
                         {/* Notifications */}
                         <NotificationButton onOpen={handleNotificationOpen} />
@@ -78,6 +74,7 @@ export default function Header({ onMenuClick, sidebarOpen }) {
                         {/* Profile Menu */}
                         <IconButton onClick={handleProfileMenuOpen} sx={{ p: 0.5 }}>
                             <Avatar
+                                src={user?.avatar || undefined}
                                 sx={{
                                     width: 36,
                                     height: 36,
@@ -85,7 +82,7 @@ export default function Header({ onMenuClick, sidebarOpen }) {
                                     fontSize: "1rem",
                                 }}
                             >
-                                {user?.name?.charAt(0) || "A"}
+                                {!user?.avatar && (user?.name?.charAt(0) || "A")}
                             </Avatar>
                         </IconButton>
                     </Box>

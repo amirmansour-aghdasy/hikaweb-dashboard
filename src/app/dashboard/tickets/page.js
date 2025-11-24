@@ -336,7 +336,7 @@ export default function TicketsPage() {
                 {/* Statistics Cards */}
                 {statistics?.overview && (
                     <Grid container spacing={2} sx={{ mb: 3 }}>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -346,7 +346,7 @@ export default function TicketsPage() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -358,7 +358,7 @@ export default function TicketsPage() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>
@@ -370,7 +370,7 @@ export default function TicketsPage() {
                                 </CardContent>
                             </Card>
                         </Grid>
-                        <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                             <Card>
                                 <CardContent>
                                     <Typography color="textSecondary" gutterBottom>

@@ -97,10 +97,10 @@ export default function CalendarPage() {
     } = useFetchData(["calendar", queryParams], endpoint);
 
     // Fetch upcoming events
-    const { data: upcomingEventsData } = useFetchData("calendar-upcoming", "/calendar/upcoming?limit=5");
+    const { data: upcomingEventsData, refetch: refetchUpcoming } = useFetchData("calendar-upcoming", "/calendar/upcoming?limit=5");
 
     // Fetch statistics
-    const { data: statisticsData } = useFetchData("calendar-statistics", "/calendar/statistics");
+    const { data: statisticsData, refetch: refetchStatistics } = useFetchData("calendar-statistics", "/calendar/statistics");
 
     useEffect(() => {
         if (statisticsData?.success && statisticsData.data) {
@@ -141,6 +141,8 @@ export default function CalendarPage() {
             setIsDeleteDialogOpen(false);
             setEventToDelete(null);
             refetch();
+            refetchStatistics();
+            refetchUpcoming();
         } catch (error) {
             toast.error(error.response?.data?.message || "خطا در حذف رویداد");
         }
@@ -158,6 +160,8 @@ export default function CalendarPage() {
             setIsModalOpen(false);
             setEditingEvent(null);
             refetch();
+            refetchStatistics();
+            refetchUpcoming();
         } catch (error) {
             toast.error(error.response?.data?.message || "خطا در ذخیره رویداد");
         }

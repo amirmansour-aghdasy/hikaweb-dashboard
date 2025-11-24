@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
     Box,
     Dialog,
@@ -12,7 +12,6 @@ import {
     Card,
     CardMedia,
     CardContent,
-    CardActionArea,
     Typography,
     IconButton,
     Chip,
@@ -23,7 +22,6 @@ import {
     Select,
     MenuItem,
     Stack,
-    Checkbox,
     Tooltip,
     CircularProgress,
     Alert,
@@ -41,6 +39,7 @@ import {
     Description,
     Close,
     CheckCircle,
+    CheckCircleOutline,
     Add,
     Folder,
     FolderOpen,
@@ -79,6 +78,7 @@ export default function MediaLibrary({
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(24);
     const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
+    const searchInputRef = useRef(null);
 
     const debouncedSearch = useDebounce(searchTerm, 500);
     const { useFetchData, useDeleteData } = useApi();
@@ -112,6 +112,18 @@ export default function MediaLibrary({
 
     const mediaItems = mediaData?.data || [];
     const pagination = mediaData?.pagination || {};
+
+    // Focus on search input when dialog opens to prevent aria-hidden warning
+    useEffect(() => {
+        if (open && activeTab === 0) {
+            const timer = setTimeout(() => {
+                if (searchInputRef.current) {
+                    searchInputRef.current.focus();
+                }
+            }, 200);
+            return () => clearTimeout(timer);
+        }
+    }, [open, activeTab]);
 
     const handleSelect = (item) => {
         if (multiple) {
@@ -180,8 +192,6 @@ export default function MediaLibrary({
             maxWidth="lg" 
             fullWidth 
             sx={{ "& .MuiDialog-paper": { height: "90vh" } }}
-            disableEnforceFocus
-            disableAutoFocus
         >
             <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: 1, borderColor: "divider" }}>
                 {title}
@@ -206,6 +216,7 @@ export default function MediaLibrary({
                         <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
                             <Stack direction="row" spacing={2} alignItems="center">
                                 <TextField
+                                    inputRef={searchInputRef}
                                     size="small"
                                     placeholder="جستجو..."
                                     value={searchTerm}
@@ -246,7 +257,7 @@ export default function MediaLibrary({
                                     {mediaItems.map((item) => {
                                         const isSelected = selectedItems.find((i) => i._id === item._id);
                                         return (
-                                            <Grid item size={{ xs: 6, sm: 4, md: 3 }} key={item._id}>
+                                            <Grid size={{ xs: 6, sm: 4, md: 3 }} key={item._id}>
                                                 <Card
                                                     sx={{
                                                         position: "relative",
@@ -257,73 +268,78 @@ export default function MediaLibrary({
                                                     }}
                                                     onClick={() => handleSelect(item)}
                                                 >
-                                                    <CardActionArea>
-                                                        {/* Selection Checkbox */}
+                                                    {/* Selection Checkbox */}
+                                                    <Box
+                                                        sx={{
+                                                            position: "absolute",
+                                                            top: 8,
+                                                            left: 8,
+                                                            zIndex: 1,
+                                                            bgcolor: "background.paper",
+                                                            borderRadius: "50%",
+                                                            display: "flex",
+                                                            alignItems: "center",
+                                                            justifyContent: "center",
+                                                        }}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleSelect(item);
+                                                        }}
+                                                    >
+                                                        {isSelected ? (
+                                                            <CheckCircle color="primary" />
+                                                        ) : (
+                                                            <CheckCircleOutline color="action" />
+                                                        )}
+                                                    </Box>
+
+                                                    {/* Delete Button */}
+                                                    <IconButton
+                                                        size="small"
+                                                        sx={{
+                                                            position: "absolute",
+                                                            top: 8,
+                                                            right: 8,
+                                                            zIndex: 1,
+                                                            bgcolor: "background.paper",
+                                                            "&:hover": { bgcolor: "error.light", color: "error.main" },
+                                                        }}
+                                                        onClick={(e) => handleDelete(item, e)}
+                                                    >
+                                                        <Delete fontSize="small" />
+                                                    </IconButton>
+
+                                                    {/* Media Preview */}
+                                                    {item.fileType === "image" ? (
+                                                        <CardMedia
+                                                            component="img"
+                                                            height="150"
+                                                            image={item.thumbnailUrl || item.url}
+                                                            alt={item.originalName}
+                                                            sx={{ objectFit: "cover" }}
+                                                        />
+                                                    ) : (
                                                         <Box
                                                             sx={{
-                                                                position: "absolute",
-                                                                top: 8,
-                                                                left: 8,
-                                                                zIndex: 1,
-                                                                bgcolor: "background.paper",
-                                                                borderRadius: "50%",
+                                                                height: 150,
+                                                                display: "flex",
+                                                                alignItems: "center",
+                                                                justifyContent: "center",
+                                                                bgcolor: "grey.100",
                                                             }}
                                                         >
-                                                            {isSelected ? (
-                                                                <CheckCircle color="primary" />
-                                                            ) : (
-                                                                <Checkbox checked={false} />
-                                                            )}
+                                                            {getFileIcon(item.mimeType)}
                                                         </Box>
+                                                    )}
 
-                                                        {/* Delete Button */}
-                                                        <IconButton
-                                                            size="small"
-                                                            sx={{
-                                                                position: "absolute",
-                                                                top: 8,
-                                                                right: 8,
-                                                                zIndex: 1,
-                                                                bgcolor: "background.paper",
-                                                                "&:hover": { bgcolor: "error.light", color: "error.main" },
-                                                            }}
-                                                            onClick={(e) => handleDelete(item, e)}
-                                                        >
-                                                            <Delete fontSize="small" />
-                                                        </IconButton>
-
-                                                        {/* Media Preview */}
-                                                        {item.fileType === "image" ? (
-                                                            <CardMedia
-                                                                component="img"
-                                                                height="150"
-                                                                image={item.thumbnailUrl || item.url}
-                                                                alt={item.originalName}
-                                                                sx={{ objectFit: "cover" }}
-                                                            />
-                                                        ) : (
-                                                            <Box
-                                                                sx={{
-                                                                    height: 150,
-                                                                    display: "flex",
-                                                                    alignItems: "center",
-                                                                    justifyContent: "center",
-                                                                    bgcolor: "grey.100",
-                                                                }}
-                                                            >
-                                                                {getFileIcon(item.mimeType)}
-                                                            </Box>
-                                                        )}
-
-                                                        <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
-                                                            <Typography variant="caption" noWrap title={item.originalName}>
-                                                                {item.originalName}
-                                                            </Typography>
-                                                            <Typography variant="caption" color="text.secondary" display="block">
-                                                                {formatFileSize(item.size)}
-                                                            </Typography>
-                                                        </CardContent>
-                                                    </CardActionArea>
+                                                    <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
+                                                        <Typography variant="caption" noWrap title={item.originalName}>
+                                                            {item.originalName}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary" display="block">
+                                                            {formatFileSize(item.size)}
+                                                        </Typography>
+                                                    </CardContent>
                                                 </Card>
                                             </Grid>
                                         );

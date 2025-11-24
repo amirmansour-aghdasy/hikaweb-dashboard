@@ -23,7 +23,7 @@ import {
     AccordionDetails,
 } from "@mui/material";
 import { Save, Cancel, SupportAgent, Person, Flag, Assignment, Reply, Send, AttachFile, ExpandMore, Schedule, History } from "@mui/icons-material";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import MediaUploader from "../media/MediaUploader";
 import { useApi } from "../../hooks/useApi";
@@ -65,8 +65,13 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
     // Note: Backend uses /tickets/:id/messages, not /tickets/responses
     // We'll handle this in onSubmit function
 
-    // Fetch users for assignment
-    const { data: usersData } = useFetchData("support-users", "/users?role=admin,support");
+    // Fetch users for assignment - backend supports comma-separated roles
+    const usersEndpoint = useMemo(() => {
+        const params = new URLSearchParams();
+        params.append("role", "admin,support");
+        return `/users?${params.toString()}`;
+    }, []);
+    const { data: usersData } = useFetchData("support-users", usersEndpoint);
 
     const {
         control,

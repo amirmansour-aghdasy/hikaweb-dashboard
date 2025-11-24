@@ -22,6 +22,7 @@ import {
     Alert,
     List,
     ListItem,
+    ListItemButton,
     ListItemText,
     ListItemSecondaryAction,
     Breadcrumbs,
@@ -170,34 +171,37 @@ export default function BucketManager({ selectedBucket, onBucketSelect, selected
                             {buckets.map((bucket) => (
                                 <ListItem
                                     key={bucket._id}
-                                    button
-                                    selected={selectedBucket === bucket._id}
-                                    onClick={() => handleBucketSelect(bucket._id)}
-                                    sx={{
-                                        borderRadius: 1,
-                                        mb: 0.5,
-                                        "&.Mui-selected": {
-                                            bgcolor: "primary.light",
-                                            "&:hover": {
-                                                bgcolor: "primary.light",
-                                            },
-                                        },
-                                    }}
+                                    disablePadding
+                                    sx={{ mb: 0.5 }}
                                 >
-                                    <Storage sx={{ mr: 2, color: "primary.main" }} />
-                                    <ListItemText
-                                        primary={bucket.displayName}
-                                        secondary={
-                                            <Box>
-                                                <Typography variant="caption" display="block">
-                                                    {bucket.name} • {bucket.region}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {bucket.totalFiles} فایل • {formatFileSize(bucket.totalSize || 0)}
-                                                </Typography>
-                                            </Box>
-                                        }
-                                    />
+                                    <ListItemButton
+                                        selected={selectedBucket === bucket._id}
+                                        onClick={() => handleBucketSelect(bucket._id)}
+                                        sx={{
+                                            borderRadius: 1,
+                                            "&.Mui-selected": {
+                                                bgcolor: "primary.light",
+                                                "&:hover": {
+                                                    bgcolor: "primary.light",
+                                                },
+                                            },
+                                        }}
+                                    >
+                                        <Storage sx={{ mr: 2, color: "primary.main" }} />
+                                        <ListItemText
+                                            primary={bucket.displayName}
+                                            secondary={
+                                                <>
+                                                    <Typography variant="caption" component="span" display="block">
+                                                        {bucket.name} • {bucket.region}
+                                                    </Typography>
+                                                    <Typography variant="caption" component="span" display="block" color="text.secondary">
+                                                        {bucket.totalFiles} فایل • {formatFileSize(bucket.totalSize || 0)}
+                                                    </Typography>
+                                                </>
+                                            }
+                                        />
+                                    </ListItemButton>
                                     <ListItemSecondaryAction>
                                         <IconButton
                                             edge="end"
@@ -274,34 +278,38 @@ export default function BucketManager({ selectedBucket, onBucketSelect, selected
                         ) : (
                             <List>
                                 {folderPath !== "/" && (
-                                    <ListItem
-                                        button
-                                        onClick={handleFolderUp}
-                                        sx={{ borderRadius: 1, mb: 0.5 }}
-                                    >
-                                        <FolderOpen sx={{ mr: 2, color: "text.secondary" }} />
-                                        <ListItemText primary=".." secondary="بازگشت" />
+                                    <ListItem disablePadding sx={{ mb: 0.5 }}>
+                                        <ListItemButton
+                                            onClick={handleFolderUp}
+                                            sx={{ borderRadius: 1 }}
+                                        >
+                                            <FolderOpen sx={{ mr: 2, color: "text.secondary" }} />
+                                            <ListItemText primary=".." secondary="بازگشت" />
+                                        </ListItemButton>
                                     </ListItem>
                                 )}
                                 {folders.map((folder, index) => (
                                     <ListItem
                                         key={index}
-                                        button
-                                        selected={selectedFolder === folder}
-                                        onClick={() => handleFolderClick(folder)}
-                                        sx={{
-                                            borderRadius: 1,
-                                            mb: 0.5,
-                                            "&.Mui-selected": {
-                                                bgcolor: "action.selected",
-                                            },
-                                        }}
+                                        disablePadding
+                                        sx={{ mb: 0.5 }}
                                     >
-                                        <Folder sx={{ mr: 2, color: "primary.main" }} />
-                                        <ListItemText
-                                            primary={folder.split("/").filter(Boolean).pop() || folder}
-                                            secondary={folder}
-                                        />
+                                        <ListItemButton
+                                            selected={selectedFolder === folder}
+                                            onClick={() => handleFolderClick(folder)}
+                                            sx={{
+                                                borderRadius: 1,
+                                                "&.Mui-selected": {
+                                                    bgcolor: "action.selected",
+                                                },
+                                            }}
+                                        >
+                                            <Folder sx={{ mr: 2, color: "primary.main" }} />
+                                            <ListItemText
+                                                primary={folder.split("/").filter(Boolean).pop() || folder}
+                                                secondary={folder}
+                                            />
+                                        </ListItemButton>
                                     </ListItem>
                                 ))}
                             </List>

@@ -1,5 +1,5 @@
 "use client";
-import { Drawer, List, ListItem, ListItemIcon, ListItemText, ListItemButton, Box, Typography, Divider, Collapse, useTheme } from "@mui/material";
+import { Drawer, List, ListItem, ListItemIcon, ListItemText, ListItemButton, Box, Typography, Divider, Collapse, useTheme, Avatar } from "@mui/material";
 import {
     Dashboard,
     People,
@@ -181,22 +181,18 @@ export default function Sidebar({ open, onClose, isMobile }) {
             {/* User Info */}
             <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Box
+                    <Avatar
+                        src={user?.avatar || undefined}
                         sx={{
                             width: 40,
                             height: 40,
-                            borderRadius: "50%",
                             bgcolor: "primary.main",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "white",
                             fontSize: "1.2rem",
                             fontWeight: "bold",
                         }}
                     >
-                        {user?.name?.charAt(0) || "A"}
-                    </Box>
+                        {!user?.avatar && (user?.name?.charAt(0) || "A")}
+                    </Avatar>
                     <Box sx={{ flex: 1 }}>
                         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                             {user?.name || "مدیر سیستم"}

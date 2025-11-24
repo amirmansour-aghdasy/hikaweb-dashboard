@@ -104,7 +104,7 @@ export default function MediaPage() {
     const { data: mediaData, isLoading, refetch } = useFetchData(["media", queryParams], endpoint);
 
     // Fetch statistics
-    const { data: statisticsData } = useFetchData("media-statistics", "/media/statistics");
+    const { data: statisticsData, refetch: refetchStatistics } = useFetchData("media-statistics", "/media/statistics");
 
     useEffect(() => {
         if (statisticsData?.success && statisticsData.data) {
@@ -115,13 +115,19 @@ export default function MediaPage() {
     // Update media
     const updateMedia = useUpdateData("/media", {
         successMessage: "فایل با موفقیت به‌روزرسانی شد",
-        onSuccess: () => refetch(),
+        onSuccess: () => {
+            refetch();
+            refetchStatistics();
+        },
     });
 
     // Delete media
     const deleteMedia = useDeleteData("/media", {
         successMessage: "فایل با موفقیت حذف شد",
-        onSuccess: () => refetch(),
+        onSuccess: () => {
+            refetch();
+            refetchStatistics();
+        },
     });
 
     const files = mediaData?.data || [];
@@ -181,15 +187,15 @@ export default function MediaPage() {
     };
 
     const getFileIcon = (type) => {
-        if (type?.startsWith("image/")) return <Image />;
-        if (type?.startsWith("video/")) return <VideoFile />;
+        if (type?.startsWith("image")) return <Image />;
+        if (type?.startsWith("video")) return <VideoFile />;
         if (type === "application/pdf") return <PictureAsPdf />;
         return <Description />;
     };
 
     const getFileTypeColor = (type) => {
-        if (type?.startsWith("image/")) return "primary";
-        if (type?.startsWith("video/")) return "secondary";
+        if (type?.startsWith("image")) return "primary";
+        if (type?.startsWith("video")) return "secondary";
         if (type === "application/pdf") return "error";
         return "default";
     };
@@ -212,8 +218,6 @@ export default function MediaPage() {
         );
     }
     
-    console.log(files);
-
     return (
         <Layout>
             <Box sx={{ p: 3 }}>
@@ -261,13 +265,14 @@ export default function MediaPage() {
                                         حجم کل
                                     </Typography>
                                     <Typography variant="h4" color="info.main">
-                                        {formatFileSize(statistics.totalSize || 0)}
+                                        {((statistics.totalSize || 0) / (1024 * 1024)).toFixed(2)} مگابایت
                                     </Typography>
                                 </CardContent>
                             </Card>
                         </Grid>
                     </Grid>
                 )}
+
 
                 {/* Header */}
                 <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
@@ -376,9 +381,9 @@ export default function MediaPage() {
                             </Button>
                         </CardContent>
                     </Card>
-                        ) : (
-                            <Grid container spacing={2}>
-                                {files.map((file) => (
+                ) : viewMode === "grid" ? (
+                    <Grid container spacing={2}>
+                        {files.map((file) => (
                             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={file._id}>
                                 <Card
                                     sx={{
@@ -403,7 +408,7 @@ export default function MediaPage() {
                                                 bgcolor: "grey.100",
                                             }}
                                         >
-                                            {getFileIcon(file.type)}
+                                            {getFileIcon(file.fileType)}
                                         </Box>
                                     )}
 
@@ -415,7 +420,7 @@ export default function MediaPage() {
                                             {formatFileSize(file.size)} • {formatDate(file.createdAt)}
                                         </Typography>
                                         <Box sx={{ mt: 1 }}>
-                                            <Chip label={file.type?.split("/")[0] || "unknown"} size="small" color={getFileTypeColor(file.type)} variant="outlined" />
+                                            <Chip label={file.fileType?.split("/")[0] || "unknown"} size="small" color={getFileTypeColor(file.fileType)} variant="outlined" />
                                         </Box>
                                     </CardContent>
 
@@ -453,6 +458,108 @@ export default function MediaPage() {
                             </Grid>
                         ))}
                     </Grid>
+                ) : (
+                    <Card>
+                        <CardContent sx={{ p: 0 }}>
+                            {files.map((file) => (
+                                <Box
+                                    key={file._id}
+                                    sx={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        p: 2,
+                                        borderBottom: 1,
+                                        borderColor: "divider",
+                                        cursor: "pointer",
+                                        bgcolor: selectedFiles.includes(file._id) ? "action.selected" : "transparent",
+                                        "&:hover": {
+                                            bgcolor: "action.hover",
+                                        },
+                                    }}
+                                    onClick={() => handleFileSelect(file._id)}
+                                    onContextMenu={(e) => handleContextMenu(e, file)}
+                                >
+                                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, flex: 1 }}>
+                                        {/* File Preview/Icon */}
+                                        <Box
+                                            sx={{
+                                                width: 80,
+                                                height: 80,
+                                                display: "flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                bgcolor: "grey.100",
+                                                borderRadius: 1,
+                                                overflow: "hidden",
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            {file.fileType?.startsWith("image") ? (
+                                                <CardMedia
+                                                    component="img"
+                                                    image={file.url}
+                                                    alt={file.originalName}
+                                                    sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                                />
+                                            ) : (
+                                                getFileIcon(file.fileType)
+                                            )}
+                                        </Box>
+
+                                        {/* File Info */}
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                            <Typography variant="subtitle2" noWrap>
+                                                {file.originalName}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" display="block">
+                                                {formatFileSize(file.size)} • {formatDate(file.createdAt)}
+                                            </Typography>
+                                            <Box sx={{ mt: 0.5 }}>
+                                                <Chip
+                                                    label={file.fileType?.split("/")[0] || "unknown"}
+                                                    size="small"
+                                                    color={getFileTypeColor(file.fileType)}
+                                                    variant="outlined"
+                                                />
+                                            </Box>
+                                        </Box>
+
+                                        {/* Actions */}
+                                        <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
+                                            <IconButton
+                                                size="small"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEdit(file);
+                                                }}
+                                            >
+                                                <Edit />
+                                            </IconButton>
+                                            <IconButton
+                                                size="small"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDownload(file);
+                                                }}
+                                            >
+                                                <Download />
+                                            </IconButton>
+                                            <IconButton
+                                                size="small"
+                                                color="error"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(file);
+                                                }}
+                                            >
+                                                <Delete />
+                                            </IconButton>
+                                        </Box>
+                                    </Box>
+                                </Box>
+                            ))}
+                        </CardContent>
+                    </Card>
                 )}
                     </Grid>
                 </Grid>
@@ -494,6 +601,7 @@ export default function MediaPage() {
                             onUploadSuccess={() => {
                                 setUploadDialogOpen(false);
                                 refetch();
+                                refetchStatistics();
                             }}
                             multiple
                             bucketId={selectedBucket}

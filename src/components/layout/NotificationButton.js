@@ -25,7 +25,7 @@ export default function NotificationButton({ onOpen }) {
     }, [countData]);
 
     return (
-        <IconButton color="inherit" onClick={onOpen}>
+        <IconButton color="primary" onClick={onOpen}>
             <Badge badgeContent={unreadCount > 0 ? unreadCount : null} color="error">
                 <Notifications />
             </Badge>
