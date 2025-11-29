@@ -27,6 +27,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import MediaUploader from "../media/MediaUploader";
 import { useApi } from "../../hooks/useApi";
+import { useAuth } from "../../hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import api from "../../lib/api";
 import { formatDate, formatRelativeDate } from "../../lib/utils";
 import toast from "react-hot-toast";
@@ -57,11 +59,17 @@ const CATEGORY_OPTIONS = [
 export default function TicketForm({ ticket, onSave, onCancel }) {
     const [loading, setLoading] = useState(false);
     const [responseMode, setResponseMode] = useState(false);
+    const { user } = useAuth();
+    const queryClient = useQueryClient();
 
     const { useCreateData, useUpdateData, useFetchData } = useApi();
 
-    const createTicket = useCreateData("/tickets");
-    const updateTicket = useUpdateData("/tickets");
+    const createTicket = useCreateData("/tickets", {
+        queryKey: "tickets"
+    });
+    const updateTicket = useUpdateData("/tickets", {
+        queryKey: "tickets"
+    });
     // Note: Backend uses /tickets/:id/messages, not /tickets/responses
     // We'll handle this in onSubmit function
 
@@ -119,8 +127,8 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                 description: ticket.description || "",
                 priority: ticket.priority || "normal",
                 category: ticket.category || "general",
-                status: ticket.status || "open",
-                assignee: ticket.assignee?._id || "",
+                status: ticket.ticketStatus || ticket.status || "open",
+                assignee: (ticket.assignedTo?._id || ticket.assignee?._id || ticket.assignedTo || ticket.assignee) || "",
                 customerName: ticket.customer?.name || "",
                 customerEmail: ticket.customer?.email || "",
                 customerPhone: ticket.customer?.phone || "",
@@ -146,20 +154,39 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                         content: data.responseText,
                         isInternal: data.responseType === "internal" || data.responseType === "private",
                     });
+                    // Invalidate tickets queries after adding message
+                    queryClient.invalidateQueries({ 
+                        queryKey: ["tickets"],
+                        exact: false 
+                    });
+                    queryClient.invalidateQueries({ 
+                        queryKey: ["tickets-statistics"],
+                        exact: false 
+                    });
                 }
 
-                // Update ticket if status changed
-                const updateData = {
-                    status: data.status,
-                    priority: data.priority,
-                    assignee: data.assignee,
-                    internalNotes: data.internalNotes,
-                };
+                // Update ticket if status, priority, or assignee changed
+                const updateData = {};
+                if (data.status && data.status !== (ticket.ticketStatus || ticket.status)) {
+                    updateData.ticketStatus = data.status;
+                }
+                if (data.priority && data.priority !== ticket.priority) {
+                    updateData.priority = data.priority;
+                }
+                if (data.assignee !== (ticket.assignedTo?._id || ticket.assignedTo)) {
+                    updateData.assignedTo = data.assignee || null;
+                }
+                if (data.internalNotes !== undefined) {
+                    updateData.internalNotes = data.internalNotes;
+                }
 
-                await updateTicket.mutateAsync({
-                    id: ticket._id,
-                    data: updateData,
-                });
+                // Only update if there are changes
+                if (Object.keys(updateData).length > 0) {
+                    await updateTicket.mutateAsync({
+                        id: ticket._id,
+                        data: updateData,
+                    });
+                }
 
                 toast.success("پاسخ ارسال شد و تیکت به‌روزرسانی شد");
             } else {
@@ -168,18 +195,11 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                     subject: data.subject,
                     description: data.description,
                     priority: data.priority,
-                    category: data.category,
-                    status: data.status,
-                    assignee: data.assignee,
-                    customer: {
-                        name: data.customerName,
-                        email: data.customerEmail,
-                        phone: data.customerPhone,
-                    },
-                    attachments: data.attachments,
-                    internalNotes: data.internalNotes,
-                    tags: data.tags,
-                    estimatedTime: data.estimatedTime,
+                    department: data.category, // Backend uses 'department' not 'category'
+                    ticketStatus: data.status,
+                    assignedTo: data.assignee || null,
+                    attachments: data.attachments || [],
+                    tags: data.tags || [],
                 };
 
                 await createTicket.mutateAsync(ticketData);
@@ -271,7 +291,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                         color={PRIORITY_OPTIONS.find((p) => p.value === ticket.priority)?.color}
                                         size="small"
                                     />
-                                    <Chip label={STATUS_OPTIONS.find((s) => s.value === ticket.status)?.label} size="small" variant="outlined" />
+                                    <Chip label={STATUS_OPTIONS.find((s) => s.value === (ticket.ticketStatus || ticket.status))?.label} size="small" variant="outlined" />
                                 </Stack>
                             </Grid>
                         </Grid>

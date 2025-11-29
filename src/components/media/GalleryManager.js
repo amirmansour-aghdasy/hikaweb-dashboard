@@ -38,25 +38,47 @@ export default function GalleryManager({ value = [], onChange, showAltText = tru
 
                     <Grid container spacing={2}>
                         {value.map((item, index) => (
-                            <Grid item size={{ xs: 12, sm: 6, md: 4 }} key={item.id || index}>
-                                <Paper sx={{ p: 2 }}>
+                            <Grid item size={{ xs: 12, sm: 6, md: 4 }} key={item.id || item.url || index}>
+                                <Paper 
+                                    sx={{ 
+                                        p: 2,
+                                        "&:hover": {
+                                            boxShadow: 3,
+                                        }
+                                    }}
+                                >
                                     {/* Image Preview */}
                                     <Box sx={{ position: "relative", mb: 2 }}>
-                                        {item.type?.startsWith("image/") ? (
-                                            <img
-                                                src={item.url}
-                                                alt={item.alt}
-                                                style={{
+                                        {item.type?.startsWith("image/") && item.url ? (
+                                            <Box
+                                                sx={{
                                                     width: "100%",
-                                                    height: 150,
-                                                    objectFit: "cover",
-                                                    borderRadius: 4,
+                                                    height: 200,
+                                                    borderRadius: 1,
+                                                    overflow: "hidden",
+                                                    bgcolor: "grey.100",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
                                                 }}
-                                            />
+                                            >
+                                                <img
+                                                    src={item.url}
+                                                    alt={item.alt || "تصویر"}
+                                                    style={{
+                                                        width: "100%",
+                                                        height: "100%",
+                                                        objectFit: "cover",
+                                                    }}
+                                                    onError={(e) => {
+                                                        e.target.style.display = "none";
+                                                    }}
+                                                />
+                                            </Box>
                                         ) : (
                                             <Box
                                                 sx={{
-                                                    height: 150,
+                                                    height: 200,
                                                     display: "flex",
                                                     alignItems: "center",
                                                     justifyContent: "center",
@@ -64,7 +86,9 @@ export default function GalleryManager({ value = [], onChange, showAltText = tru
                                                     borderRadius: 1,
                                                 }}
                                             >
-                                                <Typography variant="body2">Video File</Typography>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    {item.type?.startsWith("video/") ? "فایل ویدیو" : "فایل"}
+                                                </Typography>
                                             </Box>
                                         )}
 
@@ -120,9 +144,21 @@ export default function GalleryManager({ value = [], onChange, showAltText = tru
                                     )}
 
                                     {/* File Info */}
-                                    <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-                                        <Chip label={`${(item.size / 1024 / 1024).toFixed(2)} MB`} size="small" variant="outlined" />
-                                        <Chip label={item.type?.split("/")[1] || "Unknown"} size="small" variant="outlined" />
+                                    <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                        {item.size && !isNaN(item.size) && (
+                                            <Chip 
+                                                label={`${(item.size / 1024 / 1024).toFixed(2)} MB`} 
+                                                size="small" 
+                                                variant="outlined" 
+                                            />
+                                        )}
+                                        {item.type && (
+                                            <Chip 
+                                                label={item.type?.split("/")[1] || "Unknown"} 
+                                                size="small" 
+                                                variant="outlined" 
+                                            />
+                                        )}
                                     </Box>
                                 </Paper>
                             </Grid>

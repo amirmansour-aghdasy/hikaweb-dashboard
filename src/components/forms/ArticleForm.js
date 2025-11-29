@@ -13,12 +13,15 @@ import toast from "react-hot-toast";
 
 export default function ArticleForm({ article, onSave, onCancel }) {
     const [loading, setLoading] = useState(false);
-    const [previewMode, setPreviewMode] = useState(false);
 
     const { useCreateData, useUpdateData } = useApi();
 
-    const createArticle = useCreateData("/articles");
-    const updateArticle = useUpdateData("/articles");
+    const createArticle = useCreateData("/articles", {
+        queryKey: "articles"
+    });
+    const updateArticle = useUpdateData("/articles", {
+        queryKey: "articles"
+    });
 
     const {
         control,
@@ -57,21 +60,34 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                   )
                 : [];
             
+            // Normalize multi-lang fields to ensure they're always objects
+            const normalizeMultiLang = (value) => {
+                if (!value) return { fa: "", en: "" };
+                if (typeof value === 'string') return { fa: value, en: "" };
+                if (typeof value === 'object') {
+                    return {
+                        fa: value.fa || "",
+                        en: value.en || ""
+                    };
+                }
+                return { fa: "", en: "" };
+            };
+            
             reset({
-                title: article.title || { fa: "", en: "" },
-                slug: article.slug || { fa: "", en: "" },
-                excerpt: article.excerpt || { fa: "", en: "" },
-                content: article.content || { fa: "", en: "" },
+                title: normalizeMultiLang(article.title),
+                slug: normalizeMultiLang(article.slug),
+                excerpt: normalizeMultiLang(article.excerpt),
+                content: normalizeMultiLang(article.content),
                 featuredImage: article.featuredImage || "",
                 categories: categoriesValue,
                 tags: article.tags || { fa: [], en: [] },
                 isPublished: article.isPublished || false,
                 isFeatured: article.isFeatured || false,
                 allowComments: article.allowComments !== false,
-                metaTitle: article.seo?.metaTitle || { fa: "", en: "" },
-                metaDescription: article.seo?.metaDescription || { fa: "", en: "" },
+                metaTitle: normalizeMultiLang(article.seo?.metaTitle),
+                metaDescription: normalizeMultiLang(article.seo?.metaDescription),
                 metaKeywords: article.seo?.metaKeywords || { fa: [], en: [] },
-            });
+            }, { keepDefaultValues: false });
         } else {
             // Reset to default when no article
             reset({
@@ -88,7 +104,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                 metaTitle: { fa: "", en: "" },
                 metaDescription: { fa: "", en: "" },
                 metaKeywords: { fa: [], en: [] },
-            });
+            }, { keepDefaultValues: false });
         }
     }, [article, reset]);
 
@@ -116,14 +132,85 @@ export default function ArticleForm({ article, onSave, onCancel }) {
         setLoading(true);
 
         try {
+            console.log("Form data before processing:", data);
+            
+            // Convert categories to strings (ObjectIds)
+            const categories = Array.isArray(data.categories)
+                ? data.categories.map(cat => {
+                    // If it's an object with _id, use _id; otherwise use the value directly
+                    if (typeof cat === 'object' && cat !== null) {
+                        return cat._id || cat.id || String(cat);
+                    }
+                    return String(cat);
+                })
+                : [];
+
+            // Build SEO object - only include fields that have non-empty values
+            const seo = {};
+            if (data.metaTitle) {
+                const metaTitle = {};
+                if (data.metaTitle.fa?.trim()) metaTitle.fa = data.metaTitle.fa.trim();
+                if (data.metaTitle.en?.trim()) metaTitle.en = data.metaTitle.en.trim();
+                if (Object.keys(metaTitle).length > 0) seo.metaTitle = metaTitle;
+            }
+            if (data.metaDescription) {
+                const metaDescription = {};
+                if (data.metaDescription.fa?.trim()) metaDescription.fa = data.metaDescription.fa.trim();
+                if (data.metaDescription.en?.trim()) metaDescription.en = data.metaDescription.en.trim();
+                if (Object.keys(metaDescription).length > 0) seo.metaDescription = metaDescription;
+            }
+            if (data.metaKeywords) {
+                const metaKeywords = {};
+                if (Array.isArray(data.metaKeywords.fa) && data.metaKeywords.fa.length > 0) {
+                    metaKeywords.fa = data.metaKeywords.fa;
+                }
+                if (Array.isArray(data.metaKeywords.en) && data.metaKeywords.en.length > 0) {
+                    metaKeywords.en = data.metaKeywords.en;
+                }
+                if (Object.keys(metaKeywords).length > 0) seo.metaKeywords = metaKeywords;
+            }
+
+            // Ensure slug.en is not empty - use slug.fa if empty
+            const slug = data.slug || { fa: "", en: "" };
+            if (!slug.en || slug.en.trim() === "") {
+                slug.en = slug.fa || generateSlug(data.title?.fa || "");
+            }
+            
+            // Ensure content.en is not empty - backend requires it
+            const content = data.content || { fa: "", en: "" };
+            if (!content.en || content.en.trim() === "") {
+                // If English content is empty, use a placeholder or copy from Persian
+                content.en = content.fa || "<p>English content is required</p>";
+            }
+            
+            // Trim excerpt to max 500 characters as per backend validation
+            const excerpt = data.excerpt || { fa: "", en: "" };
+            if (excerpt.fa && excerpt.fa.length > 500) {
+                excerpt.fa = excerpt.fa.substring(0, 500);
+            }
+            if (excerpt.en && excerpt.en.length > 500) {
+                excerpt.en = excerpt.en.substring(0, 500);
+            }
+
             const articleData = {
-                ...data,
-                seo: {
-                    metaTitle: data.metaTitle,
-                    metaDescription: data.metaDescription,
-                    metaKeywords: data.metaKeywords,
-                },
+                title: data.title || { fa: "", en: "" },
+                slug: slug,
+                excerpt: excerpt,
+                content: content,
+                featuredImage: data.featuredImage || "",
+                categories,
+                tags: data.tags || { fa: [], en: [] },
+                isPublished: data.isPublished || false,
+                isFeatured: data.isFeatured || false,
+                allowComments: data.allowComments !== false,
             };
+
+            // Only add seo if it has at least one field
+            if (Object.keys(seo).length > 0) {
+                articleData.seo = seo;
+            }
+
+            console.log("Article data to send:", articleData);
 
             if (article) {
                 await updateArticle.mutateAsync({
@@ -138,7 +225,18 @@ export default function ArticleForm({ article, onSave, onCancel }) {
             onSave();
         } catch (error) {
             console.error("Error saving article:", error);
-            toast.error("خطا در ذخیره مقاله");
+            console.error("Error response:", error?.response?.data);
+            
+            // Handle validation errors from backend
+            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+                const validationErrors = error.response.data.errors;
+                const firstError = validationErrors[0];
+                const errorMessage = firstError?.message || error?.response?.data?.message || "خطا در ذخیره مقاله";
+                toast.error(errorMessage);
+            } else {
+                const errorMessage = error?.response?.data?.message || error?.message || "خطا در ذخیره مقاله";
+                toast.error(errorMessage);
+            }
         } finally {
             setLoading(false);
         }
@@ -155,8 +253,39 @@ export default function ArticleForm({ article, onSave, onCancel }) {
         }
     };
 
+    const onError = (errors) => {
+        console.error("Form validation errors:", errors);
+        // Show first error with better message handling
+        const firstError = Object.keys(errors)[0];
+        if (firstError) {
+            let errorMessage = "لطفاً تمام فیلدهای الزامی را پر کنید";
+            
+            // Handle nested validation errors
+            const errorObj = errors[firstError];
+            if (errorObj) {
+                // Check if it's a validation error object
+                if (errorObj.message) {
+                    errorMessage = errorObj.message;
+                } else if (errorObj.type) {
+                    // Handle validation type errors
+                    const typeMessages = {
+                        faRequired: `فیلد ${firstError === 'title' ? 'عنوان' : firstError === 'content' ? 'محتوا' : firstError} فارسی الزامی است`,
+                        enRequired: `فیلد ${firstError === 'title' ? 'عنوان' : firstError} انگلیسی الزامی است`,
+                    };
+                    errorMessage = typeMessages[errorObj.type] || errorObj.message || `فیلد ${firstError} الزامی است`;
+                } else if (typeof errorObj === 'string') {
+                    errorMessage = errorObj;
+                }
+            }
+            
+            toast.error(errorMessage);
+        } else {
+            toast.error("لطفاً تمام فیلدهای الزامی را پر کنید");
+        }
+    };
+
     return (
-        <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+        <Box component="form" onSubmit={handleSubmit(onSubmit, onError)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
                 <Grid size={{ xs: 12, lg: 8 }}>
@@ -171,8 +300,16 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                 control={control}
                                 rules={{
                                     validate: {
-                                        faRequired: (value) => value.fa?.trim() || "عنوان فارسی الزامی است",
-                                        enRequired: (value) => value.en?.trim() || "عنوان انگلیسی الزامی است",
+                                        faRequired: (value) => {
+                                            if (!value || typeof value !== 'object') return "عنوان فارسی الزامی است";
+                                            const trimmed = value.fa?.trim();
+                                            return trimmed ? true : "عنوان فارسی الزامی است";
+                                        },
+                                        enRequired: (value) => {
+                                            if (!value || typeof value !== 'object') return "عنوان انگلیسی الزامی است";
+                                            const trimmed = value.en?.trim();
+                                            return trimmed ? true : "عنوان انگلیسی الزامی است";
+                                        },
                                     },
                                 }}
                                 render={({ field }) => (
@@ -244,10 +381,26 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                 control={control}
                                 rules={{
                                     validate: {
-                                        faRequired: (value) => value.fa?.trim() || "محتوای فارسی الزامی است",
+                                        faRequired: (value) => {
+                                            if (!value || typeof value !== 'object') return "محتوای فارسی الزامی است";
+                                            // Remove HTML tags for validation
+                                            const textContent = value.fa?.replace(/<[^>]*>/g, '').trim() || "";
+                                            return textContent ? true : "محتوای فارسی الزامی است";
+                                        },
                                     },
                                 }}
-                                render={({ field }) => <MultiLangEditor {...field} label="محتوا" required error={errors.content} height={400} />}
+                                render={({ field }) => (
+                                    <MultiLangEditor 
+                                        value={field.value || { fa: "", en: "" }} 
+                                        onChange={(newValue) => {
+                                            field.onChange(newValue);
+                                        }}
+                                        label="محتوا" 
+                                        required 
+                                        error={errors.content} 
+                                        height={400} 
+                                    />
+                                )}
                             />
                         </Box>
                     </Stack>
@@ -381,12 +534,27 @@ export default function ArticleForm({ article, onSave, onCancel }) {
 
             {/* Action Buttons */}
             <Box sx={{ mt: 4, display: "flex", gap: 2, justifyContent: "flex-end" }}>
-                <Button variant="outlined" onClick={onCancel} disabled={loading} startIcon={<Cancel />}>
+                <Button 
+                    type="button"
+                    variant="outlined" 
+                    onClick={onCancel} 
+                    disabled={loading || updateArticle.isPending || createArticle.isPending} 
+                    startIcon={<Cancel />}
+                >
                     انصراف
                 </Button>
 
-                <Button type="submit" variant="contained" disabled={loading} startIcon={<Save />}>
-                    {loading ? "در حال ذخیره..." : article ? "ویرایش مقاله" : "ایجاد مقاله"}
+                <Button 
+                    type="submit" 
+                    variant="contained" 
+                    disabled={loading || updateArticle.isPending || createArticle.isPending} 
+                    startIcon={<Save />}
+                >
+                    {loading || updateArticle.isPending || createArticle.isPending 
+                        ? "در حال ذخیره..." 
+                        : article 
+                            ? "ویرایش مقاله" 
+                            : "ایجاد مقاله"}
                 </Button>
             </Box>
 

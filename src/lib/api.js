@@ -71,9 +71,9 @@ const getCsrfToken = async () => {
 api.interceptors.request.use(
     async (config) => {
         // For Next.js 15, we need to handle readonly config carefully
-        // Only modify what we need (headers) and preserve everything else
+        // Use Object.assign to create a new config object instead of modifying the original
         
-        // Create new headers object to avoid readonly issues
+        // Create new headers object
         const newHeaders = { ...(config.headers || {}) };
         
         const token = Cookies.get("token");
@@ -89,12 +89,21 @@ api.interceptors.request.use(
             }
         }
         
-        // Return config with new headers, but preserve all other properties
-        // This ensures Axios can still handle data serialization correctly
-        return {
-            ...config,
+        // Clone params if it exists to avoid readonly issues
+        const clonedParams = config.params 
+            ? (typeof config.params === 'object' && !Array.isArray(config.params) 
+                ? { ...config.params } 
+                : config.params)
+            : undefined;
+        
+        // Create a new config object using Object.assign to avoid readonly property issues
+        // This creates a shallow copy that we can safely modify
+        const newConfig = Object.assign({}, config, {
             headers: newHeaders,
-        };
+            ...(clonedParams !== undefined ? { params: clonedParams } : {}),
+        });
+        
+        return newConfig;
     },
     (error) => {
         return Promise.reject(error);

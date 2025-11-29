@@ -74,7 +74,9 @@ export const useDataStore = create((set, get) => ({
                 ...state.cache,
                 [type]: {
                     ...state.cache[type],
-                    data: state.cache[type].data.map((item) => (item._id === id ? { ...item, ...updatedData } : item)),
+                    data: state.cache[type].data.map((item) => 
+                        (item._id === id || item.id === id) ? { ...item, ...updatedData } : item
+                    ),
                 },
             },
         })),

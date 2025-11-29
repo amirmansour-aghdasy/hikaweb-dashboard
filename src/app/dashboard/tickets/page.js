@@ -53,7 +53,7 @@ export default function TicketsPage() {
             params.append("search", debouncedSearchTerm);
         }
         if (statusFilter !== "all") {
-            params.append("status", statusFilter);
+            params.append("ticketStatus", statusFilter);
         }
         if (priorityFilter !== "all") {
             params.append("priority", priorityFilter);
@@ -63,11 +63,11 @@ export default function TicketsPage() {
 
     const endpoint = `/tickets?${queryParams}`;
 
-    // Fetch tickets
-    const { data: ticketsData, isLoading } = useFetchData(["tickets", queryParams], endpoint);
+    // Fetch tickets with refetch capability
+    const { data: ticketsData, isLoading, refetch: refetchTickets } = useFetchData(["tickets", queryParams], endpoint);
 
-    // Fetch statistics
-    const { data: statisticsData } = useFetchData("tickets-statistics", "/tickets/stats/overview");
+    // Fetch statistics with refetch capability
+    const { data: statisticsData, refetch: refetchStatistics } = useFetchData("tickets-statistics", "/tickets/stats/overview");
 
     useEffect(() => {
         if (statisticsData?.success && statisticsData.data) {
@@ -79,12 +79,20 @@ export default function TicketsPage() {
     const updateTicket = useUpdateData("/tickets", {
         successMessage: "تیکت با موفقیت به‌روزرسانی شد",
         queryKey: "tickets",
+        onSuccess: () => {
+            refetchStatistics();
+            refetchTickets();
+        }
     });
 
     // Delete ticket
     const deleteTicket = useDeleteData("/tickets", {
         successMessage: "تیکت با موفقیت حذف شد",
         queryKey: "tickets",
+        onSuccess: () => {
+            refetchStatistics();
+            refetchTickets();
+        }
     });
 
     const columns = [
@@ -176,17 +184,20 @@ export default function TicketsPage() {
             field: "assignee",
             headerName: "مسئول پاسخ",
             width: 150,
-            render: (row) =>
-                row.assignee ? (
+            render: (row) => {
+                // Support both assignee and assignedTo field names
+                const assignee = row.assignedTo || row.assignee;
+                return assignee ? (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Avatar src={row.assignee.avatar} sx={{ width: 24, height: 24 }}>
-                            {row.assignee.name?.charAt(0) || "?"}
+                        <Avatar src={assignee.avatar} sx={{ width: 24, height: 24 }}>
+                            {assignee.name?.charAt(0) || "?"}
                         </Avatar>
-                        <Typography variant="caption">{row.assignee.name}</Typography>
+                        <Typography variant="caption">{assignee.name}</Typography>
                     </Box>
                 ) : (
                     <Chip label="تخصیص نیافته" size="small" variant="outlined" />
-                ),
+                );
+            },
             align: "center"
         },
         {
@@ -224,13 +235,35 @@ export default function TicketsPage() {
     const handleStatusChange = (ticket, newStatus) => {
         updateTicket.mutate({
             id: ticket._id,
-            data: { status: newStatus },
+            data: { ticketStatus: newStatus },
+        }, {
+            onSuccess: () => {
+                refetchStatistics();
+                refetchTickets();
+            }
         });
     };
 
-    const handleAssign = (ticket) => {
-        // This would open an assign dialog
-        console.log("Assign ticket:", ticket);
+    const handleAssign = async (ticket) => {
+        if (!canEdit) return;
+        
+        // Open a simple prompt or use a dialog to select user
+        // For now, we'll use a simple approach - you can enhance this later
+        const assigneeId = prompt("لطفاً ID کاربر را وارد کنید:");
+        if (assigneeId) {
+            try {
+                await api.patch(`/tickets/${ticket._id}/assign`, {
+                    assignedTo: assigneeId
+                });
+                // Refetch tickets and statistics
+                refetchStatistics();
+                refetchTickets();
+                toast.success("تیکت با موفقیت تخصیص داده شد");
+            } catch (error) {
+                console.error("Error assigning ticket:", error);
+                toast.error("خطا در تخصیص تیکت");
+            }
+        }
     };
 
     const handleAdd = () => {
@@ -256,12 +289,21 @@ export default function TicketsPage() {
     const handleSaveTicket = () => {
         setIsModalOpen(false);
         setEditingTicket(null);
+        // Refetch both tickets and statistics after save
+        refetchStatistics();
+        refetchTickets();
+    };
+
+    const handleView = (ticket) => {
+        if (!canView) return;
+        setEditingTicket(ticket);
+        setIsModalOpen(true);
     };
 
     // Filters for the data table
     const filters = [
         {
-            key: "status",
+            key: "ticketStatus",
             label: "وضعیت",
             value: statusFilter,
             onChange: (value) => {
@@ -302,7 +344,7 @@ export default function TicketsPage() {
             onClick: (ticket) => handleEdit(ticket),
             color: "primary",
             permission: canEdit,
-            disabled: (ticket) => ticket.status === "closed",
+            disabled: (ticket) => (ticket.status || ticket.ticketStatus) === "closed",
         },
         {
             label: "تخصیص",
@@ -310,7 +352,7 @@ export default function TicketsPage() {
             onClick: handleAssign,
             color: "info",
             permission: canEdit,
-            disabled: (ticket) => !!ticket.assignee,
+            disabled: (ticket) => !!(ticket.assignedTo || ticket.assignee),
         },
         {
             label: "حل شده",
@@ -318,7 +360,10 @@ export default function TicketsPage() {
             onClick: (ticket) => handleStatusChange(ticket, "resolved"),
             color: "success",
             permission: canEdit,
-            disabled: (ticket) => ticket.status === "resolved" || ticket.status === "closed",
+            disabled: (ticket) => {
+                const status = ticket.status || ticket.ticketStatus;
+                return status === "resolved" || status === "closed";
+            },
         },
         {
             label: "بستن",
@@ -326,7 +371,7 @@ export default function TicketsPage() {
             onClick: (ticket) => handleStatusChange(ticket, "closed"),
             color: "warning",
             permission: canEdit,
-            disabled: (ticket) => ticket.status === "closed",
+            disabled: (ticket) => (ticket.status || ticket.ticketStatus) === "closed",
         },
     ];
 
@@ -405,6 +450,7 @@ export default function TicketsPage() {
                     onPageChange={handlePageChange}
                     onRowsPerPageChange={handleRowsPerPageChange}
                     onSearch={handleSearch}
+                    onView={canView ? handleView : undefined}
                     onEdit={canEdit ? handleEdit : undefined}
                     onDelete={canDelete ? handleDelete : undefined}
                     onAdd={canCreate ? handleAdd : undefined}

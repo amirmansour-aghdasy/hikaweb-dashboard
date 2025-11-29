@@ -28,7 +28,7 @@ import MultiLangTextField from "./MultiLangTextField";
 import MultiLangEditor from "./MultiLangEditor";
 import CategorySelector from "./CategorySelector";
 import TagInput from "./TagInput";
-import MediaUploader from "../media/MediaUploader";
+import MediaPicker from "../media/MediaPicker";
 import GalleryManager from "../media/GalleryManager";
 import PriceInput from "./PriceInput";
 import { useApi } from "../../hooks/useApi";
@@ -37,10 +37,17 @@ import toast from "react-hot-toast";
 export default function ServiceForm({ service, onSave, onCancel }) {
     const [loading, setLoading] = useState(false);
 
-    const { useCreateData, useUpdateData } = useApi();
+    const { useCreateData, useUpdateData, useFetchData } = useApi();
 
-    const createService = useCreateData("/services");
-    const updateService = useUpdateData("/services");
+    const createService = useCreateData("/services", {
+        queryKey: "services",
+    });
+    const updateService = useUpdateData("/services", {
+        queryKey: "services",
+    });
+
+    // Fetch portfolio items for slides
+    const { data: portfolioData } = useFetchData("portfolio-list", "/portfolio?status=active&limit=100");
 
     const {
         control,
@@ -61,11 +68,37 @@ export default function ServiceForm({ service, onSave, onCancel }) {
             categories: [],
             processSteps: [],
             features: [],
+            subServices: [],
             pricing: {
                 startingPrice: "",
                 currency: "IRR",
                 isCustom: false,
                 packages: [],
+            },
+            mainContent: {
+                firstSection: {
+                    content: {
+                        title: { fa: "", en: "" },
+                        description: { fa: "", en: "" },
+                        actionBtnText: { fa: "", en: "" },
+                    },
+                    slides: [],
+                },
+                secondSection: {
+                    content: {
+                        title: { fa: "", en: "" },
+                        description: { fa: "", en: "" },
+                        actionBtnText: { fa: "", en: "" },
+                    },
+                    slides: [],
+                },
+            },
+            finalDesc: {
+                content: {
+                    title: { fa: "", en: "" },
+                    text: { fa: "", en: "" },
+                },
+                image: "",
             },
             technologies: [],
             deliverables: [],
@@ -130,6 +163,15 @@ export default function ServiceForm({ service, onSave, onCancel }) {
         name: "deliverables",
     });
 
+    const {
+        fields: subServicesFields,
+        append: appendSubService,
+        remove: removeSubService,
+    } = useFieldArray({
+        control,
+        name: "subServices",
+    });
+
     const watchedName = watch("name");
 
     useEffect(() => {
@@ -152,11 +194,37 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                 categories: categoriesValue,
                 processSteps: service.processSteps || [],
                 features: service.features || [],
+                subServices: service.subServices || [],
                 pricing: service.pricing || {
                     startingPrice: "",
                     currency: "IRR",
                     isCustom: false,
                     packages: [],
+                },
+                mainContent: service.mainContent || {
+                    firstSection: {
+                        content: {
+                            title: { fa: "", en: "" },
+                            description: { fa: "", en: "" },
+                            actionBtnText: { fa: "", en: "" },
+                        },
+                        slides: [],
+                    },
+                    secondSection: {
+                        content: {
+                            title: { fa: "", en: "" },
+                            description: { fa: "", en: "" },
+                            actionBtnText: { fa: "", en: "" },
+                        },
+                        slides: [],
+                    },
+                },
+                finalDesc: service.finalDesc || {
+                    content: {
+                        title: { fa: "", en: "" },
+                        text: { fa: "", en: "" },
+                    },
+                    image: "",
                 },
                 technologies: service.technologies || [],
                 deliverables: service.deliverables || [],
@@ -186,11 +254,37 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                 categories: [],
                 processSteps: [],
                 features: [],
+                subServices: [],
                 pricing: {
                     startingPrice: "",
                     currency: "IRR",
                     isCustom: false,
                     packages: [],
+                },
+                mainContent: {
+                    firstSection: {
+                        content: {
+                            title: { fa: "", en: "" },
+                            description: { fa: "", en: "" },
+                            actionBtnText: { fa: "", en: "" },
+                        },
+                        slides: [],
+                    },
+                    secondSection: {
+                        content: {
+                            title: { fa: "", en: "" },
+                            description: { fa: "", en: "" },
+                            actionBtnText: { fa: "", en: "" },
+                        },
+                        slides: [],
+                    },
+                },
+                finalDesc: {
+                    content: {
+                        title: { fa: "", en: "" },
+                        text: { fa: "", en: "" },
+                    },
+                    image: "",
                 },
                 technologies: [],
                 deliverables: [],
@@ -214,59 +308,208 @@ export default function ServiceForm({ service, onSave, onCancel }) {
     useEffect(() => {
         if (watchedName?.fa && !service) {
             const slug = {
-                fa: generateSlug(watchedName.fa),
-                en: watchedName.en ? generateSlug(watchedName.en) : "",
+                fa: generateSlugFa(watchedName.fa),
+                en: watchedName.en ? generateSlugEn(watchedName.en) : "",
             };
             setValue("slug", slug);
         }
     }, [watchedName, setValue, service]);
 
-    const generateSlug = (title) => {
+    // Generate slug for Persian (only replace spaces with dash, keep Persian characters)
+    const generateSlugFa = (title) => {
+        if (!title) return "";
+        return title
+            .trim()
+            .replace(/[\s\u200C\u200D]+/g, "-") // Replace spaces and zero-width characters with dash
+            .replace(/-+/g, "-") // Replace multiple dashes with single dash
+            .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
+    };
+
+    // Generate slug for English (only a-z, 0-9, -)
+    const generateSlugEn = (title) => {
+        if (!title) return "";
         return title
             .toLowerCase()
             .trim()
-            .replace(/[^\w\s-]/g, "")
-            .replace(/[\s_-]+/g, "-")
-            .replace(/^-+|-+$/g, "");
+            .replace(/[^a-z0-9\s-]/g, "") // Only keep a-z, 0-9, spaces, and dashes
+            .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with dash
+            .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
     };
 
     const onSubmit = async (data) => {
         setLoading(true);
 
         try {
+            // Prepare service data
+            const serviceData = { ...data };
+            
+            // Convert categories to array of strings (ObjectIds)
+            if (serviceData.categories && Array.isArray(serviceData.categories)) {
+                serviceData.categories = serviceData.categories.map(cat => {
+                    return typeof cat === 'object' && cat !== null ? (cat._id || cat.id) : cat;
+                }).filter(Boolean); // Remove any null/undefined values
+            }
+
+            // Convert mainContent slides to ObjectIds
+            if (serviceData.mainContent) {
+                if (serviceData.mainContent.firstSection?.slides && Array.isArray(serviceData.mainContent.firstSection.slides)) {
+                    serviceData.mainContent.firstSection.slides = serviceData.mainContent.firstSection.slides.map(item => {
+                        return typeof item === 'object' && item !== null ? (item._id || item.id) : item;
+                    }).filter(Boolean);
+                }
+                if (serviceData.mainContent.secondSection?.slides && Array.isArray(serviceData.mainContent.secondSection.slides)) {
+                    serviceData.mainContent.secondSection.slides = serviceData.mainContent.secondSection.slides.map(item => {
+                        return typeof item === 'object' && item !== null ? (item._id || item.id) : item;
+                    }).filter(Boolean);
+                }
+            }
+
+            // Ensure pricing.packages.features is array of strings
+            if (serviceData.pricing?.packages && Array.isArray(serviceData.pricing.packages)) {
+                serviceData.pricing.packages = serviceData.pricing.packages.map(pkg => {
+                    if (pkg.features && Array.isArray(pkg.features)) {
+                        pkg.features = pkg.features.map(f => typeof f === 'string' ? f : String(f)).filter(Boolean);
+                    }
+                    return pkg;
+                });
+            }
+            
+            // Limit shortDescription to 300 characters
+            if (serviceData.shortDescription) {
+                if (serviceData.shortDescription.fa && serviceData.shortDescription.fa.length > 300) {
+                    serviceData.shortDescription.fa = serviceData.shortDescription.fa.substring(0, 300);
+                }
+                if (serviceData.shortDescription.en && serviceData.shortDescription.en.length > 300) {
+                    serviceData.shortDescription.en = serviceData.shortDescription.en.substring(0, 300);
+                }
+            }
+            
+            // Ensure slug.fa and slug.en are properly formatted
+            if (serviceData.slug) {
+                if (serviceData.slug.fa) {
+                    // For Persian slug: only replace spaces with dash, keep Persian characters
+                    serviceData.slug.fa = generateSlugFa(serviceData.slug.fa);
+                }
+                if (serviceData.slug.en) {
+                    // For English slug: only a-z, 0-9, -
+                    serviceData.slug.en = generateSlugEn(serviceData.slug.en);
+                }
+            }
+            
             if (service) {
                 await updateService.mutateAsync({
                     id: service._id,
-                    data,
+                    data: serviceData,
                 });
             } else {
-                await createService.mutateAsync(data);
+                await createService.mutateAsync(serviceData);
             }
 
             toast.success(service ? "خدمت با موفقیت ویرایش شد" : "خدمت با موفقیت ایجاد شد");
             onSave();
         } catch (error) {
             console.error("Error saving service:", error);
-            toast.error("خطا در ذخیره خدمت");
+            
+            // Handle validation errors from backend
+            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+                const firstError = error.response.data.errors[0];
+                if (firstError?.field && firstError?.message) {
+                    // Map field names to Persian labels
+                    const fieldLabels = {
+                        'name.fa': 'نام فارسی',
+                        'name.en': 'نام انگلیسی',
+                        'slug.fa': 'نامک فارسی',
+                        'slug.en': 'نامک انگلیسی',
+                        'description.fa': 'توضیحات فارسی',
+                        'description.en': 'توضیحات انگلیسی',
+                        'shortDescription.fa': 'توضیح کوتاه فارسی',
+                        'shortDescription.en': 'توضیح کوتاه انگلیسی',
+                        'categories': 'دسته‌بندی',
+                    };
+                    
+                    const fieldLabel = fieldLabels[firstError.field] || firstError.field;
+                    toast.error(`${fieldLabel}: ${firstError.message}`);
+                } else {
+                    toast.error(error.response.data.message || "خطا در ذخیره خدمت");
+                }
+            } else if (error?.response?.data?.message) {
+                toast.error(error.response.data.message);
+            } else {
+                toast.error("خطا در ذخیره خدمت");
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    const handleIconUpload = (images) => {
-        if (images.length > 0) {
-            setValue("icon", images[0].url);
+    const onError = (errors) => {
+        console.error("Form validation errors:", errors);
+        
+        // Field name mapping to Persian
+        const fieldLabels = {
+            'name': 'نام خدمت',
+            'slug': 'نامک',
+            'description': 'توضیحات کامل',
+            'shortDescription': 'توضیح کوتاه',
+            'categories': 'دسته‌بندی',
+        };
+        
+        // Show first error with better message handling
+        const firstErrorKey = Object.keys(errors)[0];
+        if (firstErrorKey) {
+            let errorMessage = "لطفاً تمام فیلدهای الزامی را پر کنید";
+            
+            // Handle nested validation errors
+            const errorObj = errors[firstErrorKey];
+            
+            if (errorObj) {
+                // Check if it's a validation error object from react-hook-form
+                if (errorObj.message && typeof errorObj.message === 'string') {
+                    // If message is a string, use it directly
+                    errorMessage = errorObj.message;
+                } else if (errorObj.type) {
+                    // Handle validation type errors (faRequired, enRequired, etc.)
+                    const fieldLabel = fieldLabels[firstErrorKey] || firstErrorKey;
+                    const typeMessages = {
+                        faRequired: `${fieldLabel} (فارسی) الزامی است`,
+                        enRequired: `${fieldLabel} (انگلیسی) الزامی است`,
+                        required: `${fieldLabel} الزامی است`,
+                    };
+                    errorMessage = typeMessages[errorObj.type] || errorObj.message || `${fieldLabel} الزامی است`;
+                } else if (typeof errorObj === 'string') {
+                    // If errorObj itself is a string, use it
+                    errorMessage = errorObj;
+                } else if (errorObj.fa || errorObj.en) {
+                    // If errorObj is the field value itself (wrong validation return), show generic message
+                    const fieldLabel = fieldLabels[firstErrorKey] || firstErrorKey;
+                    errorMessage = `لطفاً ${fieldLabel} را به درستی وارد کنید`;
+                }
+            }
+            
+            toast.error(errorMessage);
+        } else {
+            toast.error("لطفاً تمام فیلدهای الزامی را پر کنید");
         }
     };
 
-    const handleFeaturedImageUpload = (images) => {
-        if (images.length > 0) {
-            setValue("featuredImage", images[0].url);
-        }
+    const handleIconSelect = (selected) => {
+        // MediaPicker returns object with url or string URL
+        const imageUrl = typeof selected === 'object' && selected !== null 
+            ? (selected.url || selected._id || selected) 
+            : selected;
+        setValue("icon", imageUrl || "", { shouldDirty: true });
+    };
+
+    const handleFeaturedImageSelect = (selected) => {
+        // MediaPicker returns object with url or string URL
+        const imageUrl = typeof selected === 'object' && selected !== null 
+            ? (selected.url || selected._id || selected) 
+            : selected;
+        setValue("featuredImage", imageUrl || "", { shouldDirty: true });
     };
 
     return (
-        <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+        <Box component="form" onSubmit={handleSubmit(onSubmit, onError)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
                 <Grid size={{ xs: 12, lg: 8 }}>
@@ -284,8 +527,16 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                         control={control}
                                         rules={{
                                             validate: {
-                                                faRequired: (value) => value.fa?.trim() || "نام فارسی الزامی است",
-                                                enRequired: (value) => value.en?.trim() || "نام انگلیسی الزامی است",
+                                                faRequired: (value) => {
+                                                    if (!value || typeof value !== 'object') return "نام فارسی الزامی است";
+                                                    const trimmed = value.fa?.trim();
+                                                    return trimmed ? true : "نام فارسی الزامی است";
+                                                },
+                                                enRequired: (value) => {
+                                                    if (!value || typeof value !== 'object') return "نام انگلیسی الزامی است";
+                                                    const trimmed = value.en?.trim();
+                                                    return trimmed ? true : "نام انگلیسی الزامی است";
+                                                },
                                             },
                                         }}
                                         render={({ field }) => <MultiLangTextField {...field} label="نام خدمت" required error={errors.name} />}
@@ -293,15 +544,63 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                 </Grid>
 
                                 <Grid size={{ xs: 12 }}>
-                                    <Controller name="slug" control={control} render={({ field }) => <MultiLangTextField {...field} label="نامک (URL Slug)" />} />
+                                    <Controller 
+                                        name="slug" 
+                                        control={control}
+                                        rules={{
+                                            validate: {
+                                                faRequired: (value) => {
+                                                    if (!value || typeof value !== 'object') return "نامک فارسی الزامی است";
+                                                    const trimmed = value.fa?.trim();
+                                                    return trimmed ? true : "نامک فارسی الزامی است";
+                                                },
+                                                enRequired: (value) => {
+                                                    if (!value || typeof value !== 'object') return "نامک انگلیسی الزامی است";
+                                                    const trimmed = value.en?.trim();
+                                                    return trimmed ? true : "نامک انگلیسی الزامی است";
+                                                },
+                                            },
+                                        }}
+                                        render={({ field }) => <MultiLangTextField {...field} label="نامک (URL Slug)" required error={errors.slug} />} 
+                                    />
                                 </Grid>
 
                                 <Grid size={{ xs: 12 }}>
-                                    <Controller name="shortDescription" control={control} render={({ field }) => <MultiLangTextField {...field} label="توضیحات کوتاه" multiline rows={2} />} />
+                                    <Controller 
+                                        name="shortDescription" 
+                                        control={control} 
+                                        render={({ field }) => <MultiLangTextField {...field} label="توضیحات کوتاه" multiline rows={2} />} 
+                                    />
                                 </Grid>
 
                                 <Grid size={{ xs: 12 }}>
-                                    <Controller name="description" control={control} render={({ field }) => <MultiLangEditor {...field} label="توضیحات کامل" height={300} />} />
+                                    <Controller 
+                                        name="description" 
+                                        control={control}
+                                        rules={{
+                                            validate: {
+                                                faRequired: (value) => {
+                                                    if (!value || typeof value !== 'object') return "توضیحات فارسی الزامی است";
+                                                    // Remove HTML tags for validation
+                                                    const textContent = value.fa?.replace(/<[^>]*>/g, '').trim();
+                                                    if (!textContent || textContent.length < 50) {
+                                                        return "توضیحات فارسی باید حداقل ۵۰ کاراکتر باشد";
+                                                    }
+                                                    return true;
+                                                },
+                                                enRequired: (value) => {
+                                                    if (!value || typeof value !== 'object') return "توضیحات انگلیسی الزامی است";
+                                                    // Remove HTML tags for validation
+                                                    const textContent = value.en?.replace(/<[^>]*>/g, '').trim();
+                                                    if (!textContent || textContent.length < 50) {
+                                                        return "توضیحات انگلیسی باید حداقل ۵۰ کاراکتر باشد";
+                                                    }
+                                                    return true;
+                                                },
+                                            },
+                                        }}
+                                        render={({ field }) => <MultiLangEditor {...field} label="توضیحات کامل" height={300} required error={errors.description} />} 
+                                    />
                                 </Grid>
                             </Grid>
                         </Box>
@@ -328,7 +627,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                                         <Controller
                                                             name={`processSteps.${index}.title`}
                                                             control={control}
-                                                            render={({ field }) => <MultiLangTextField {...field} label="عنوان مرحله" size="small" />}
+                                                            render={({ field }) => <TextField {...field} label="عنوان مرحله" size="small" fullWidth required />}
                                                         />
                                                     </Grid>
 
@@ -352,7 +651,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                                         <Controller
                                                             name={`processSteps.${index}.order`}
                                                             control={control}
-                                                            render={({ field }) => <TextField {...field} label="ترتیب" type="number" size="small" fullWidth />}
+                                                            render={({ field }) => <TextField {...field} label="ترتیب" type="number" size="small" fullWidth required />}
                                                         />
                                                     </Grid>
                                                 </Grid>
@@ -364,7 +663,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                         startIcon={<Add />}
                                         onClick={() =>
                                             appendProcessStep({
-                                                title: { fa: "", en: "" },
+                                                title: "",
                                                 description: { fa: "", en: "" },
                                                 icon: "",
                                                 order: processStepsFields.length + 1,
@@ -468,7 +767,15 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                 name="icon"
                                 control={control}
                                 render={({ field }) => (
-                                    <MediaUploader value={field.value ? [{ url: field.value, type: "image/*" }] : []} onChange={handleIconUpload} single acceptedTypes={["image/*"]} maxSizeInMB={1} />
+                                    <MediaPicker
+                                        value={field.value || null}
+                                        onChange={handleIconSelect}
+                                        label="انتخاب آیکون"
+                                        accept="image/*"
+                                        multiple={false}
+                                        showPreview={true}
+                                        showEdit={true}
+                                    />
                                 )}
                             />
                         </Box>
@@ -481,12 +788,14 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                 name="featuredImage"
                                 control={control}
                                 render={({ field }) => (
-                                    <MediaUploader
-                                        value={field.value ? [{ url: field.value, type: "image/*" }] : []}
-                                        onChange={handleFeaturedImageUpload}
-                                        single
-                                        acceptedTypes={["image/*"]}
-                                        maxSizeInMB={2}
+                                    <MediaPicker
+                                        value={field.value || null}
+                                        onChange={handleFeaturedImageSelect}
+                                        label="انتخاب تصویر شاخص"
+                                        accept="image/*"
+                                        multiple={false}
+                                        showPreview={true}
+                                        showEdit={true}
                                     />
                                 )}
                             />
@@ -505,7 +814,19 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                             <Typography variant="h6" gutterBottom>
                                 دسته‌بندی
                             </Typography>
-                            <Controller name="categories" control={control} render={({ field }) => <CategorySelector {...field} type="service" label="انتخاب دسته‌بندی" />} />
+                            <Controller 
+                                name="categories" 
+                                control={control}
+                                rules={{
+                                    validate: (value) => {
+                                        if (!value || !Array.isArray(value) || value.length === 0) {
+                                            return "حداقل یک دسته‌بندی الزامی است";
+                                        }
+                                        return true;
+                                    },
+                                }}
+                                render={({ field }) => <CategorySelector {...field} type="service" label="انتخاب دسته‌بندی" error={errors.categories} />} 
+                            />
                         </Box>
 
                         {/* Duration */}
@@ -571,6 +892,363 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                     </Stack>
                 </Grid>
             </Grid>
+
+            {/* Pricing Packages */}
+            <Accordion sx={{ mt: 2 }}>
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant="h6">پکیج‌های قیمتی</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                    <Stack spacing={2}>
+                        {packagesFields.map((field, index) => (
+                            <Card key={field.id} variant="outlined">
+                                <CardContent>
+                                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                                        <Typography variant="subtitle1">پکیج {index + 1}</Typography>
+                                        <IconButton onClick={() => removePackage(index)} size="small">
+                                            <Delete />
+                                        </IconButton>
+                                    </Box>
+
+                                    <Grid container spacing={2}>
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <Controller
+                                                name={`pricing.packages.${index}.name`}
+                                                control={control}
+                                                render={({ field }) => <MultiLangTextField {...field} label="نام پکیج" size="small" required />}
+                                            />
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <Controller
+                                                name={`pricing.packages.${index}.value`}
+                                                control={control}
+                                                render={({ field }) => <TextField {...field} label="قیمت (مثال: 15.000.000 تومان)" size="small" fullWidth required />}
+                                            />
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <Controller
+                                                name={`pricing.packages.${index}.subTitle`}
+                                                control={control}
+                                                render={({ field }) => <MultiLangTextField {...field} label="زیرعنوان (مثال: مناسب فروشگاه‌های حرفه‌ای)" size="small" />}
+                                            />
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <Controller
+                                                name={`pricing.packages.${index}.duration`}
+                                                control={control}
+                                                render={({ field }) => <TextField {...field} label="مدت زمان" size="small" fullWidth />}
+                                            />
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12 }}>
+                                            <Controller
+                                                name={`pricing.packages.${index}.desc`}
+                                                control={control}
+                                                render={({ field }) => <MultiLangTextField {...field} label="توضیحات کوتاه" multiline rows={2} size="small" />}
+                                            />
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12 }}>
+                                            <Controller
+                                                name={`pricing.packages.${index}.actionBtnText`}
+                                                control={control}
+                                                render={({ field }) => <MultiLangTextField {...field} label="متن دکمه CTA" size="small" />}
+                                            />
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12 }}>
+                                            <Typography variant="subtitle2" gutterBottom>امکانات پکیج</Typography>
+                                            <Controller
+                                                name={`pricing.packages.${index}.features`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <TagInput
+                                                        {...field}
+                                                        label="امکانات (هر مورد را جداگانه وارد کنید)"
+                                                        placeholder="مثال: طراحی ریسپانسیو"
+                                                    />
+                                                )}
+                                            />
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12 }}>
+                                            <Controller
+                                                name={`pricing.packages.${index}.isPopular`}
+                                                control={control}
+                                                render={({ field }) => <FormControlLabel control={<Switch {...field} checked={field.value} />} label="پکیج محبوب" />}
+                                            />
+                                        </Grid>
+                                    </Grid>
+                                </CardContent>
+                            </Card>
+                        ))}
+
+                        <Button
+                            startIcon={<Add />}
+                            onClick={() =>
+                                appendPackage({
+                                    name: { fa: "", en: "" },
+                                    value: "",
+                                    subTitle: { fa: "", en: "" },
+                                    features: [],
+                                    desc: { fa: "", en: "" },
+                                    actionBtnText: { fa: "", en: "" },
+                                    duration: "",
+                                    isPopular: false,
+                                })
+                            }
+                            variant="outlined"
+                        >
+                            افزودن پکیج
+                        </Button>
+                    </Stack>
+                </AccordionDetails>
+            </Accordion>
+
+            {/* Sub Services */}
+            <Accordion sx={{ mt: 2 }}>
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant="h6">خدمات جزئی (زیرمجموعه)</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                    <Stack spacing={2}>
+                        {subServicesFields.map((field, index) => (
+                            <Card key={field.id} variant="outlined">
+                                <CardContent>
+                                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                                        <Typography variant="subtitle1">خدمت جزئی {index + 1}</Typography>
+                                        <IconButton onClick={() => removeSubService(index)} size="small">
+                                            <Delete />
+                                        </IconButton>
+                                    </Box>
+
+                                    <Grid container spacing={2}>
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <Controller
+                                                name={`subServices.${index}.icon`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <MediaPicker
+                                                        value={field.value || null}
+                                                        onChange={(selected) => {
+                                                            const imageUrl = typeof selected === 'object' && selected !== null 
+                                                                ? (selected.url || selected._id || selected) 
+                                                                : selected;
+                                                            field.onChange(imageUrl || "");
+                                                        }}
+                                                        label="آیکون"
+                                                        accept="image/*"
+                                                        multiple={false}
+                                                        showPreview={true}
+                                                        showEdit={true}
+                                                    />
+                                                )}
+                                            />
+                                        </Grid>
+
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <Controller
+                                                name={`subServices.${index}.title`}
+                                                control={control}
+                                                render={({ field }) => <MultiLangTextField {...field} label="عنوان" size="small" required />}
+                                            />
+                                        </Grid>
+                                    </Grid>
+                                </CardContent>
+                            </Card>
+                        ))}
+
+                        <Button
+                            startIcon={<Add />}
+                            onClick={() =>
+                                appendSubService({
+                                    icon: "",
+                                    title: { fa: "", en: "" },
+                                })
+                            }
+                            variant="outlined"
+                        >
+                            افزودن خدمت جزئی
+                        </Button>
+                    </Stack>
+                </AccordionDetails>
+            </Accordion>
+
+            {/* Main Content Sections */}
+            <Accordion sx={{ mt: 2 }}>
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant="h6">محتوای اصلی (بخش‌های توضیحات و نمونه کارها)</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                    <Stack spacing={4}>
+                        {/* First Section */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom>بخش اول</Typography>
+                            <Grid container spacing={2}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <Controller
+                                        name="mainContent.firstSection.content.title"
+                                        control={control}
+                                        render={({ field }) => <MultiLangTextField {...field} label="عنوان" size="small" required />}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <Controller
+                                        name="mainContent.firstSection.content.actionBtnText"
+                                        control={control}
+                                        render={({ field }) => <MultiLangTextField {...field} label="متن دکمه CTA" size="small" required />}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <Controller
+                                        name="mainContent.firstSection.content.description"
+                                        control={control}
+                                        render={({ field }) => <MultiLangTextField {...field} label="توضیحات" multiline rows={3} size="small" required />}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <Typography variant="subtitle2" gutterBottom>نمونه کارها (اسلایدر)</Typography>
+                                    <Controller
+                                        name="mainContent.firstSection.slides"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <CategorySelector
+                                                {...field}
+                                                label="انتخاب نمونه کارها"
+                                                multiple
+                                                options={portfolioData?.data || []}
+                                                getOptionLabel={(option) => option.title?.fa || option.title || ""}
+                                                isOptionEqualToValue={(option, value) => {
+                                                    const optionId = typeof option === 'object' && option !== null ? (option._id || option.id) : option;
+                                                    const valueId = typeof value === 'object' && value !== null ? (value._id || value.id) : value;
+                                                    return optionId === valueId;
+                                                }}
+                                                onChange={(_, newValue) => {
+                                                    // Convert to array of ObjectIds
+                                                    const ids = Array.isArray(newValue) 
+                                                        ? newValue.map(item => typeof item === 'object' && item !== null ? (item._id || item.id) : item)
+                                                        : [];
+                                                    field.onChange(ids);
+                                                }}
+                                            />
+                                        )}
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Box>
+
+                        <Divider />
+
+                        {/* Second Section */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom>بخش دوم</Typography>
+                            <Grid container spacing={2}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <Controller
+                                        name="mainContent.secondSection.content.title"
+                                        control={control}
+                                        render={({ field }) => <MultiLangTextField {...field} label="عنوان" size="small" required />}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <Controller
+                                        name="mainContent.secondSection.content.actionBtnText"
+                                        control={control}
+                                        render={({ field }) => <MultiLangTextField {...field} label="متن دکمه CTA" size="small" required />}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <Controller
+                                        name="mainContent.secondSection.content.description"
+                                        control={control}
+                                        render={({ field }) => <MultiLangTextField {...field} label="توضیحات" multiline rows={3} size="small" required />}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <Typography variant="subtitle2" gutterBottom>نمونه کارها (اسلایدر)</Typography>
+                                    <Controller
+                                        name="mainContent.secondSection.slides"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <CategorySelector
+                                                {...field}
+                                                label="انتخاب نمونه کارها"
+                                                multiple
+                                                options={portfolioData?.data || []}
+                                                getOptionLabel={(option) => option.title?.fa || option.title || ""}
+                                                isOptionEqualToValue={(option, value) => {
+                                                    const optionId = typeof option === 'object' && option !== null ? (option._id || option.id) : option;
+                                                    const valueId = typeof value === 'object' && value !== null ? (value._id || value.id) : value;
+                                                    return optionId === valueId;
+                                                }}
+                                                onChange={(_, newValue) => {
+                                                    // Convert to array of ObjectIds
+                                                    const ids = Array.isArray(newValue) 
+                                                        ? newValue.map(item => typeof item === 'object' && item !== null ? (item._id || item.id) : item)
+                                                        : [];
+                                                    field.onChange(ids);
+                                                }}
+                                            />
+                                        )}
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    </Stack>
+                </AccordionDetails>
+            </Accordion>
+
+            {/* Final Description */}
+            <Accordion sx={{ mt: 2 }}>
+                <AccordionSummary expandIcon={<ExpandMore />}>
+                    <Typography variant="h6">بخش نهایی (ویژگی‌ها و دلایل انتخاب)</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                    <Stack spacing={2}>
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <Controller
+                                    name="finalDesc.content.title"
+                                    control={control}
+                                    render={({ field }) => <MultiLangTextField {...field} label="عنوان" size="small" required />}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <Controller
+                                    name="finalDesc.image"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <MediaPicker
+                                            value={field.value || null}
+                                            onChange={(selected) => {
+                                                const imageUrl = typeof selected === 'object' && selected !== null 
+                                                    ? (selected.url || selected._id || selected) 
+                                                    : selected;
+                                                field.onChange(imageUrl || "");
+                                            }}
+                                            label="تصویر"
+                                            accept="image/*"
+                                            multiple={false}
+                                            showPreview={true}
+                                            showEdit={true}
+                                        />
+                                    )}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12 }}>
+                                <Controller
+                                    name="finalDesc.content.text"
+                                    control={control}
+                                    render={({ field }) => <MultiLangTextField {...field} label="متن توضیحات" multiline rows={4} size="small" required />}
+                                />
+                            </Grid>
+                        </Grid>
+                    </Stack>
+                </AccordionDetails>
+            </Accordion>
 
             {/* Action Buttons */}
             <Box sx={{ mt: 4, display: "flex", gap: 2, justifyContent: "flex-end" }}>

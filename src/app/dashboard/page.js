@@ -40,7 +40,7 @@ export default function DashboardPage() {
     }, [comprehensiveStatsData, isLoading, setStats]);
 
     // Fetch recent activities from notifications
-    const { data: activitiesData } = useFetchData("recent-activities", "/notifications?limit=5");
+    const { data: activitiesData, isLoading: activitiesLoading } = useFetchData("recent-activities", "/notifications?limit=5");
     
     // Icon map for notifications (memoized outside component to avoid recreation)
     const iconMap = useMemo(() => ({
@@ -57,14 +57,17 @@ export default function DashboardPage() {
     
     // Transform notifications to activities format (memoized)
     const recentActivities = useMemo(() => {
-        return activitiesData?.data?.map((notification) => ({
+        if (!activitiesData?.success && !activitiesData?.data) return [];
+        // Handle both response formats: { success: true, data: [...] } or { data: [...] }
+        const notifications = activitiesData?.data || activitiesData || [];
+        return notifications.map((notification) => ({
             id: notification._id,
             type: notification.type,
-            message: notification.message?.fa || notification.title?.fa || "اعلان جدید",
+            message: notification.message?.fa || notification.message?.en || notification.title?.fa || notification.title?.en || "اعلان جدید",
             time: formatRelativeDate(notification.createdAt),
             avatar: iconMap[notification.type] || <Notifications />,
-        })) || [];
-    }, [activitiesData?.data, iconMap]);
+        }));
+    }, [activitiesData, iconMap]);
 
     // Prepare chart data for tasks by status (memoized)
     const taskStatusData = useMemo(() => {
@@ -337,7 +340,11 @@ export default function DashboardPage() {
                                 </Button>
                             </Box>
 
-                            {recentActivities.length > 0 ? (
+                            {activitiesLoading ? (
+                                <Box display="flex" justifyContent="center" py={4}>
+                                    <CircularProgress size={24} />
+                                </Box>
+                            ) : recentActivities.length > 0 ? (
                                 <List>
                                     {recentActivities.map((activity) => (
                                         <ListItem key={activity.id} sx={{ px: 0 }}>
@@ -355,7 +362,7 @@ export default function DashboardPage() {
                                 </List>
                             ) : (
                                 <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center", py: 4 }}>
-                                    فعالیتی وجود ندارد
+                                    {activitiesData ? "فعالیتی وجود ندارد" : "در حال بارگذاری..."}
                                 </Typography>
                             )}
                         </Paper>

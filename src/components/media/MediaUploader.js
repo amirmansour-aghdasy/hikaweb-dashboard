@@ -171,6 +171,13 @@ export default function MediaUploader({
                                 onUploadSuccess([newFile]);
                             }
 
+                            // Remove from progress after successful upload
+                            setUploadProgress((prev) => {
+                                const newProgress = { ...prev };
+                                delete newProgress[file.name];
+                                return newProgress;
+                            });
+
                             toast.success(`${file.name} آپلود شد`);
                         } else {
                             throw new Error(result.message || "خطا در آپلود فایل");
@@ -288,7 +295,7 @@ export default function MediaUploader({
                     </Typography>
 
                     {gallery ? (
-                        <ImageList sx={{ width: "100%", height: 400 }} cols={3} rowHeight={200}>
+                        <ImageList sx={{ width: "100%", height: 400 }} cols={2} rowHeight={50}>
                             {value.map((file, index) => (
                                 <ImageListItem key={file.id || index}>
                                     {file.type?.startsWith("image/") ? (
@@ -331,21 +338,87 @@ export default function MediaUploader({
                     ) : (
                         <Grid container spacing={2}>
                             {value.map((file, index) => (
-                                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={file.id || index}>
-                                    <Paper sx={{ p: 2 }}>
+                                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={file.id || file.url || index}>
+                                    <Paper 
+                                        sx={{ 
+                                            p: 2,
+                                            position: "relative",
+                                            "&:hover": {
+                                                boxShadow: 3,
+                                            }
+                                        }}
+                                    >
                                         <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
                                             {getFileIcon(file.type)}
-                                            <Typography variant="subtitle2" sx={{ ml: 1, flex: 1 }}>
-                                                {file.name}
+                                            <Typography 
+                                                variant="subtitle2" 
+                                                sx={{ 
+                                                    ml: 1, 
+                                                    flex: 1,
+                                                    overflow: "hidden",
+                                                    textOverflow: "ellipsis",
+                                                    whiteSpace: "nowrap"
+                                                }}
+                                                title={file.name || file.originalName || "فایل"}
+                                            >
+                                                {file.name || file.originalName || "فایل"}
                                             </Typography>
-                                            <IconButton size="small" onClick={() => removeFile(index)}>
+                                            <IconButton 
+                                                size="small" 
+                                                onClick={() => removeFile(index)}
+                                                color="error"
+                                                sx={{ ml: 1 }}
+                                            >
                                                 <Delete />
                                             </IconButton>
                                         </Box>
 
-                                        {file.type?.startsWith("image/") && <img src={file.url} alt={file.alt} style={{ width: "100%", height: 100, objectFit: "cover", borderRadius: 4 }} />}
+                                        {file.type?.startsWith("image/") && file.url && (
+                                            <Box
+                                                sx={{
+                                                    width: "100%",
+                                                    height: 150,
+                                                    mb: 1,
+                                                    borderRadius: 1,
+                                                    overflow: "hidden",
+                                                    bgcolor: "grey.100",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                }}
+                                            >
+                                                <img 
+                                                    src={file.url} 
+                                                    alt={file.alt || file.name || "تصویر"} 
+                                                    style={{ 
+                                                        width: "100%", 
+                                                        height: "100%", 
+                                                        objectFit: "cover" 
+                                                    }} 
+                                                    onError={(e) => {
+                                                        e.target.style.display = "none";
+                                                    }}
+                                                />
+                                            </Box>
+                                        )}
 
-                                        <Chip label={`${(file.size / 1024 / 1024).toFixed(2)} MB`} size="small" sx={{ mt: 1 }} />
+                                        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 1 }}>
+                                            {file.size && !isNaN(file.size) && file.size > 0 && (
+                                                <Chip 
+                                                    label={`${(file.size / 1024 / 1024).toFixed(2)} MB`} 
+                                                    size="small" 
+                                                    variant="outlined"
+                                                />
+                                            )}
+                                            {file.type && (
+                                                <Chip 
+                                                    label={file.type.split("/")[1] || "فایل"} 
+                                                    size="small" 
+                                                    variant="outlined"
+                                                    color="primary"
+                                                />
+                                            )}
+                                        </Box>
                                     </Paper>
                                 </Grid>
                             ))}

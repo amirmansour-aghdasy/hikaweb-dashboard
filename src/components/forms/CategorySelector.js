@@ -104,7 +104,27 @@ export default function CategorySelector({
                 // Clone params to avoid readonly issues
                 const inputParams = { ...params };
                 inputParams.inputProps = params.inputProps ? { ...params.inputProps } : {};
-                return <TextField {...inputParams} label={label} error={!!error} helperText={error || helperText} required={required} disabled={disabled} />;
+                // Disable browser validation for Autocomplete - we handle it with react-hook-form
+                // Set required to false in inputProps to prevent browser native validation
+                if (inputParams.inputProps) {
+                    inputParams.inputProps.required = false;
+                    // Also disable browser validation
+                    inputParams.inputProps.autoComplete = "off";
+                }
+                // Get error message - handle both string and object error
+                const errorMessage = error?.message || (typeof error === 'string' ? error : null) || helperText;
+                // Remove required from TextField to prevent browser validation
+                // We'll show error through react-hook-form validation instead
+                return (
+                    <TextField 
+                        {...inputParams} 
+                        label={label} 
+                        error={!!error} 
+                        helperText={errorMessage} 
+                        disabled={disabled}
+                        required={required}
+                    />
+                );
             }}
             PaperComponent={({ children, ...props }) => (
                 <Paper {...props} sx={{ mt: 1 }}>

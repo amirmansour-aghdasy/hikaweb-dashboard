@@ -337,9 +337,23 @@ export default function DataTable({
                             </TableRow>
                         ) : (
                             safeData.map((row) => (
-                                <TableRow key={row._id} hover selected={selected.indexOf(row._id) !== -1}>
+                                <TableRow 
+                                    key={row._id} 
+                                    hover 
+                                    selected={selected.indexOf(row._id) !== -1}
+                                    onClick={() => {
+                                        // If onView is provided and canView is true, open view on row click
+                                        if (onView && canView) {
+                                            onView(row);
+                                        }
+                                    }}
+                                    sx={{ 
+                                        cursor: onView && canView ? 'pointer' : 'default',
+                                        '&:hover': onView && canView ? { bgcolor: 'action.hover' } : {}
+                                    }}
+                                >
                                     {enableSelection && (
-                                        <TableCell padding="checkbox">
+                                        <TableCell padding="checkbox" onClick={(e) => e.stopPropagation()}>
                                             <Checkbox checked={selected.indexOf(row._id) !== -1} onChange={() => handleSelectRow(row._id)} />
                                         </TableCell>
                                     )}
@@ -351,8 +365,11 @@ export default function DataTable({
                                     ))}
 
                                     {enableActions && (
-                                        <TableCell align="center">
-                                            <IconButton size="small" onClick={(e) => handleMenuClick(e, row)}>
+                                        <TableCell align="center" onClick={(e) => e.stopPropagation()}>
+                                            <IconButton size="small" onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleMenuClick(e, row);
+                                            }}>
                                                 <MoreVert />
                                             </IconButton>
                                         </TableCell>

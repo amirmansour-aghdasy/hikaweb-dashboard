@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, Suspense, lazy } from "react";
-import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from "@mui/material";
-import { Article, Publish, UnpublishedSharp, Star, StarBorder } from "@mui/icons-material";
+import { Box, Typography, Chip, Button, Stack, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress, Paper, Divider } from "@mui/material";
+import { Article, Publish, UnpublishedSharp, Star, StarBorder, Close } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import DataTable from "@/components/ui/DataTable";
 import Modal from "@/components/ui/Modal";
@@ -18,6 +18,8 @@ export default function ArticlesPage({ params = {} }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [articleToDelete, setArticleToDelete] = useState(null);
+    const [previewArticle, setPreviewArticle] = useState(null);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [categoryFilter, setCategoryFilter] = useState("all");
@@ -28,6 +30,9 @@ export default function ArticlesPage({ params = {} }) {
     const { useFetchData, useUpdateData, useDeleteData } = useApi();
     const { canView, canEdit, canDelete, canCreate } = usePageActions("articles");
 
+    // Fetch categories for filter
+    const { data: categoriesData } = useFetchData(["categories", "article"], "/categories?type=article&status=active&limit=100");
+
     // Build query params
     const queryParams = useMemo(() => {
         const params = new URLSearchParams();
@@ -37,7 +42,9 @@ export default function ArticlesPage({ params = {} }) {
             params.append("search", debouncedSearchTerm);
         }
         if (statusFilter !== "all") {
-            params.append("isPublished", statusFilter === "published");
+            // Convert string to boolean for backend
+            const isPublished = statusFilter === "published";
+            params.append("isPublished", isPublished.toString());
         }
         if (categoryFilter !== "all") {
             params.append("category", categoryFilter);
@@ -47,8 +54,8 @@ export default function ArticlesPage({ params = {} }) {
 
     const endpoint = `/articles?${queryParams}`;
 
-    // Fetch articles
-    const { data: articlesData, isLoading } = useFetchData(["articles", queryParams], endpoint);
+    // Fetch articles with refetch capability
+    const { data: articlesData, isLoading, refetch } = useFetchData(["articles", queryParams], endpoint);
 
     // Update article
     const updateArticle = useUpdateData("/articles", {
@@ -203,10 +210,8 @@ export default function ArticlesPage({ params = {} }) {
 
     const handleView = (article) => {
         if (!canView) return;
-        const slug = article.slug?.fa || article.slug;
-        if (slug) {
-            window.open(`/articles/${slug}`, "_blank");
-        }
+        setPreviewArticle(article);
+        setIsPreviewOpen(true);
     };
 
     const handleTogglePublish = (article) => {
@@ -246,7 +251,26 @@ export default function ArticlesPage({ params = {} }) {
     const handleSaveArticle = () => {
         setIsModalOpen(false);
         setEditingArticle(null);
+        // Refetch articles after save
+        refetch();
     };
+
+    // Prepare category options for filter
+    const categoryOptions = useMemo(() => {
+        const options = [{ value: "all", label: "همه دسته‌ها" }];
+        
+        if (categoriesData?.data && Array.isArray(categoriesData.data)) {
+            categoriesData.data.forEach((category) => {
+                const categoryName = getPersianValue(category?.name || category, "بدون نام");
+                options.push({
+                    value: category._id || category.id || category,
+                    label: categoryName,
+                });
+            });
+        }
+        
+        return options;
+    }, [categoriesData]);
 
     // Filters for the data table
     const filters = [
@@ -272,10 +296,7 @@ export default function ArticlesPage({ params = {} }) {
                 setCategoryFilter(value);
                 setPage(1); // Reset to first page on filter change
             },
-            options: [
-                { value: "all", label: "همه دسته‌ها" },
-                // This would be populated from categories API
-            ],
+            options: categoryOptions,
         },
     ];
 
@@ -380,6 +401,93 @@ export default function ArticlesPage({ params = {} }) {
                         >
                             {deleteArticle.isPending ? "در حال حذف..." : "حذف"}
                         </Button>
+                    </DialogActions>
+                </Dialog>
+
+                {/* Article Preview Modal */}
+                <Dialog 
+                    open={isPreviewOpen} 
+                    onClose={() => setIsPreviewOpen(false)}
+                    maxWidth="md"
+                    fullWidth
+                >
+                    <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", m: 0, p: 2 }}>
+                        <Box component="span" sx={{ fontSize: "1.25rem", fontWeight: 500 }}>پیش‌نمایش مقاله</Box>
+                        <Button
+                            onClick={() => setIsPreviewOpen(false)}
+                            size="small"
+                            startIcon={<Close />}
+                        >
+                            بستن
+                        </Button>
+                    </DialogTitle>
+                    <DialogContent dividers>
+                        {previewArticle && (
+                            <Paper sx={{ p: 3 }}>
+                                {previewArticle.featuredImage && (
+                                    <Box sx={{ mb: 3, textAlign: "center" }}>
+                                        <img 
+                                            src={previewArticle.featuredImage} 
+                                            alt={getPersianValue(previewArticle.title, "")}
+                                            style={{ maxWidth: "100%", borderRadius: 8 }}
+                                        />
+                                    </Box>
+                                )}
+                                <Typography variant="h4" gutterBottom fontWeight="bold">
+                                    {getPersianValue(previewArticle.title, "بدون عنوان")}
+                                </Typography>
+                                {previewArticle.excerpt && (
+                                    <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+                                        {getPersianValue(previewArticle.excerpt, "")}
+                                    </Typography>
+                                )}
+                                <Divider sx={{ my: 2 }} />
+                                <Box sx={{ mb: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                                    {previewArticle.categories?.map((category, index) => (
+                                        <Chip 
+                                            key={index} 
+                                            label={getPersianValue(category?.name || category, category?.name || category || "بدون دسته‌بندی")} 
+                                            size="small" 
+                                        />
+                                    ))}
+                                </Box>
+                                {previewArticle.content && (
+                                    <Box 
+                                        sx={{ 
+                                            mt: 2,
+                                            "& img": { maxWidth: "100%" },
+                                            "& p": { mb: 2 }
+                                        }}
+                                        dangerouslySetInnerHTML={{ 
+                                            __html: getPersianValue(previewArticle.content, "") 
+                                        }}
+                                    />
+                                )}
+                                <Divider sx={{ my: 2 }} />
+                                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <Typography variant="caption" color="text.secondary">
+                                        نویسنده: {previewArticle.author?.name || "نامشخص"}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        تاریخ: {formatDate(previewArticle.createdAt)}
+                                    </Typography>
+                                </Box>
+                            </Paper>
+                        )}
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setIsPreviewOpen(false)}>بستن</Button>
+                        {canEdit && previewArticle && (
+                            <Button 
+                                variant="contained" 
+                                onClick={() => {
+                                    setIsPreviewOpen(false);
+                                    handleEdit(previewArticle);
+                                }}
+                            >
+                                ویرایش مقاله
+                            </Button>
+                        )}
                     </DialogActions>
                 </Dialog>
             </Box>

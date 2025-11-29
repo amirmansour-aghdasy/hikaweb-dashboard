@@ -30,12 +30,9 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
         }
     }, []);
 
-    useEffect(() => {
-        setEditorData({
-            fa: value.fa || "",
-            en: value.en || "",
-        });
-    }, [value]);
+    // Don't sync editorData with value prop changes - this causes content to reset
+    // editorData is managed internally and only updated via handleChange
+    // The value prop is only used for initial state
 
     const handleChange = (lang, newValue) => {
         const updatedData = {
@@ -50,23 +47,28 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
         return error && error[lang];
     };
 
-    // CKEditor configuration with Persian support
-    const editorConfig = {
+    // CKEditor configuration base
+    const getEditorConfig = (lang) => ({
         fontFamily: {
             options: ["IRANSans, Arial, sans-serif", "Tahoma, sans-serif", "Times New Roman, serif"],
         },
-        language: activeTab === 0 ? "fa" : "en",
+        language: lang,
         toolbar: ["heading", "|", "bold", "italic", "link", "bulletedList", "numberedList", "|", "outdent", "indent", "|", "blockQuote", "insertTable", "mediaEmbed", "|", "undo", "redo"],
         heading: {
-            options: [
+            options: lang === "fa" ? [
                 { model: "paragraph", title: "پاراگراف", class: "ck-heading_paragraph" },
                 { model: "heading1", view: "h1", title: "عنوان 1", class: "ck-heading_heading1" },
                 { model: "heading2", view: "h2", title: "عنوان 2", class: "ck-heading_heading2" },
                 { model: "heading3", view: "h3", title: "عنوان 3", class: "ck-heading_heading3" },
+            ] : [
+                { model: "paragraph", title: "Paragraph", class: "ck-heading_paragraph" },
+                { model: "heading1", view: "h1", title: "Heading 1", class: "ck-heading_heading1" },
+                { model: "heading2", view: "h2", title: "Heading 2", class: "ck-heading_heading2" },
+                { model: "heading3", view: "h3", title: "Heading 3", class: "ck-heading_heading3" },
             ],
         },
-        placeholder: activeTab === 0 ? "محتوای خود را اینجا بنویسید..." : "Write your content here...",
-    };
+        placeholder: lang === "fa" ? "محتوای خود را اینجا بنویسید..." : "Write your content here...",
+    });
 
     return (
         <Box>
@@ -77,7 +79,9 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
             <Paper variant="outlined" sx={{ overflow: "hidden" }}>
                 <Tabs
                     value={activeTab}
-                    onChange={(_, newValue) => setActiveTab(newValue)}
+                    onChange={(_, newValue) => {
+                        setActiveTab(newValue);
+                    }}
                     variant="fullWidth"
                     sx={{
                         borderBottom: 1,
@@ -109,6 +113,7 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                 <Box
                     sx={{
                         minHeight: height,
+                        position: "relative",
                         "& .ck-editor": {
                             minHeight: height,
                         },
@@ -116,43 +121,66 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                             minHeight: `${height - 100}px`,
                             maxHeight: `${height - 100}px`,
                             overflow: "auto",
-                            direction: activeTab === 0 ? "rtl" : "ltr",
-                        },
-                        "& .ck-toolbar": {
-                            direction: activeTab === 0 ? "rtl" : "ltr",
                         },
                     }}
                 >
                     {editorLoaded ? (
-                        activeTab === 0 ? (
-                            <CKEditor
-                                editor={ClassicEditor}
-                                config={editorConfig}
-                                data={editorData.fa || "<p>محتوای خود را اینجا بنویسید...</p>"}
-                                disabled={disabled}
-                                onReady={(editor) => {
-                                    editorRef.current.fa = editor;
+                        <>
+                            {/* Persian Editor */}
+                            {/* Persian Editor */}
+                            <Box
+                                sx={{
+                                    display: activeTab === 0 ? "block" : "none",
+                                    "& .ck-editor__editable": {
+                                        direction: "rtl",
+                                    },
+                                    "& .ck-toolbar": {
+                                        direction: "rtl",
+                                    },
                                 }}
-                                onChange={(event, editor) => {
-                                    const data = editor.getData();
-                                    handleChange("fa", data);
+                            >
+                                <CKEditor
+                                    editor={ClassicEditor}
+                                    config={getEditorConfig("fa")}
+                                    data={editorData.fa || "<p>محتوای خود را اینجا بنویسید...</p>"}
+                                    disabled={disabled}
+                                    onReady={(editor) => {
+                                        editorRef.current.fa = editor;
+                                    }}
+                                    onChange={(event, editor) => {
+                                        const data = editor.getData();
+                                        handleChange("fa", data);
+                                    }}
+                                />
+                            </Box>
+                            
+                            {/* English Editor */}
+                            <Box
+                                sx={{
+                                    display: activeTab === 1 ? "block" : "none",
+                                    "& .ck-editor__editable": {
+                                        direction: "ltr",
+                                    },
+                                    "& .ck-toolbar": {
+                                        direction: "ltr",
+                                    },
                                 }}
-                            />
-                        ) : (
-                            <CKEditor
-                                editor={ClassicEditor}
-                                config={editorConfig}
-                                data={editorData.en || "<p>Write your content here...</p>"}
-                                disabled={disabled}
-                                onReady={(editor) => {
-                                    editorRef.current.en = editor;
-                                }}
-                                onChange={(event, editor) => {
-                                    const data = editor.getData();
-                                    handleChange("en", data);
-                                }}
-                            />
-                        )
+                            >
+                                <CKEditor
+                                    editor={ClassicEditor}
+                                    config={getEditorConfig("en")}
+                                    data={editorData.en || "<p>Write your content here...</p>"}
+                                    disabled={disabled}
+                                    onReady={(editor) => {
+                                        editorRef.current.en = editor;
+                                    }}
+                                    onChange={(event, editor) => {
+                                        const data = editor.getData();
+                                        handleChange("en", data);
+                                    }}
+                                />
+                            </Box>
+                        </>
                     ) : (
                         <Box sx={{ p: 2, textAlign: "center" }}>
                             <CircularProgress size={24} sx={{ mb: 1 }} />
