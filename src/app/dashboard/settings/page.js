@@ -36,10 +36,31 @@ export default function SettingsPage() {
     };
 
     const handleSettingsChange = (section, data) => {
-        setSettings((prev) => ({
-            ...prev,
-            [section]: { ...prev[section], ...data },
-        }));
+        setSettings((prev) => {
+            const newSettings = {
+                ...prev,
+                [section]: { ...prev[section], ...data },
+            };
+            
+            // Special handling for maintenance mode in general settings
+            if (section === 'general' && data.maintenanceMode !== undefined) {
+                newSettings.system = {
+                    ...prev.system,
+                    maintenanceMode: {
+                        enabled: data.maintenanceMode,
+                        message: prev.system?.maintenanceMode?.message || {
+                            fa: 'سایت در حال تعمیر و نگهداری است. لطفاً بعداً مراجعه کنید.',
+                            en: 'Site is under maintenance. Please check back later.'
+                        },
+                        allowedIPs: prev.system?.maintenanceMode?.allowedIPs || []
+                    }
+                };
+                // Remove maintenanceMode from general section
+                delete newSettings.general?.maintenanceMode;
+            }
+            
+            return newSettings;
+        });
         setHasChanges(true);
     };
 
@@ -155,7 +176,7 @@ export default function SettingsPage() {
                         <Card>
                             <CardContent sx={{ p: 4 }}>
                                 {/* General Settings */}
-                                {activeTab === 0 && <GeneralSettings settings={settings.general || {}} onChange={(data) => handleSettingsChange("general", data)} />}
+                                {activeTab === 0 && <GeneralSettings settings={{ ...settings.general, system: settings.system }} onChange={(data) => handleSettingsChange("general", data)} />}
 
                                 {/* Contact Settings */}
                                 {activeTab === 1 && <ContactSettings settings={settings.contact || {}} onChange={(data) => handleSettingsChange("contact", data)} />}
@@ -249,7 +270,23 @@ function GeneralSettings({ settings, onChange }) {
                 </Grid>
 
                 <Grid item size={{ xs: 12 }}>
-                    <FormControlLabel control={<Switch checked={formData.maintenanceMode} onChange={(e) => handleChange("maintenanceMode", e.target.checked)} />} label="حالت تعمیر و نگهداری" />
+                    <Paper sx={{ p: 2, bgcolor: formData.maintenanceMode ? 'warning.light' : 'background.paper' }}>
+                        <FormControlLabel 
+                            control={
+                                <Switch 
+                                    checked={formData.maintenanceMode} 
+                                    onChange={(e) => handleChange("maintenanceMode", e.target.checked)} 
+                                    color="warning"
+                                />
+                            } 
+                            label="حالت تعمیر و نگهداری" 
+                        />
+                        {formData.maintenanceMode && (
+                            <Alert severity="warning" sx={{ mt: 2 }}>
+                                با فعال‌سازی این گزینه، سایت برای کاربران عادی غیرفعال می‌شود و فقط صفحه تعمیر و نگهداری نمایش داده می‌شود.
+                            </Alert>
+                        )}
+                    </Paper>
                 </Grid>
             </Grid>
         </Box>

@@ -112,20 +112,32 @@ export default function ArticleForm({ article, onSave, onCancel }) {
     useEffect(() => {
         if (watchedTitle?.fa && !article) {
             const slug = {
-                fa: generateSlug(watchedTitle.fa),
-                en: watchedTitle.en ? generateSlug(watchedTitle.en) : "",
+                fa: generateSlugFa(watchedTitle.fa),
+                en: watchedTitle.en ? generateSlugEn(watchedTitle.en) : "",
             };
             setValue("slug", slug);
         }
     }, [watchedTitle, setValue, article]);
 
-    const generateSlug = (title) => {
+    // Generate slug for Persian (only replace spaces with dash, keep Persian characters)
+    const generateSlugFa = (title) => {
+        if (!title) return "";
+        return title
+            .trim()
+            .replace(/[\s\u200C\u200D]+/g, "-") // Replace spaces and zero-width characters with dash
+            .replace(/-+/g, "-") // Replace multiple dashes with single dash
+            .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
+    };
+
+    // Generate slug for English (only a-z, 0-9, -)
+    const generateSlugEn = (title) => {
+        if (!title) return "";
         return title
             .toLowerCase()
             .trim()
-            .replace(/[^\w\s-]/g, "")
-            .replace(/[\s_-]+/g, "-")
-            .replace(/^-+|-+$/g, "");
+            .replace(/[^a-z0-9\s-]/g, "") // Only keep a-z, 0-9, spaces, and dashes
+            .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with dash
+            .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
     };
 
     const onSubmit = async (data) => {
