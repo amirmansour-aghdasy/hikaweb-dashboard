@@ -265,11 +265,19 @@ export default function DashboardPage() {
                                 </Typography>
                                 <ResponsiveContainer width="100%" height={300}>
                                     <BarChart data={ticketStatusData}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" />
-                                        <YAxis />
-                                        <Tooltip />
-                                        <Legend />
+                                        <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+                                        <XAxis dataKey="name" stroke={theme.palette.text.secondary} />
+                                        <YAxis stroke={theme.palette.text.secondary} />
+                                        <Tooltip 
+                                            contentStyle={{
+                                                backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#FFFFFF",
+                                                border: `1px solid ${theme.palette.divider}`,
+                                                color: theme.palette.text.primary,
+                                            }}
+                                        />
+                                        <Legend 
+                                            wrapperStyle={{ color: theme.palette.text.primary }}
+                                        />
                                         <Bar dataKey="value" fill="#8884d8" />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -300,7 +308,13 @@ export default function DashboardPage() {
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <Tooltip />
+                                        <Tooltip 
+                                            contentStyle={{
+                                                backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#FFFFFF",
+                                                border: `1px solid ${theme.palette.divider}`,
+                                                color: theme.palette.text.primary,
+                                            }}
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </Paper>
@@ -316,11 +330,19 @@ export default function DashboardPage() {
                                 </Typography>
                                 <ResponsiveContainer width="100%" height={300}>
                                     <BarChart data={mediaTypeData}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" />
-                                        <YAxis />
-                                        <Tooltip />
-                                        <Legend />
+                                        <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+                                        <XAxis dataKey="name" stroke={theme.palette.text.secondary} />
+                                        <YAxis stroke={theme.palette.text.secondary} />
+                                        <Tooltip 
+                                            contentStyle={{
+                                                backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#FFFFFF",
+                                                border: `1px solid ${theme.palette.divider}`,
+                                                color: theme.palette.text.primary,
+                                            }}
+                                        />
+                                        <Legend 
+                                            wrapperStyle={{ color: theme.palette.text.primary }}
+                                        />
                                         <Bar dataKey="value" fill="#00C49F" />
                                     </BarChart>
                                 </ResponsiveContainer>

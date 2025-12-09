@@ -4,9 +4,38 @@
     font-weight: normal;
     font-style: normal;
     font-display: swap;
-  }
-  
-  body {
+}
+
+body {
     font-family: 'IRANSans', sans-serif;
     direction: rtl;
-  }
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode support */
+:root {
+    --scrollbar-track: #f1f1f1;
+    --scrollbar-thumb: #c1c1c1;
+    --scrollbar-thumb-hover: #a1a1a1;
+}
+
+.dark {
+    --scrollbar-track: #1E1E1E;
+    --scrollbar-thumb: #555;
+    --scrollbar-thumb-hover: #777;
+}
+
+/* Smooth transitions for theme changes */
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Ensure images maintain proper appearance in dark mode */
+img {
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.dark img {
+    opacity: 0.9;
+}

@@ -41,6 +41,9 @@ export const viewport = {
 export default function RootLayout({ children }) {
     return (
         <html lang="fa" dir="rtl">
+            <head>
+                <meta name="theme-color" content="#005756" />
+            </head>
             <body className={iranSanse.className} suppressHydrationWarning={true}>
                 <Providers>
                     <ErrorBoundary>

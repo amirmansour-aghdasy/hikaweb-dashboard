@@ -19,6 +19,7 @@ import {
     ListItemText,
     ListItemAvatar,
     Divider,
+    useTheme,
 } from "@mui/material";
 import { TrendingUp, TrendingDown, People, Article, Visibility, Comment, Star, BusinessCenter, Work, Assignment, Schedule } from "@mui/icons-material";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -29,6 +30,7 @@ import { formatDate, formatPrice, formatNumber } from "@/lib/utils";
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
 export default function AnalyticsPage() {
+    const theme = useTheme();
     const [timeRange, setTimeRange] = useState("30d");
     const { useFetchData } = useApi();
 
@@ -166,11 +168,19 @@ export default function AnalyticsPage() {
                                 </Typography>
                                 <ResponsiveContainer width="100%" height={400}>
                                     <LineChart data={chartData}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" />
-                                        <YAxis />
-                                        <Tooltip />
-                                        <Legend />
+                                        <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+                                        <XAxis dataKey="name" stroke={theme.palette.text.secondary} />
+                                        <YAxis stroke={theme.palette.text.secondary} />
+                                        <Tooltip 
+                                            contentStyle={{
+                                                backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#FFFFFF",
+                                                border: `1px solid ${theme.palette.divider}`,
+                                                color: theme.palette.text.primary,
+                                            }}
+                                        />
+                                        <Legend 
+                                            wrapperStyle={{ color: theme.palette.text.primary }}
+                                        />
                                         <Line type="monotone" dataKey="views" stroke="#8884d8" strokeWidth={2} />
                                         <Line type="monotone" dataKey="users" stroke="#82ca9d" strokeWidth={2} />
                                     </LineChart>
@@ -202,7 +212,13 @@ export default function AnalyticsPage() {
                                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                             ))}
                                         </Pie>
-                                        <Tooltip />
+                                        <Tooltip 
+                                            contentStyle={{
+                                                backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#FFFFFF",
+                                                border: `1px solid ${theme.palette.divider}`,
+                                                color: theme.palette.text.primary,
+                                            }}
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </CardContent>
@@ -305,11 +321,19 @@ export default function AnalyticsPage() {
                                 </Typography>
                                 <ResponsiveContainer width="100%" height={300}>
                                     <AreaChart data={chartData}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="name" />
-                                        <YAxis />
-                                        <Tooltip />
-                                        <Legend />
+                                        <CartesianGrid strokeDasharray="3 3" stroke={theme.palette.divider} />
+                                        <XAxis dataKey="name" stroke={theme.palette.text.secondary} />
+                                        <YAxis stroke={theme.palette.text.secondary} />
+                                        <Tooltip 
+                                            contentStyle={{
+                                                backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#FFFFFF",
+                                                border: `1px solid ${theme.palette.divider}`,
+                                                color: theme.palette.text.primary,
+                                            }}
+                                        />
+                                        <Legend 
+                                            wrapperStyle={{ color: theme.palette.text.primary }}
+                                        />
                                         <Area type="monotone" dataKey="articles" stackId="1" stroke="#8884d8" fill="#8884d8" />
                                     </AreaChart>
                                 </ResponsiveContainer>

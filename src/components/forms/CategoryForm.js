@@ -1,5 +1,5 @@
 "use client";
-import { Box, TextField, Button, Grid, Switch, FormControlLabel, Typography, FormControl, InputLabel, Select, MenuItem, Stack, Chip, Avatar } from "@mui/material";
+import { Box, TextField, Button, Grid, Switch, FormControlLabel, Typography, FormControl, InputLabel, Select, MenuItem, Stack, Chip, Avatar, useTheme } from "@mui/material";
 import { Save, Cancel, Category, ColorLens, Reorder } from "@mui/icons-material";
 import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
@@ -281,7 +281,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
                                                     width: 24,
                                                     height: 24,
                                                     cursor: "pointer",
-                                                    border: watchedColor === color ? "2px solid #000" : "none",
+                                                    border: watchedColor === color ? `2px solid ${theme.palette.mode === "dark" ? "#fff" : "#000"}` : "none",
                                                 }}
                                             />
                                         ))}

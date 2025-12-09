@@ -88,6 +88,11 @@ const menuItems = [
         path: "/dashboard/carousel",
     },
     {
+        title: "بنرها",
+        icon: <BrandingWatermark />,
+        path: "/dashboard/banners",
+    },
+    {
         title: "وظایف",
         icon: <Assignment />,
         path: "/dashboard/tasks",

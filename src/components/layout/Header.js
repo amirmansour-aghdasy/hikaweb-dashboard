@@ -1,9 +1,10 @@
 "use client";
-import { AppBar, Toolbar, IconButton, Typography, Box, Menu, MenuItem, Avatar, Divider, Button, useTheme, useMediaQuery } from "@mui/material";
-import { Menu as MenuIcon, AccountCircle, Logout, Settings, Person, Language } from "@mui/icons-material";
+import { AppBar, Toolbar, IconButton, Typography, Box, Menu, MenuItem, Avatar, Divider, Button, useTheme, useMediaQuery, Tooltip } from "@mui/material";
+import { Menu as MenuIcon, AccountCircle, Logout, Settings, Person, Language, LightMode, DarkMode } from "@mui/icons-material";
 import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { useUIStore } from "../../store/useUIStore";
 import NotificationButton from "./NotificationButton";
 import NotificationsMenu from "./NotificationsMenu";
 
@@ -12,6 +13,7 @@ export default function Header({ onMenuClick, sidebarOpen }) {
     const isMobile = useMediaQuery(theme.breakpoints.down("md"));
     const { user, logout } = useAuth();
     const router = useRouter();
+    const { darkMode, toggleDarkMode } = useUIStore();
     const [anchorEl, setAnchorEl] = useState(null);
     const [notificationAnchor, setNotificationAnchor] = useState(null);
 
@@ -67,6 +69,21 @@ export default function Header({ onMenuClick, sidebarOpen }) {
                     </Typography>
 
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        {/* Dark Mode Toggle */}
+                        <Tooltip title={darkMode ? "حالت روشن" : "حالت تاریک"}>
+                            <IconButton
+                                onClick={toggleDarkMode}
+                                color="inherit"
+                                sx={{
+                                    transition: "transform 0.2s",
+                                    "&:hover": {
+                                        transform: "scale(1.1)",
+                                    },
+                                }}
+                            >
+                                {darkMode ? <LightMode /> : <DarkMode />}
+                            </IconButton>
+                        </Tooltip>
 
                         {/* Notifications */}
                         <NotificationButton onOpen={handleNotificationOpen} />

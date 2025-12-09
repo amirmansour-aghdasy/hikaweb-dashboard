@@ -1,5 +1,5 @@
 "use client";
-import { Box, Tabs, Tab, Paper, Typography, FormHelperText, CircularProgress } from "@mui/material";
+import { Box, Tabs, Tab, Paper, Typography, FormHelperText, CircularProgress, useTheme } from "@mui/material";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 
@@ -19,6 +19,7 @@ const CKEditor = dynamic(() => import("@ckeditor/ckeditor5-react").then((mod) =>
 import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
 
 export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onChange, error, helperText, required = false, height = 300, disabled = false }) {
+    const theme = useTheme();
     const [activeTab, setActiveTab] = useState(0);
     const [editorData, setEditorData] = useState({ fa: value.fa || "", en: value.en || "" });
     const [editorLoaded, setEditorLoaded] = useState(false);
@@ -121,6 +122,21 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                             minHeight: `${height - 100}px`,
                             maxHeight: `${height - 100}px`,
                             overflow: "auto",
+                            backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#FFFFFF",
+                            color: theme.palette.text.primary,
+                        },
+                        "& .ck-toolbar": {
+                            backgroundColor: theme.palette.mode === "dark" ? "#2D2D2D" : "#F5F5F5",
+                            borderColor: theme.palette.divider,
+                        },
+                        "& .ck-button": {
+                            color: theme.palette.text.primary,
+                            "&:hover": {
+                                backgroundColor: theme.palette.mode === "dark" ? "#3D3D3D" : "#E0E0E0",
+                            },
+                        },
+                        "& .ck-button_on": {
+                            backgroundColor: theme.palette.mode === "dark" ? "#3D3D3D" : "#E0E0E0",
                         },
                     }}
                 >

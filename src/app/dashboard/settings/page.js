@@ -5,6 +5,7 @@ import { Settings as SettingsIcon, Save, Business, Email, Security, Storage, Not
 import Layout from "@/components/layout/Layout";
 import MultiLangTextField from "@/components/forms/MultiLangTextField";
 import { useApi } from "@/hooks/useApi";
+import { useUIStore } from "@/store/useUIStore";
 
 export default function SettingsPage() {
     const [activeTab, setActiveTab] = useState(0);
@@ -825,6 +826,7 @@ function NotificationSettings({ settings, onChange }) {
 
 // Theme Settings Component
 function ThemeSettings({ settings, onChange }) {
+    const { darkMode, setDarkMode } = useUIStore();
     const [formData, setFormData] = useState({
         colors: {
             primary: "#1976d2",
@@ -836,15 +838,15 @@ function ThemeSettings({ settings, onChange }) {
             fontSize: 14,
         },
         features: {
-            darkMode: false,
+            darkMode: darkMode,
             rtlSupport: true,
             animations: true,
         },
     });
 
     useEffect(() => {
-        setFormData((prev) => ({ ...prev, ...settings }));
-    }, [settings]);
+        setFormData((prev) => ({ ...prev, ...settings, features: { ...prev.features, darkMode } }));
+    }, [settings, darkMode]);
 
     const handleChange = (field, value) => {
         const newData = { ...formData, [field]: value };
@@ -855,6 +857,11 @@ function ThemeSettings({ settings, onChange }) {
     const handleColorChange = (field, value) => {
         const newColors = { ...formData.colors, [field]: value };
         handleChange("colors", newColors);
+    };
+
+    const handleDarkModeToggle = (enabled) => {
+        setDarkMode(enabled);
+        handleChange("features", { ...formData.features, darkMode: enabled });
     };
 
     const resetToDefault = () => {
@@ -874,6 +881,7 @@ function ThemeSettings({ settings, onChange }) {
                 animations: true,
             },
         };
+        setDarkMode(false);
         setFormData(defaultTheme);
         onChange(defaultTheme);
     };
@@ -960,8 +968,7 @@ function ThemeSettings({ settings, onChange }) {
                                         <Switch
                                             checked={formData.features.darkMode}
                                             onChange={(e) => {
-                                                const newFeatures = { ...formData.features, darkMode: e.target.checked };
-                                                handleChange("features", newFeatures);
+                                                handleDarkModeToggle(e.target.checked);
                                             }}
                                         />
                                     }
