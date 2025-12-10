@@ -6,16 +6,19 @@ import rtlPlugin from "stylis-plugin-rtl";
 import createCache from "@emotion/cache";
 import { CssBaseline } from "@mui/material";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "react-hot-toast";
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useUIStore } from "../store/useUIStore";
 import PWAInstallPrompt from "../components/ui/PWAInstallPrompt";
+import ClientOnlyToaster from "../components/ui/ClientOnlyToaster";
 
-// RTL cache
-const cacheRtl = createCache({
-    key: "muirtl",
-    stylisPlugins: [prefixer, rtlPlugin],
-});
+// Create RTL cache only on client-side to avoid hydration mismatch
+function createEmotionCache() {
+    return createCache({
+        key: "muirtl",
+        stylisPlugins: [prefixer, rtlPlugin],
+        prepend: true,
+    });
+}
 
 // Theme configuration function
 const getTheme = (mode) =>
@@ -150,9 +153,26 @@ const queryClient = new QueryClient({
 export function Providers({ children }) {
     const darkMode = useUIStore((state) => state.darkMode);
     const theme = useMemo(() => getTheme(darkMode ? "dark" : "light"), [darkMode]);
+    const [mounted, setMounted] = useState(false);
+    
+    // Create cache only on client-side to avoid hydration mismatch
+    const emotionCache = useMemo(() => {
+        // Only create cache on client-side
+        if (typeof window !== 'undefined') {
+            return createEmotionCache();
+        }
+        return null;
+    }, []);
+
+    // Mark component as mounted (client-side only)
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Update document class and meta theme-color for dark mode
     useEffect(() => {
+        if (typeof window === 'undefined') return;
+        
         if (darkMode) {
             document.documentElement.classList.add("dark");
             document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#121212");
@@ -162,23 +182,23 @@ export function Providers({ children }) {
         }
     }, [darkMode]);
 
+    // Don't render until cache is ready (client-side only)
+    if (!emotionCache) {
+        return <>{children}</>;
+    }
+
     return (
-        <CacheProvider value={cacheRtl}>
+        <CacheProvider value={emotionCache}>
             <ThemeProvider theme={theme}>
                 <CssBaseline />
                 <QueryClientProvider client={queryClient}>
                     {children}
-                    <PWAInstallPrompt />
-                    <Toaster
-                        position="top-center"
-                        toastOptions={{
-                            duration: 4000,
-                            style: {
-                                background: darkMode ? "#2D2D2D" : "#363636",
-                                color: "#fff",
-                            },
-                        }}
-                    />
+                    {mounted && (
+                        <>
+                            <PWAInstallPrompt />
+                        </>
+                    )}
+                    <ClientOnlyToaster />
                 </QueryClientProvider>
             </ThemeProvider>
         </CacheProvider>

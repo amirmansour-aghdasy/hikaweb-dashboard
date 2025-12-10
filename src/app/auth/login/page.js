@@ -24,8 +24,9 @@ import api from "@/lib/api";
 import Cookies from "js-cookie";
 import toast from "react-hot-toast";
 import { startAuthentication } from "@simplewebauthn/browser";
+import ClientOnlyWrapper from "@/components/ui/ClientOnlyWrapper";
 
-export default function LoginPage() {
+function LoginPageContent() {
     const router = useRouter();
     const { login } = useAuth();
     const [tabValue, setTabValue] = useState(0); // 0: Password, 1: OTP, 2: Biometric
@@ -608,5 +609,19 @@ export default function LoginPage() {
                 </Paper>
             </Box>
         </Container>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <ClientOnlyWrapper
+            fallback={
+                <Box display="flex" justifyContent="center" alignItems="center" height="100vh" bgcolor="background.default">
+                    <CircularProgress />
+                </Box>
+            }
+        >
+            <LoginPageContent />
+        </ClientOnlyWrapper>
     );
 }

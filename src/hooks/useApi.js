@@ -51,7 +51,9 @@ export const useApi = () => {
     const useUpdateData = (endpoint, options = {}) => {
         return useMutation({
             mutationFn: async ({ id, data }) => {
-                const response = await api.put(`${endpoint}/${id}`, data);
+                // Support endpoints without ID (like settings)
+                const url = id !== undefined && id !== null ? `${endpoint}/${id}` : endpoint;
+                const response = await api.put(url, data);
                 return response.data;
             },
             onSuccess: (responseData, variables) => {

@@ -28,7 +28,32 @@ export default function SettingsPage() {
 
     useEffect(() => {
         if (settingsData?.data) {
-            setSettings(settingsData.data);
+            // Settings response structure: { data: { settings: {...} } }
+            const settingsObj = settingsData.data.settings || settingsData.data;
+            
+            // Organize settings into sections for the form
+            const organizedSettings = {
+                general: {
+                    siteName: settingsObj.siteName || { fa: "", en: "" },
+                    description: settingsObj.siteDescription || { fa: "", en: "" },
+                    keywords: settingsObj.seo?.defaultKeywords || { fa: [], en: [] },
+                    timezone: settingsObj.system?.timezone || "Asia/Tehran",
+                    dateFormat: settingsObj.system?.dateFormat || "YYYY-MM-DD",
+                    defaultLanguage: settingsObj.system?.defaultLanguage || "fa",
+                    enableMultiLanguage: true, // This might need to be added to backend
+                    maxFileSize: settingsObj.system?.maxFileSize || 10485760,
+                },
+                contact: settingsObj.contact || {},
+                email: settingsObj.email || {},
+                security: settingsObj.security || {},
+                media: settingsObj.media || {},
+                notifications: settingsObj.notifications || {},
+                theme: settingsObj.theme || {},
+                system: settingsObj.system || {},
+                seo: settingsObj.seo || {},
+            };
+            
+            setSettings(organizedSettings);
         }
     }, [settingsData]);
 
@@ -36,11 +61,41 @@ export default function SettingsPage() {
         setActiveTab(newValue);
     };
 
+    // Helper function to deep merge objects, removing undefined values
+    const deepMergeRemoveUndefined = (target, source) => {
+        if (typeof source !== 'object' || source === null || Array.isArray(source)) {
+            return source;
+        }
+        
+        if (typeof target !== 'object' || target === null || Array.isArray(target)) {
+            return source;
+        }
+        
+        const result = { ...target };
+        Object.keys(source).forEach(key => {
+            if (source[key] !== undefined) {
+                if (
+                    typeof source[key] === 'object' &&
+                    source[key] !== null &&
+                    !Array.isArray(source[key]) &&
+                    typeof target[key] === 'object' &&
+                    target[key] !== null &&
+                    !Array.isArray(target[key])
+                ) {
+                    result[key] = deepMergeRemoveUndefined(target[key], source[key]);
+                } else {
+                    result[key] = source[key];
+                }
+            }
+        });
+        return result;
+    };
+
     const handleSettingsChange = (section, data) => {
         setSettings((prev) => {
             const newSettings = {
                 ...prev,
-                [section]: { ...prev[section], ...data },
+                [section]: deepMergeRemoveUndefined(prev[section] || {}, data),
             };
             
             // Special handling for maintenance mode in general settings
@@ -65,11 +120,51 @@ export default function SettingsPage() {
         setHasChanges(true);
     };
 
+    // Helper function to remove undefined values recursively
+    const removeUndefined = (obj) => {
+        if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+            return obj;
+        }
+        
+        const cleaned = {};
+        Object.keys(obj).forEach(key => {
+            if (obj[key] !== undefined) {
+                if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                    cleaned[key] = removeUndefined(obj[key]);
+                } else {
+                    cleaned[key] = obj[key];
+                }
+            }
+        });
+        return cleaned;
+    };
+
     const handleSave = async () => {
         try {
+            // Convert organized settings back to flat structure for backend
+            const flatSettings = {
+                siteName: settings.general?.siteName,
+                siteDescription: settings.general?.description,
+                contact: settings.contact,
+                email: settings.email,
+                security: settings.security,
+                media: settings.media,
+                notifications: settings.notifications,
+                theme: settings.theme,
+                system: settings.system,
+                seo: {
+                    ...settings.seo,
+                    defaultKeywords: settings.general?.keywords || settings.seo?.defaultKeywords,
+                },
+            };
+            
+            // Remove undefined values before sending to backend
+            const cleanedSettings = removeUndefined(flatSettings);
+            
+            // Settings endpoint doesn't require ID (it's a singleton)
             await updateSettings.mutateAsync({
-                id: settingsData.data._id,
-                data: settings,
+                id: null, // No ID needed for settings endpoint
+                data: cleanedSettings,
             });
         } catch (error) {
             console.error("خطا در ذخیره تنظیمات:", error);
@@ -78,7 +173,32 @@ export default function SettingsPage() {
 
     const handleReset = () => {
         if (settingsData?.data) {
-            setSettings(settingsData.data);
+            // Settings response structure: { data: { settings: {...} } }
+            const settingsObj = settingsData.data.settings || settingsData.data;
+            
+            // Organize settings into sections for the form (same as useEffect)
+            const organizedSettings = {
+                general: {
+                    siteName: settingsObj.siteName || { fa: "", en: "" },
+                    description: settingsObj.siteDescription || { fa: "", en: "" },
+                    keywords: settingsObj.seo?.defaultKeywords || { fa: [], en: [] },
+                    timezone: settingsObj.system?.timezone || "Asia/Tehran",
+                    dateFormat: settingsObj.system?.dateFormat || "YYYY-MM-DD",
+                    defaultLanguage: settingsObj.system?.defaultLanguage || "fa",
+                    enableMultiLanguage: true,
+                    maxFileSize: settingsObj.system?.maxFileSize || 10485760,
+                },
+                contact: settingsObj.contact || {},
+                email: settingsObj.email || {},
+                security: settingsObj.security || {},
+                media: settingsObj.media || {},
+                notifications: settingsObj.notifications || {},
+                theme: settingsObj.theme || {},
+                system: settingsObj.system || {},
+                seo: settingsObj.seo || {},
+            };
+            
+            setSettings(organizedSettings);
             setHasChanges(false);
         }
     };
@@ -227,7 +347,15 @@ function GeneralSettings({ settings, onChange }) {
     });
 
     useEffect(() => {
-        setFormData((prev) => ({ ...prev, ...settings }));
+        // Extract maintenanceMode from system.maintenanceMode.enabled
+        const maintenanceMode = settings?.system?.maintenanceMode?.enabled || false;
+        
+        // Merge settings with extracted maintenanceMode
+        setFormData((prev) => ({
+            ...prev,
+            ...settings,
+            maintenanceMode: maintenanceMode,
+        }));
     }, [settings]);
 
     const handleChange = (field, value) => {
