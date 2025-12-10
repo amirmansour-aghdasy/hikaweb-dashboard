@@ -1,0 +1,100 @@
+name: Deploy Dashboard
+
+on:
+  push:
+    branches:
+      - master
+      - development
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'master'
+
+env:
+  VPS_HOST: ${{ secrets.VPS_HOST }}
+  VPS_USER: ubuntu
+
+jobs:
+  deploy:
+    name: Deploy Dashboard to Production
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Determine branch
+        id: branch
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "branch=${{ github.event.inputs.branch }}" >> $GITHUB_OUTPUT
+          else
+            echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Sync Dashboard Repository on Server
+        run: |
+          ssh ubuntu@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+            cd ~/hikaweb
+            
+            # Sync dashboard repository
+            if [ -d dashboard ]; then
+              cd dashboard
+              if [ -d .git ]; then
+                git fetch origin
+                git checkout ${{ steps.branch.outputs.branch }} || git checkout -b ${{ steps.branch.outputs.branch }} origin/${{ steps.branch.outputs.branch }}
+                git reset --hard origin/${{ steps.branch.outputs.branch }}
+                echo "✅ Dashboard repository synced"
+              else
+                cd ..
+                rm -rf dashboard
+                git clone -b ${{ steps.branch.outputs.branch }} https://github.com/amirmansour-aghdasy/hikaweb-dashboard.git dashboard
+                echo "✅ Dashboard repository cloned"
+              fi
+            else
+              git clone -b ${{ steps.branch.outputs.branch }} https://github.com/amirmansour-aghdasy/hikaweb-dashboard.git dashboard
+              echo "✅ Dashboard repository cloned"
+            fi
+          EOF
+
+      - name: Deploy Dashboard Service
+        run: |
+          ssh ubuntu@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+            cd ~/hikaweb
+            
+            # Make sure deploy script is executable
+            chmod +x scripts/deploy-service.sh || true
+            
+            # Deploy dashboard
+            ./scripts/deploy-service.sh dashboard ${{ steps.branch.outputs.branch }}
+          EOF
+
+      - name: Verify Deployment
+        run: |
+          ssh ubuntu@${{ secrets.VPS_HOST }} << 'EOF'
+            echo "🔍 Verifying dashboard deployment..."
+            sleep 5
+            
+            if curl -f -s http://localhost:1281 > /dev/null; then
+              echo "✅ Dashboard is accessible"
+            else
+              echo "⚠️  Dashboard health check failed, but deployment completed"
+            fi
+            
+            # Show container status
+            docker-compose ps dashboard
+          EOF
+
