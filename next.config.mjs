@@ -9,6 +9,32 @@ const nextConfig = {
     typescript: {
         ignoreBuildErrors: true,
     },
+    // SECURITY: Disable powered-by header
+    poweredByHeader: false,
+    // SECURITY: Additional security headers (complementary to middleware)
+    async headers() {
+        return [
+            {
+                source: '/:path*',
+                headers: [
+                    {
+                        key: 'X-DNS-Prefetch-Control',
+                        value: 'on'
+                    },
+                    {
+                        key: 'X-Download-Options',
+                        value: 'noopen'
+                    },
+                ],
+            },
+        ];
+    },
+    // SECURITY: Server Actions body size limit to prevent DoS
+    experimental: {
+        serverActions: {
+            bodySizeLimit: '1mb',
+        },
+    },
     // PWA configuration will be added by withPWA
 };
 

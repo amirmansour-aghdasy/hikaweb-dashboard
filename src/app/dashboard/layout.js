@@ -10,31 +10,36 @@ import { ALLOWED_ROLES } from "@/lib/constants";
 import Cookies from "js-cookie";
 
 export default function DashboardLayout({ children }) {
-    const { user, loading, logout } = useAuth();
+    const { user, loading, logout, hasCheckedAuth } = useAuth();
     const router = useRouter();
     const hasRedirected = useRef(false);
 
     useEffect(() => {
         if (hasRedirected.current) return;
 
-        if (!loading && !user) {
+        // Don't redirect while loading or while auth is being checked
+        if (loading || !hasCheckedAuth) {
+            return;
+        }
+
+        // Only redirect if auth check is complete and user is definitely not authenticated
+        if (!user) {
+            // Auth check is complete and no user - redirect to login
             hasRedirected.current = true;
             router.push("/auth/login");
             return;
         }
 
         // Check if user has dashboard access
-        if (!loading && user) {
-            const userRole = user.role?.name || user.role;
-            if (!ALLOWED_ROLES.includes(userRole)) {
-                // User doesn't have dashboard access - clear token and logout
-                hasRedirected.current = true;
-                Cookies.remove("token");
-                logout();
-                router.push("/auth/login");
-            }
+        const userRole = user.role?.name || user.role;
+        if (!ALLOWED_ROLES.includes(userRole)) {
+            // User doesn't have dashboard access - clear token and logout
+            hasRedirected.current = true;
+            Cookies.remove("token");
+            logout();
+            router.push("/auth/login");
         }
-    }, [user, loading, router, logout]);
+    }, [user, loading, hasCheckedAuth, router, logout]);
 
     if (loading) {
         return (

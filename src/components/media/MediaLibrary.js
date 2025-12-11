@@ -165,6 +165,7 @@ export default function MediaLibrary({
             try {
                 await deleteMedia.mutateAsync({ id: item._id });
             } catch (error) {
+                // Error is already handled by api interceptor with toast
                 console.error("Error deleting media:", error);
             }
         }

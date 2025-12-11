@@ -119,12 +119,39 @@ export default function ArticleForm({ article, onSave, onCancel }) {
         }
     }, [watchedTitle, setValue, article]);
 
-    // Generate slug for Persian (only replace spaces with dash, keep Persian characters)
+    // Generate slug for Persian (convert to English transliteration, only a-z, 0-9, -)
     const generateSlugFa = (title) => {
         if (!title) return "";
+        
+        // Persian to English transliteration map
+        const persianToEnglish = {
+            'آ': 'a', 'ا': 'a', 'ب': 'b', 'پ': 'p', 'ت': 't', 'ث': 's',
+            'ج': 'j', 'چ': 'ch', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'z',
+            'ر': 'r', 'ز': 'z', 'ژ': 'zh', 'س': 's', 'ش': 'sh', 'ص': 's',
+            'ض': 'z', 'ط': 't', 'ظ': 'z', 'ع': 'a', 'غ': 'gh', 'ف': 'f',
+            'ق': 'gh', 'ک': 'k', 'گ': 'g', 'ل': 'l', 'م': 'm', 'ن': 'n',
+            'و': 'v', 'ه': 'h', 'ی': 'y', 'ئ': 'y', 'ي': 'y',
+            '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+            '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9'
+        };
+        
         return title
             .trim()
-            .replace(/[\s\u200C\u200D]+/g, "-") // Replace spaces and zero-width characters with dash
+            .split('')
+            .map(char => {
+                // Convert Persian characters to English
+                if (persianToEnglish[char]) {
+                    return persianToEnglish[char];
+                }
+                // Keep English letters, numbers, and spaces
+                if (/[a-zA-Z0-9\s-]/.test(char)) {
+                    return char.toLowerCase();
+                }
+                // Replace other characters with dash
+                return '-';
+            })
+            .join('')
+            .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with dash
             .replace(/-+/g, "-") // Replace multiple dashes with single dash
             .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
     };
@@ -182,10 +209,33 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                 if (Object.keys(metaKeywords).length > 0) seo.metaKeywords = metaKeywords;
             }
 
-            // Ensure slug.en is not empty - use slug.fa if empty
+            // Ensure slug.fa and slug.en are valid (only a-z, 0-9, -)
             const slug = data.slug || { fa: "", en: "" };
+            
+            // Convert slug.fa to English if it contains Persian characters
+            if (slug.fa && /[\u0600-\u06FF]/.test(slug.fa)) {
+                slug.fa = generateSlugFa(slug.fa);
+            } else if (slug.fa) {
+                // Clean slug.fa to only allow a-z, 0-9, -
+                slug.fa = slug.fa
+                    .toLowerCase()
+                    .trim()
+                    .replace(/[^a-z0-9-]/g, "-")
+                    .replace(/-+/g, "-")
+                    .replace(/^-+|-+$/g, "");
+            }
+            
+            // Ensure slug.en is not empty - use slug.fa if empty
             if (!slug.en || slug.en.trim() === "") {
-                slug.en = slug.fa || generateSlug(data.title?.fa || "");
+                slug.en = slug.fa || generateSlugEn(data.title?.en || data.title?.fa || "");
+            } else {
+                // Clean slug.en to only allow a-z, 0-9, -
+                slug.en = slug.en
+                    .toLowerCase()
+                    .trim()
+                    .replace(/[^a-z0-9-]/g, "-")
+                    .replace(/-+/g, "-")
+                    .replace(/^-+|-+$/g, "");
             }
             
             // Ensure content.en is not empty - backend requires it
@@ -242,12 +292,20 @@ export default function ArticleForm({ article, onSave, onCancel }) {
             // Handle validation errors from backend
             if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
                 const validationErrors = error.response.data.errors;
-                const firstError = validationErrors[0];
-                const errorMessage = firstError?.message || error?.response?.data?.message || "خطا در ذخیره مقاله";
-                toast.error(errorMessage);
+                // Show all validation errors
+                validationErrors.forEach(err => {
+                    const field = err.path?.join('.') || err.field || 'unknown';
+                    const message = err.message || 'خطای اعتبارسنجی';
+                    toast.error(`${field}: ${message}`, { duration: 5000 });
+                });
+            } else if (error?.response?.data?.message) {
+                // Show backend error message
+                toast.error(error.response.data.message);
+            } else if (error?.message) {
+                // Show general error message
+                toast.error(error.message);
             } else {
-                const errorMessage = error?.response?.data?.message || error?.message || "خطا در ذخیره مقاله";
-                toast.error(errorMessage);
+                toast.error("خطا در ذخیره مقاله");
             }
         } finally {
             setLoading(false);

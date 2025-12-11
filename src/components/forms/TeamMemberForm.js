@@ -84,6 +84,9 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
     }, [member, reset]);
 
     const onSubmit = async (data) => {
+        // Log form data for debugging
+        console.log("Form data being submitted:", data);
+        
         setLoading(true);
 
         try {
@@ -100,7 +103,9 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
             onSave();
         } catch (error) {
             console.error("Error saving team member:", error);
-            toast.error("خطا در ذخیره عضو تیم");
+            // Show detailed error message from API
+            const errorMessage = error.response?.data?.message || error.message || "خطا در ذخیره عضو تیم";
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -112,8 +117,52 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
         }
     };
 
+    const onError = (errors) => {
+        console.error("Form validation errors:", errors);
+        
+        // Field name mapping to Persian
+        const fieldLabels = {
+            'name': 'نام و نام خانوادگی',
+            'email': 'ایمیل',
+            'position': 'سمت',
+            'department': 'دپارتمان',
+        };
+        
+        // Show first error with better message handling
+        const firstErrorKey = Object.keys(errors)[0];
+        if (firstErrorKey) {
+            let errorMessage = "لطفاً تمام فیلدهای الزامی را پر کنید";
+            
+            // Handle nested validation errors
+            const errorObj = errors[firstErrorKey];
+            
+            if (errorObj) {
+                // Check if it's a validation error object from react-hook-form
+                if (errorObj.message) {
+                    errorMessage = errorObj.message;
+                } else if (errorObj.type) {
+                    // Handle validation type errors
+                    const fieldLabel = fieldLabels[firstErrorKey] || firstErrorKey;
+                    errorMessage = `فیلد ${fieldLabel} الزامی است`;
+                } else if (typeof errorObj === 'string') {
+                    errorMessage = errorObj;
+                } else if (errorObj.fa || errorObj.en) {
+                    // Handle MultiLangTextField errors
+                    const langErrors = [];
+                    if (errorObj.fa?.message) langErrors.push(`فارسی: ${errorObj.fa.message}`);
+                    if (errorObj.en?.message) langErrors.push(`انگلیسی: ${errorObj.en.message}`);
+                    errorMessage = langErrors.length > 0 ? langErrors.join(' - ') : errorMessage;
+                }
+            }
+            
+            toast.error(errorMessage);
+        } else {
+            toast.error("لطفاً تمام فیلدهای الزامی را پر کنید");
+        }
+    };
+
     return (
-        <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+        <Box component="form" onSubmit={handleSubmit(onSubmit, onError)} noValidate>
             <Grid container spacing={3}>
                 {/* Personal Information */}
                 <Grid size={{ xs: 12, md: 8 }}>

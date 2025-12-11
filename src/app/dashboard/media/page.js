@@ -176,6 +176,8 @@ export default function MediaPage() {
         try {
             await deleteMedia.mutateAsync({ id: file._id });
         } catch (error) {
+            // Error is already handled by api interceptor with toast
+            // But we can add additional logging if needed
             console.error("خطا در حذف فایل:", error);
         }
         handleMenuClose();

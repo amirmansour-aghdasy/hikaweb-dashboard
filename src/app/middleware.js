@@ -31,6 +31,40 @@ export async function middleware(request) {
         console.error("Token verification failed:", error);
         return NextResponse.redirect(new URL("/auth/login", request.url));
     }
+
+    // SECURITY: Add security headers to protect against CVE-2025-55182 and other attacks
+    const response = NextResponse.next();
+    
+    // Content Security Policy - Strict CSP to prevent XSS and code injection
+    response.headers.set(
+        'Content-Security-Policy',
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' " + (process.env.NEXT_PUBLIC_API_URL || 'https://api.hikaweb.ir') + "; frame-ancestors 'none';"
+    );
+    
+    // Prevent MIME type sniffing
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    
+    // Enable XSS protection
+    response.headers.set('X-XSS-Protection', '1; mode=block');
+    
+    // Prevent clickjacking
+    response.headers.set('X-Frame-Options', 'DENY');
+    
+    // Referrer policy
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    
+    // Permissions policy - restrict dangerous features
+    response.headers.set(
+        'Permissions-Policy',
+        'geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()'
+    );
+    
+    // Strict Transport Security (if using HTTPS)
+    if (request.nextUrl.protocol === 'https:') {
+        response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    }
+    
+    return response;
 }
 
 export const config = {

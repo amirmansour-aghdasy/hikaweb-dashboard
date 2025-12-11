@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Box, Typography, Card, CardContent, Grid, Tab, Tabs, Button, Alert, Fab, TextField, Switch, FormControlLabel, MenuItem, Divider, Paper, Slider } from "@mui/material";
-import { Settings as SettingsIcon, Save, Business, Email, Security, Storage, Notifications, Palette } from "@mui/icons-material";
+import { Box, Typography, Card, CardContent, Grid, Tab, Tabs, Button, Alert, Fab, TextField, Switch, FormControlLabel, MenuItem, Divider, Paper, Slider, IconButton, FormControl, InputLabel, Select, Chip, Stack, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
+import { Settings as SettingsIcon, Save, Business, Email, Security, Storage, Notifications, Palette, WhatsApp, Add, Delete, ExpandMore, Phone, Schedule, Message, Settings as SettingsIconSmall } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import MultiLangTextField from "@/components/forms/MultiLangTextField";
+import WhatsAppSettings from "@/components/settings/WhatsAppSettings";
 import { useApi } from "@/hooks/useApi";
 import { useUIStore } from "@/store/useUIStore";
 
@@ -20,6 +21,7 @@ export default function SettingsPage() {
     // Update settings
     const updateSettings = useUpdateData("/settings", {
         successMessage: "تنظیمات با موفقیت به‌روزرسانی شد",
+        queryKey: "settings", // Explicitly set queryKey for proper cache invalidation
         onSuccess: () => {
             setHasChanges(false);
             refetch();
@@ -51,6 +53,22 @@ export default function SettingsPage() {
                 theme: settingsObj.theme || {},
                 system: settingsObj.system || {},
                 seo: settingsObj.seo || {},
+                whatsapp: settingsObj.whatsapp || {
+                    enabled: true,
+                    agents: [],
+                    config: {
+                        position: "bottom-right",
+                        showPulse: true,
+                        size: "medium",
+                        collectUserInfo: false,
+                        showOnPages: [],
+                        hideOnPages: [],
+                        offlineMode: "message",
+                        language: "fa",
+                        autoCloseTimer: 0,
+                        notificationBadge: null
+                    }
+                },
             };
             
             setSettings(organizedSettings);
@@ -156,10 +174,14 @@ export default function SettingsPage() {
                     ...settings.seo,
                     defaultKeywords: settings.general?.keywords || settings.seo?.defaultKeywords,
                 },
+                whatsapp: settings.whatsapp,
             };
             
             // Remove undefined values before sending to backend
             const cleanedSettings = removeUndefined(flatSettings);
+            
+            // Debug log
+            console.log("Saving settings:", JSON.stringify(cleanedSettings, null, 2));
             
             // Settings endpoint doesn't require ID (it's a singleton)
             await updateSettings.mutateAsync({
@@ -168,6 +190,10 @@ export default function SettingsPage() {
             });
         } catch (error) {
             console.error("خطا در ذخیره تنظیمات:", error);
+            // Show error toast if available
+            if (error.response?.data?.message) {
+                console.error("Error message:", error.response.data.message);
+            }
         }
     };
 
@@ -211,6 +237,7 @@ export default function SettingsPage() {
         { label: "رسانه", icon: <Storage /> },
         { label: "اعلان‌ها", icon: <Notifications /> },
         { label: "ظاهر", icon: <Palette /> },
+        { label: "واتساپ", icon: <WhatsApp /> },
     ];
 
     if (isLoading) {
@@ -316,6 +343,9 @@ export default function SettingsPage() {
 
                                 {/* Theme Settings */}
                                 {activeTab === 6 && <ThemeSettings settings={settings.theme || {}} onChange={(data) => handleSettingsChange("theme", data)} />}
+
+                                {/* WhatsApp Settings */}
+                                {activeTab === 7 && <WhatsAppSettings settings={settings.whatsapp || {}} onChange={(data) => handleSettingsChange("whatsapp", data)} />}
                             </CardContent>
                         </Card>
                     </Grid>

@@ -30,12 +30,25 @@ export const useAuth = () => {
     const { showSnackbar } = useUIStore();
 
     useEffect(() => {
-        // Only check auth once globally (not per component)
         // Use getState() to get fresh values from store
         const state = useAuthStore.getState();
-        if (state.hasCheckedAuth) return;
-        
         const storedToken = Cookies.get("token");
+        
+        // If we've already checked auth and have a consistent state, don't check again
+        // Consistent state means: (token exists && user exists) OR (no token && no user)
+        if (state.hasCheckedAuth) {
+            const hasToken = !!storedToken;
+            const hasUser = !!state.user;
+            
+            // If state is consistent, don't re-check
+            if ((hasToken && hasUser) || (!hasToken && !hasUser)) {
+                return;
+            }
+            
+            // If state is inconsistent (token exists but no user, or user exists but no token),
+            // we need to re-check. Reset hasCheckedAuth and continue.
+            setHasCheckedAuth(false);
+        }
         
         // If token exists in cookie, check auth on mount
         if (storedToken) {
@@ -78,6 +91,7 @@ export const useAuth = () => {
                 if (!token) {
                     setLoading(false);
                     setIsCheckingAuth(false);
+                    setHasCheckedAuth(true); // Mark as checked even if no token
                     checkAuthPromise = null;
                     return;
                 }
@@ -88,6 +102,7 @@ export const useAuth = () => {
                     // Handle both old format { user } and new format (direct user)
                     const userData = response.data.data?.user || response.data.data;
                     setUser(userData);
+                    setHasCheckedAuth(true); // Mark as checked after successful auth
                 }
             } catch (error) {
                 // Silently handle auth errors - don't log or show toasts
@@ -95,10 +110,11 @@ export const useAuth = () => {
                 if (error.response?.status === 401 || error.response?.status === 403) {
                     Cookies.remove("token");
                     clearAuth();
-                    setHasCheckedAuth(false); // Reset so it can check again if token is restored
+                    setHasCheckedAuth(true); // Mark as checked even if auth failed (token invalid)
                 } else if (error.response?.status !== 429) {
                     // Don't logout on rate limit errors, just ignore
                     // Only logout for unexpected errors (not rate limit)
+                    setHasCheckedAuth(true); // Mark as checked even on error
                 }
             } finally {
                 setLoading(false);
@@ -209,6 +225,7 @@ export const useAuth = () => {
         token,
         isAuthenticated,
         loading,
+        hasCheckedAuth,
         login,
         logout,
         checkAuth,

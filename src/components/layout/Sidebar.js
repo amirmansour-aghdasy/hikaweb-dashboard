@@ -24,6 +24,7 @@ import {
     Assignment,
     CalendarToday,
     Person,
+    Email,
 } from "@mui/icons-material";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -66,6 +67,7 @@ const menuItems = [
             { title: "نظرات", path: "/dashboard/comments" },
             { title: "تیکت‌ها", path: "/dashboard/tickets" },
             { title: "درخواست مشاوره", path: "/dashboard/consultations" },
+            { title: "پیام‌های تماس با ما", path: "/dashboard/contact-messages" },
         ],
     },
     {
