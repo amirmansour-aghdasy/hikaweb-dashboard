@@ -28,7 +28,57 @@ export default function MultiLangTextField({
     };
 
     const getTabError = (lang) => {
-        return error && error[lang];
+        if (!error) return false;
+        
+        // Handle react-hook-form error structure
+        // Error can be: { fa: true/string, en: true/string } or { type: '...', message: '...' }
+        if (error[lang] !== undefined) {
+            // Direct language-specific error
+            return !!error[lang];
+        }
+        
+        // Handle validation error object from react-hook-form
+        // Check if error type matches the language (faRequired/enRequired)
+        if (error.type) {
+            const isFaError = error.type === 'faRequired' && lang === 'fa';
+            const isEnError = error.type === 'enRequired' && lang === 'en';
+            return isFaError || isEnError;
+        }
+        
+        // If error has message but no type, show for both languages (general error)
+        if (error.message) {
+            return !!error.message;
+        }
+        
+        return false;
+    };
+    
+    const getTabErrorMessage = (lang) => {
+        if (!error) return "";
+        
+        // Handle react-hook-form error structure
+        if (error[lang]) {
+            // If it's a string, return it; if it's true/object, check for message
+            if (typeof error[lang] === 'string') return error[lang];
+            if (error[lang]?.message) return error[lang].message;
+        }
+        
+        // Handle validation error object from react-hook-form
+        if (error.type) {
+            // Check if error type matches the language
+            const isFaError = error.type === 'faRequired' && lang === 'fa';
+            const isEnError = error.type === 'enRequired' && lang === 'en';
+            if (isFaError || isEnError) {
+                return error.message || "";
+            }
+        }
+        
+        // If error has message but no type, show for both languages (general error)
+        if (error.message) {
+            return error.message;
+        }
+        
+        return "";
     };
 
     const getTabHelperText = (lang) => {
@@ -85,7 +135,7 @@ export default function MultiLangTextField({
                             value={value.fa || ""}
                             onChange={(e) => handleChange("fa", e.target.value)}
                             error={getTabError("fa")}
-                            helperText={getTabHelperText("fa")}
+                            helperText={getTabErrorMessage("fa") || getTabHelperText("fa")}
                             required={required}
                             multiline={multiline}
                             rows={multiline ? rows : undefined}
@@ -107,7 +157,7 @@ export default function MultiLangTextField({
                             value={value.en || ""}
                             onChange={(e) => handleChange("en", e.target.value)}
                             error={getTabError("en")}
-                            helperText={getTabHelperText("en")}
+                            helperText={getTabErrorMessage("en") || getTabHelperText("en")}
                             required={required}
                             multiline={multiline}
                             rows={multiline ? rows : undefined}

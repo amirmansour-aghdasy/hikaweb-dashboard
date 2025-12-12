@@ -238,24 +238,50 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
         }
     }, [project, reset]);
 
-    // Auto-generate slug from title
+    // Auto-generate slug from title (only in create mode)
     useEffect(() => {
-        if (watchedTitle?.fa && !project) {
-            const slug = {
-                fa: generateSlug(watchedTitle.fa),
-                en: watchedTitle.en ? generateSlug(watchedTitle.en) : "",
-            };
-            setValue("slug", slug);
+        // Only auto-generate in create mode (not edit mode)
+        if (!project && watchedTitle?.fa) {
+            const newSlugFa = generateSlug(watchedTitle.fa, true);
+            const newSlugEn = watchedTitle.en ? generateSlug(watchedTitle.en, false) : "";
+            
+            // Get current slug value
+            const currentSlug = watch("slug");
+            const currentSlugFa = currentSlug?.fa || "";
+            
+            // Auto-generate if slug is empty or if it matches the auto-generated version
+            // This allows manual editing: if user manually changes slug, it won't be overwritten
+            if (newSlugFa && (!currentSlugFa || currentSlugFa === newSlugFa)) {
+                setValue("slug", {
+                    fa: newSlugFa,
+                    en: newSlugEn,
+                }, { shouldValidate: false, shouldDirty: false });
+            }
         }
-    }, [watchedTitle, setValue, project]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [watchedTitle?.fa, watchedTitle?.en]);
 
-    const generateSlug = (title) => {
-        return title
-            .toLowerCase()
-            .trim()
-            .replace(/[^\w\s-]/g, "")
-            .replace(/[\s_-]+/g, "-")
-            .replace(/^-+|-+$/g, "");
+    // Generate slug - for Persian: replace spaces, remove dots and commas, for English: clean to a-z, 0-9, -
+    const generateSlug = (title, isPersian = false) => {
+        if (!title) return "";
+        if (isPersian) {
+            // For Persian: replace spaces with dash, remove dots and commas, keep all Persian characters
+            return title
+                .trim()
+                .replace(/[،,\.]/g, "") // Remove Persian comma (،), English comma, and dots
+                .replace(/\s+/g, "-") // Replace spaces with dash
+                .replace(/-+/g, "-") // Replace multiple dashes with single dash
+                .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
+        } else {
+            // For English: only a-z, 0-9, -
+            return title
+                .toLowerCase()
+                .trim()
+                .replace(/[^a-z0-9\s-]/g, "") // Only keep a-z, 0-9, spaces, and dashes
+                .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with dash
+                .replace(/-+/g, "-") // Replace multiple dashes with single dash
+                .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
+        }
     };
 
     const onSubmit = async (data) => {

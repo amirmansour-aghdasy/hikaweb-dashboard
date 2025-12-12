@@ -222,6 +222,7 @@ export default function BannerForm({ banner, onSave, onCancel }) {
                                         multiple={false}
                                         showPreview={true}
                                         showEdit={true}
+                                        optimizeForWeb={true}
                                     />
                                 )}
                             />
@@ -252,6 +253,7 @@ export default function BannerForm({ banner, onSave, onCancel }) {
                                         multiple={false}
                                         showPreview={true}
                                         showEdit={true}
+                                        optimizeForWeb={true}
                                     />
                                 )}
                             />

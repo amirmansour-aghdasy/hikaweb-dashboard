@@ -45,6 +45,15 @@ export default function ArticleForm({ article, onSave, onCancel }) {
             metaTitle: { fa: "", en: "" },
             metaDescription: { fa: "", en: "" },
             metaKeywords: { fa: [], en: [] },
+            downloadBox: {
+                title: { fa: "", en: "" },
+                description: { fa: "", en: "" },
+                fileUrl: "",
+                fileName: "",
+                fileSize: 0,
+                fileType: "",
+                isActive: false
+            },
         },
     });
 
@@ -87,6 +96,15 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                 metaTitle: normalizeMultiLang(article.seo?.metaTitle),
                 metaDescription: normalizeMultiLang(article.seo?.metaDescription),
                 metaKeywords: article.seo?.metaKeywords || { fa: [], en: [] },
+                downloadBox: article.downloadBox || {
+                    title: { fa: "", en: "" },
+                    description: { fa: "", en: "" },
+                    fileUrl: "",
+                    fileName: "",
+                    fileSize: 0,
+                    fileType: "",
+                    isActive: false
+                },
             }, { keepDefaultValues: false });
         } else {
             // Reset to default when no article
@@ -108,50 +126,36 @@ export default function ArticleForm({ article, onSave, onCancel }) {
         }
     }, [article, reset]);
 
-    // Auto-generate slug from title
+    // Auto-generate slug from title (only in create mode)
     useEffect(() => {
-        if (watchedTitle?.fa && !article) {
-            const slug = {
-                fa: generateSlugFa(watchedTitle.fa),
-                en: watchedTitle.en ? generateSlugEn(watchedTitle.en) : "",
-            };
-            setValue("slug", slug);
+        // Only auto-generate in create mode (not edit mode)
+        if (!article && watchedTitle?.fa) {
+            const newSlugFa = generateSlugFa(watchedTitle.fa);
+            const newSlugEn = watchedTitle.en ? generateSlugEn(watchedTitle.en) : "";
+            
+            // Get current slug value
+            const currentSlug = watch("slug");
+            const currentSlugFa = currentSlug?.fa || "";
+            
+            // Auto-generate if slug is empty or if it matches the auto-generated version
+            // This allows manual editing: if user manually changes slug, it won't be overwritten
+            if (newSlugFa && (!currentSlugFa || currentSlugFa === newSlugFa)) {
+                setValue("slug", {
+                    fa: newSlugFa,
+                    en: newSlugEn,
+                }, { shouldValidate: false, shouldDirty: false });
+            }
         }
-    }, [watchedTitle, setValue, article]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [watchedTitle?.fa, watchedTitle?.en]);
 
-    // Generate slug for Persian (convert to English transliteration, only a-z, 0-9, -)
+    // Generate slug for Persian (replace spaces with dash, remove dots and commas, keep Persian characters)
     const generateSlugFa = (title) => {
         if (!title) return "";
-        
-        // Persian to English transliteration map
-        const persianToEnglish = {
-            'آ': 'a', 'ا': 'a', 'ب': 'b', 'پ': 'p', 'ت': 't', 'ث': 's',
-            'ج': 'j', 'چ': 'ch', 'ح': 'h', 'خ': 'kh', 'د': 'd', 'ذ': 'z',
-            'ر': 'r', 'ز': 'z', 'ژ': 'zh', 'س': 's', 'ش': 'sh', 'ص': 's',
-            'ض': 'z', 'ط': 't', 'ظ': 'z', 'ع': 'a', 'غ': 'gh', 'ف': 'f',
-            'ق': 'gh', 'ک': 'k', 'گ': 'g', 'ل': 'l', 'م': 'm', 'ن': 'n',
-            'و': 'v', 'ه': 'h', 'ی': 'y', 'ئ': 'y', 'ي': 'y',
-            '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
-            '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9'
-        };
-        
         return title
             .trim()
-            .split('')
-            .map(char => {
-                // Convert Persian characters to English
-                if (persianToEnglish[char]) {
-                    return persianToEnglish[char];
-                }
-                // Keep English letters, numbers, and spaces
-                if (/[a-zA-Z0-9\s-]/.test(char)) {
-                    return char.toLowerCase();
-                }
-                // Replace other characters with dash
-                return '-';
-            })
-            .join('')
-            .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with dash
+            .replace(/[،,\.]/g, "") // Remove Persian comma (،), English comma, and dots
+            .replace(/\s+/g, "-") // Replace spaces with dash
             .replace(/-+/g, "-") // Replace multiple dashes with single dash
             .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
     };
@@ -209,27 +213,19 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                 if (Object.keys(metaKeywords).length > 0) seo.metaKeywords = metaKeywords;
             }
 
-            // Ensure slug.fa and slug.en are valid (only a-z, 0-9, -)
+            // Ensure slug.fa and slug.en are valid
             const slug = data.slug || { fa: "", en: "" };
             
-            // Convert slug.fa to English if it contains Persian characters
-            if (slug.fa && /[\u0600-\u06FF]/.test(slug.fa)) {
+            // For Persian slug: only replace spaces with dash, keep all Persian characters
+            if (slug.fa) {
                 slug.fa = generateSlugFa(slug.fa);
-            } else if (slug.fa) {
-                // Clean slug.fa to only allow a-z, 0-9, -
-                slug.fa = slug.fa
-                    .toLowerCase()
-                    .trim()
-                    .replace(/[^a-z0-9-]/g, "-")
-                    .replace(/-+/g, "-")
-                    .replace(/^-+|-+$/g, "");
             }
             
-            // Ensure slug.en is not empty - use slug.fa if empty
+            // Ensure slug.en is not empty - use slug.fa if empty (but convert to English format)
             if (!slug.en || slug.en.trim() === "") {
-                slug.en = slug.fa || generateSlugEn(data.title?.en || data.title?.fa || "");
+                slug.en = generateSlugEn(data.title?.en || data.title?.fa || "");
             } else {
-                // Clean slug.en to only allow a-z, 0-9, -
+                // Clean slug.en to only allow a-z, 0-9, - (English format)
                 slug.en = slug.en
                     .toLowerCase()
                     .trim()
@@ -270,6 +266,19 @@ export default function ArticleForm({ article, onSave, onCancel }) {
             // Only add seo if it has at least one field
             if (Object.keys(seo).length > 0) {
                 articleData.seo = seo;
+            }
+
+            // Add downloadBox if it has active content
+            if (data.downloadBox && data.downloadBox.isActive) {
+                articleData.downloadBox = {
+                    title: data.downloadBox.title || { fa: "", en: "" },
+                    description: data.downloadBox.description || { fa: "", en: "" },
+                    fileUrl: data.downloadBox.fileUrl || "",
+                    fileName: data.downloadBox.fileName || "",
+                    fileSize: data.downloadBox.fileSize || 0,
+                    fileType: data.downloadBox.fileType || "",
+                    isActive: true
+                };
             }
 
             console.log("Article data to send:", articleData);
@@ -446,6 +455,9 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                             <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                 <Article /> محتوای مقاله
                             </Typography>
+                            <Alert severity="info" sx={{ mb: 2 }}>
+                                برای درج تصویر در محتوا، از دکمه "تصویر" در نوار ابزار ویرایشگر استفاده کنید.
+                            </Alert>
                             <Controller
                                 name="content"
                                 control={control}
@@ -523,6 +535,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                         multiple={false}
                                         showPreview={true}
                                         showEdit={true}
+                                        optimizeForWeb={true}
                                     />
                                 )}
                             />
@@ -545,6 +558,82 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                             <Box sx={{ mt: 2 }}>
                                 <Controller name="tags.en" control={control} render={({ field }) => <TagInput {...field} label="برچسب‌های انگلیسی" placeholder="Add English tags..." />} />
                             </Box>
+                        </Box>
+
+                        {/* Download Box */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Visibility /> باکس دانلود
+                            </Typography>
+                            <Stack spacing={2}>
+                                <Controller
+                                    name="downloadBox.isActive"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <FormControlLabel 
+                                            control={<Switch {...field} checked={field.value} />} 
+                                            label="فعال‌سازی باکس دانلود" 
+                                        />
+                                    )}
+                                />
+                                {watch("downloadBox.isActive") && (
+                                    <>
+                                        <Controller
+                                            name="downloadBox.title"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <MultiLangTextField
+                                                    {...field}
+                                                    label="عنوان باکس دانلود"
+                                                    placeholder={{
+                                                        fa: "عنوان باکس دانلود...",
+                                                        en: "Download box title...",
+                                                    }}
+                                                />
+                                            )}
+                                        />
+                                        <Controller
+                                            name="downloadBox.description"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <MultiLangTextField
+                                                    {...field}
+                                                    label="توضیحات"
+                                                    multiline
+                                                    rows={2}
+                                                    placeholder={{
+                                                        fa: "توضیحات فایل قابل دانلود...",
+                                                        en: "Description of downloadable file...",
+                                                    }}
+                                                />
+                                            )}
+                                        />
+                                        <Controller
+                                            name="downloadBox.fileUrl"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <MediaPicker
+                                                    value={field.value || null}
+                                                    onChange={(selected) => {
+                                                        const fileUrl = typeof selected === 'object' && selected.url ? selected.url : selected;
+                                                        const fileName = typeof selected === 'object' ? (selected.originalName || selected.fileName || "") : "";
+                                                        const fileSize = typeof selected === 'object' ? (selected.size || 0) : 0;
+                                                        const fileType = typeof selected === 'object' ? (selected.fileType || selected.mimeType || "") : "";
+                                                        
+                                                        field.onChange(fileUrl);
+                                                        setValue("downloadBox.fileName", fileName);
+                                                        setValue("downloadBox.fileSize", fileSize);
+                                                        setValue("downloadBox.fileType", fileType);
+                                                    }}
+                                                    label="فایل قابل دانلود"
+                                                    accept={["image/*", "application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/zip", "application/x-rar-compressed", "video/*", "audio/*"]}
+                                                    showPreview={true}
+                                                />
+                                            )}
+                                        />
+                                    </>
+                                )}
+                            </Stack>
                         </Box>
 
                         {/* SEO Settings */}

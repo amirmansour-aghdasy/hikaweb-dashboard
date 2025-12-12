@@ -139,6 +139,7 @@ export default function SettingsPage() {
     };
 
     // Helper function to remove undefined values recursively
+    // Also handles empty strings in siteDescription - if both fa and en are empty, remove the object
     const removeUndefined = (obj) => {
         if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
             return obj;
@@ -148,7 +149,19 @@ export default function SettingsPage() {
         Object.keys(obj).forEach(key => {
             if (obj[key] !== undefined) {
                 if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
-                    cleaned[key] = removeUndefined(obj[key]);
+                    // Special handling for siteDescription - if both fa and en are empty, skip it
+                    if (key === 'siteDescription') {
+                        const desc = obj[key];
+                        if (desc.fa === "" && desc.en === "") {
+                            // Skip empty siteDescription
+                            return;
+                        }
+                    }
+                    const cleanedNested = removeUndefined(obj[key]);
+                    // Only add if nested object is not empty
+                    if (Object.keys(cleanedNested).length > 0) {
+                        cleaned[key] = cleanedNested;
+                    }
                 } else {
                     cleaned[key] = obj[key];
                 }

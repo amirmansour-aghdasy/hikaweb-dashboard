@@ -217,14 +217,22 @@ export default function ArticlesPage({ params = {} }) {
     const handleTogglePublish = (article) => {
         updateArticle.mutate({
             id: article._id,
-            data: { isPublished: !article.isPublished },
+            data: { 
+                isPublished: !article.isPublished,
+                // Preserve other fields to avoid conflicts
+                isFeatured: article.isFeatured,
+            },
         });
     };
 
     const handleToggleFeatured = (article) => {
         updateArticle.mutate({
             id: article._id,
-            data: { isFeatured: !article.isFeatured },
+            data: { 
+                isFeatured: !article.isFeatured,
+                // Preserve other fields to avoid conflicts
+                isPublished: article.isPublished,
+            },
         });
     };
 

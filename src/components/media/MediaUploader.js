@@ -33,7 +33,8 @@ export default function MediaUploader({
     showPreview = true,
     onUploadSuccess = null,
     bucketId = null,
-    folder = '/'
+    folder = '/',
+    optimizeForWeb = false // Convert images to WebP for better SEO and performance
 }) {
     const [uploading, setUploading] = useState(false);
     const [previewOpen, setPreviewOpen] = useState(false);
@@ -96,6 +97,10 @@ export default function MediaUploader({
         }
         if (folder && folder !== '/') {
             formData.append("folder", folder);
+        }
+        // Add optimizeForWeb flag for image optimization
+        if (optimizeForWeb) {
+            formData.append("optimizeForWeb", "true");
         }
 
         setUploading(true);

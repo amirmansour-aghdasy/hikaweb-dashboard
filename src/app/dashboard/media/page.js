@@ -53,6 +53,7 @@ import Layout from "@/components/layout/Layout";
 import MediaUploader from "@/components/media/MediaUploader";
 import GalleryManager from "@/components/media/GalleryManager";
 import BucketManager from "@/components/media/BucketManager";
+import ImageEditor from "@/components/media/ImageEditor";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatDate, formatFileSize } from "@/lib/utils";
@@ -73,6 +74,8 @@ export default function MediaPage() {
     const [selectedBucket, setSelectedBucket] = useState(null);
     const [selectedFolder, setSelectedFolder] = useState("/");
     const [showBucketManager, setShowBucketManager] = useState(false);
+    const [imageEditorOpen, setImageEditorOpen] = useState(false);
+    const [editingImage, setEditingImage] = useState(null);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -170,6 +173,14 @@ export default function MediaPage() {
         setEditingFile(file);
         setEditDialogOpen(true);
         handleMenuClose();
+    };
+
+    const handleEditImage = (file) => {
+        if (file && file.fileType === 'image') {
+            setEditingImage(file);
+            setImageEditorOpen(true);
+            handleMenuClose();
+        }
     };
 
     const handleDelete = async (file) => {
@@ -427,34 +438,54 @@ export default function MediaPage() {
                                     </CardContent>
 
                                     <CardActions>
-                                        <IconButton
-                                            size="small"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleEdit(file);
-                                            }}
-                                        >
-                                            <Edit />
-                                        </IconButton>
-                                        <IconButton
-                                            size="small"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDownload(file);
-                                            }}
-                                        >
-                                            <Download />
-                                        </IconButton>
-                                        <IconButton
-                                            size="small"
-                                            color="error"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDelete(file);
-                                            }}
-                                        >
-                                            <Delete />
-                                        </IconButton>
+                                        <Tooltip title="ویرایش اطلاعات">
+                                            <IconButton
+                                                size="small"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEdit(file);
+                                                }}
+                                            >
+                                                <Edit />
+                                            </IconButton>
+                                        </Tooltip>
+                                        {file.fileType === 'image' && (
+                                            <Tooltip title="ویرایش تصویر">
+                                                <IconButton
+                                                    size="small"
+                                                    color="primary"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEditImage(file);
+                                                    }}
+                                                >
+                                                    <Image />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
+                                        <Tooltip title="دانلود">
+                                            <IconButton
+                                                size="small"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDownload(file);
+                                                }}
+                                            >
+                                                <Download />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="حذف">
+                                            <IconButton
+                                                size="small"
+                                                color="error"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDelete(file);
+                                                }}
+                                            >
+                                                <Delete />
+                                            </IconButton>
+                                        </Tooltip>
                                     </CardActions>
                                 </Card>
                             </Grid>
@@ -528,34 +559,54 @@ export default function MediaPage() {
 
                                         {/* Actions */}
                                         <Box sx={{ display: "flex", gap: 1, flexShrink: 0 }}>
-                                            <IconButton
-                                                size="small"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleEdit(file);
-                                                }}
-                                            >
-                                                <Edit />
-                                            </IconButton>
-                                            <IconButton
-                                                size="small"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDownload(file);
-                                                }}
-                                            >
-                                                <Download />
-                                            </IconButton>
-                                            <IconButton
-                                                size="small"
-                                                color="error"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDelete(file);
-                                                }}
-                                            >
-                                                <Delete />
-                                            </IconButton>
+                                            <Tooltip title="ویرایش اطلاعات">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEdit(file);
+                                                    }}
+                                                >
+                                                    <Edit />
+                                                </IconButton>
+                                            </Tooltip>
+                                            {file.fileType === 'image' && (
+                                                <Tooltip title="ویرایش تصویر">
+                                                    <IconButton
+                                                        size="small"
+                                                        color="primary"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleEditImage(file);
+                                                        }}
+                                                    >
+                                                        <Image />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                            <Tooltip title="دانلود">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDownload(file);
+                                                    }}
+                                                >
+                                                    <Download />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="حذف">
+                                                <IconButton
+                                                    size="small"
+                                                    color="error"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDelete(file);
+                                                    }}
+                                                >
+                                                    <Delete />
+                                                </IconButton>
+                                            </Tooltip>
                                         </Box>
                                     </Box>
                                 </Box>
@@ -572,8 +623,16 @@ export default function MediaPage() {
                         <ListItemIcon>
                             <Edit />
                         </ListItemIcon>
-                        <ListItemText>ویرایش</ListItemText>
+                        <ListItemText>ویرایش اطلاعات</ListItemText>
                     </MenuItemComponent>
+                    {contextFile?.fileType === 'image' && (
+                        <MenuItemComponent onClick={() => handleEditImage(contextFile)}>
+                            <ListItemIcon>
+                                <Image />
+                            </ListItemIcon>
+                            <ListItemText>ویرایش تصویر</ListItemText>
+                        </MenuItemComponent>
+                    )}
                     <MenuItemComponent onClick={() => handleDownload(contextFile)}>
                         <ListItemIcon>
                             <Download />
@@ -629,17 +688,40 @@ export default function MediaPage() {
                                     });
                                     setEditDialogOpen(false);
                                 }}
+                                onEditImage={() => {
+                                    setEditDialogOpen(false);
+                                    handleEditImage(editingFile);
+                                }}
                             />
                         )}
                     </DialogContent>
                 </Dialog>
+
+                {/* Image Editor Dialog */}
+                {editingImage && (
+                    <ImageEditor
+                        open={imageEditorOpen}
+                        onClose={() => {
+                            setImageEditorOpen(false);
+                            setEditingImage(null);
+                        }}
+                        image={editingImage}
+                        onSave={(editedImage) => {
+                            // Refresh the media list after editing
+                            refetch();
+                            refetchStatistics();
+                            setImageEditorOpen(false);
+                            setEditingImage(null);
+                        }}
+                    />
+                )}
             </Box>
         </Layout>
     );
 }
 
 // Edit File Form Component
-function EditFileForm({ file, onSave }) {
+function EditFileForm({ file, onSave, onEditImage }) {
     const [formData, setFormData] = useState({
         originalName: file.originalName || "",
         alt: file.alt || "",
@@ -658,9 +740,26 @@ function EditFileForm({ file, onSave }) {
         });
     };
 
+    const isImage = file.fileType === 'image';
+
     return (
         <form onSubmit={handleSubmit}>
             <Grid container spacing={3}>
+                {/* ویرایش تصویر - فقط برای تصاویر */}
+                {isImage && onEditImage && (
+                    <Grid size={{ xs: 12 }}>
+                        <Button
+                            variant="outlined"
+                            fullWidth
+                            startIcon={<Image />}
+                            onClick={onEditImage}
+                            sx={{ mb: 2 }}
+                        >
+                            ویرایش تصویر (برش، چرخش، فیلتر)
+                        </Button>
+                    </Grid>
+                )}
+
                 <Grid size={{ xs: 12 }}>
                     <TextField fullWidth label="نام فایل" value={formData.originalName} onChange={(e) => setFormData((prev) => ({ ...prev, originalName: e.target.value }))} />
                 </Grid>

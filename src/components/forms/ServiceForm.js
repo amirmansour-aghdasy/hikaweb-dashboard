@@ -304,23 +304,36 @@ export default function ServiceForm({ service, onSave, onCancel }) {
         }
     }, [service, reset]);
 
-    // Auto-generate slug from name
+    // Auto-generate slug from name (only in create mode)
     useEffect(() => {
-        if (watchedName?.fa && !service) {
-            const slug = {
-                fa: generateSlugFa(watchedName.fa),
-                en: watchedName.en ? generateSlugEn(watchedName.en) : "",
-            };
-            setValue("slug", slug);
+        // Only auto-generate in create mode (not edit mode)
+        if (!service && watchedName?.fa) {
+            const newSlugFa = generateSlugFa(watchedName.fa);
+            const newSlugEn = watchedName.en ? generateSlugEn(watchedName.en) : "";
+            
+            // Get current slug value
+            const currentSlug = watch("slug");
+            const currentSlugFa = currentSlug?.fa || "";
+            
+            // Auto-generate if slug is empty or if it matches the auto-generated version
+            // This allows manual editing: if user manually changes slug, it won't be overwritten
+            if (newSlugFa && (!currentSlugFa || currentSlugFa === newSlugFa)) {
+                setValue("slug", {
+                    fa: newSlugFa,
+                    en: newSlugEn,
+                }, { shouldValidate: false, shouldDirty: false });
+            }
         }
-    }, [watchedName, setValue, service]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [watchedName?.fa, watchedName?.en]);
 
-    // Generate slug for Persian (only replace spaces with dash, keep Persian characters)
+    // Generate slug for Persian (replace spaces with dash, remove dots and commas, keep Persian characters)
     const generateSlugFa = (title) => {
         if (!title) return "";
         return title
             .trim()
-            .replace(/[\s\u200C\u200D]+/g, "-") // Replace spaces and zero-width characters with dash
+            .replace(/[،,\.]/g, "") // Remove Persian comma (،), English comma, and dots
+            .replace(/\s+/g, "-") // Replace spaces with dash
             .replace(/-+/g, "-") // Replace multiple dashes with single dash
             .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
     };

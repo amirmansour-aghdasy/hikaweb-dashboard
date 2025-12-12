@@ -8,7 +8,8 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci && npm cache clean --force
+# Use npm install instead of npm ci if package-lock.json is out of sync
+RUN npm install --legacy-peer-deps && npm cache clean --force
 
 # Builder stage
 FROM node:18-alpine AS builder

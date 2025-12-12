@@ -70,6 +70,7 @@ export default function MediaLibrary({
     maxFiles = 10,
     title = "انتخاب رسانه",
     showUpload = true,
+    optimizeForWeb = false, // Convert images to WebP for better SEO and performance
 }) {
     const [activeTab, setActiveTab] = useState(0); // 0: Library, 1: Upload
     const [searchTerm, setSearchTerm] = useState("");
@@ -389,6 +390,7 @@ export default function MediaLibrary({
                             multiple={multiple}
                             maxFiles={maxFiles}
                             acceptedTypes={acceptedTypes}
+                            optimizeForWeb={optimizeForWeb}
                         />
                     </Box>
                 )}

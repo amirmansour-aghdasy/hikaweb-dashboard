@@ -76,10 +76,11 @@ export default function TeamPage() {
             headerName: "تصویر",
             width: 80,
             render: (row) => (
-                <Avatar src={row.avatar} sx={{ width: 40, height: 40 }}>
+                <Avatar src={row.avatar} sx={{ width: 40, height: 40, mx: "auto" }}>
                     {getPersianValue(row.name, "?").charAt(0)}
                 </Avatar>
             ),
+            align: "center"
         },
         {
             field: "name",
@@ -97,6 +98,7 @@ export default function TeamPage() {
                     )}
                 </Box>
             ),
+            align: "left"
         },
         {
             field: "position",
@@ -105,6 +107,7 @@ export default function TeamPage() {
             render: (row) => (
                 <Typography variant="body2">{getPersianValue(row.position, "-")}</Typography>
             ),
+            align: "center"
         },
         {
             field: "department",
@@ -118,16 +121,29 @@ export default function TeamPage() {
                     variant="outlined"
                 />
             ),
+            align: "center"
         },
         {
             field: "experience",
             headerName: "تجربه",
             width: 100,
-            render: (row) => (
-                <Typography variant="caption">
-                    {row.experience?.years || row.experience || 0} سال
-                </Typography>
-            ),
+            render: (row) => {
+                // Handle experience: can be object {years, description} or number
+                let experienceYears = 0;
+                if (row.experience) {
+                    if (typeof row.experience === 'object' && row.experience.years !== undefined) {
+                        experienceYears = row.experience.years;
+                    } else if (typeof row.experience === 'number') {
+                        experienceYears = row.experience;
+                    }
+                }
+                return (
+                    <Typography variant="caption">
+                        {experienceYears} سال
+                    </Typography>
+                );
+            },
+            align: "center"
         },
         {
             field: "skills",
@@ -151,18 +167,21 @@ export default function TeamPage() {
                     )}
                 </Stack>
             ),
+            align: "center"
         },
         {
             field: "status",
             headerName: "وضعیت",
             width: 120,
             type: "status",
+            align: "center"
         },
         {
             field: "createdAt",
             headerName: "تاریخ ایجاد",
             width: 150,
             type: "date",
+            align: "center"
         },
     ];
 
@@ -272,7 +291,18 @@ export default function TeamPage() {
 
                 <Box sx={{ mb: 2 }}>
                     <Typography variant="caption" color="text.secondary">
-                        تجربه: {member.experience?.years || member.experience || 0} سال
+                        تجربه: {(() => {
+                            // Handle experience: can be object {years, description} or number
+                            let experienceYears = 0;
+                            if (member.experience) {
+                                if (typeof member.experience === 'object' && member.experience.years !== undefined) {
+                                    experienceYears = member.experience.years;
+                                } else if (typeof member.experience === 'number') {
+                                    experienceYears = member.experience;
+                                }
+                            }
+                            return experienceYears;
+                        })()} سال
                     </Typography>
                 </Box>
 
@@ -341,7 +371,7 @@ export default function TeamPage() {
                 {viewMode === "table" ? (
                     <DataTable
                         title="لیست اعضای تیم"
-                        data={teamData?.data || []}
+                        data={teamData?.teamMembers || []}
                         columns={columns}
                         loading={isLoading}
                         pagination={teamData?.pagination}
@@ -371,7 +401,7 @@ export default function TeamPage() {
                     />
                 ) : (
                     <Grid container spacing={3}>
-                        {teamData?.data?.map((member) => (
+                        {teamData?.teamMembers?.map((member) => (
                             <Grid item size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={member._id}>
                                 <TeamMemberCard member={member} />
                             </Grid>

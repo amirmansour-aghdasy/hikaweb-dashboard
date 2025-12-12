@@ -325,7 +325,7 @@ export default function CarouselForm({ carousel, onSave, onCancel }) {
                                 control={control}
                                 rules={{ required: "تصویر اصلی الزامی است" }}
                                 render={({ field }) => (
-                                    <MediaUploader value={field.value ? [{ url: field.value, type: "image/*" }] : []} onChange={handleImageUpload} single acceptedTypes={["image/*"]} maxSizeInMB={5} />
+                                    <MediaUploader value={field.value ? [{ url: field.value, type: "image/*" }] : []} onChange={handleImageUpload} single acceptedTypes={["image/*"]} maxSizeInMB={5} optimizeForWeb={true} />
                                 )}
                             />
                         </Box>
@@ -338,7 +338,7 @@ export default function CarouselForm({ carousel, onSave, onCancel }) {
                                 name="mobileImage"
                                 control={control}
                                 render={({ field }) => (
-                                    <MediaUploader value={field.value ? [{ url: field.value, type: "image/*" }] : []} onChange={handleMobileImageUpload} single acceptedTypes={["image/*"]} maxSizeInMB={3} />
+                                    <MediaUploader value={field.value ? [{ url: field.value, type: "image/*" }] : []} onChange={handleMobileImageUpload} single acceptedTypes={["image/*"]} maxSizeInMB={3} optimizeForWeb={true} />
                                 )}
                             />
                         </Box>

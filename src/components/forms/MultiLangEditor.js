@@ -1,7 +1,8 @@
 "use client";
-import { Box, Tabs, Tab, Paper, Typography, FormHelperText, CircularProgress, useTheme } from "@mui/material";
+import { Box, Tabs, Tab, Paper, Typography, FormHelperText, CircularProgress, useTheme, Button } from "@mui/material";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
+import MediaLibrary from "../media/MediaLibrary";
 
 // Dynamically import CKEditor to avoid SSR issues
 const CKEditor = dynamic(() => import("@ckeditor/ckeditor5-react").then((mod) => mod.CKEditor), {
@@ -24,6 +25,9 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
     const [editorData, setEditorData] = useState({ fa: value.fa || "", en: value.en || "" });
     const [editorLoaded, setEditorLoaded] = useState(false);
     const editorRef = useRef({ fa: null, en: null });
+    const isInitialMount = useRef(true);
+    const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+    const [currentLang, setCurrentLang] = useState("fa");
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -31,9 +35,30 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
         }
     }, []);
 
-    // Don't sync editorData with value prop changes - this causes content to reset
-    // editorData is managed internally and only updated via handleChange
-    // The value prop is only used for initial state
+    // Sync editorData with value prop changes when editing existing article
+    useEffect(() => {
+        // Skip on initial mount to avoid overwriting user input
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+
+        // Only update if value actually changed and is different from current editorData
+        if (value && (value.fa !== editorData.fa || value.en !== editorData.en)) {
+            setEditorData({
+                fa: value.fa || "",
+                en: value.en || ""
+            });
+
+            // Update editor content if editors are ready
+            if (editorRef.current.fa && value.fa) {
+                editorRef.current.fa.setData(value.fa);
+            }
+            if (editorRef.current.en && value.en) {
+                editorRef.current.en.setData(value.en);
+            }
+        }
+    }, [value?.fa, value?.en]); // Only depend on the actual content values
 
     const handleChange = (lang, newValue) => {
         const updatedData = {
@@ -46,6 +71,39 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
 
     const getTabError = (lang) => {
         return error && error[lang];
+    };
+
+    // Handle image selection from MediaLibrary
+    const handleImageSelect = (selected) => {
+        if (!selected) return;
+        
+        const imageData = Array.isArray(selected) ? selected[0] : selected;
+        const imageUrl = typeof imageData === 'string' 
+            ? imageData 
+            : (imageData.url || imageData);
+        
+        const imageAlt = typeof imageData === 'object' 
+            ? (imageData.altText?.fa || imageData.originalName || '') 
+            : '';
+
+        // Get current editor
+        const currentEditor = editorRef.current[currentLang];
+        if (!currentEditor) return;
+
+        // Insert image into editor
+        currentEditor.model.change((writer) => {
+            const imageElement = writer.createElement('imageBlock', {
+                src: imageUrl,
+                alt: imageAlt
+            });
+
+            // Insert at current selection or at the end
+            const selection = currentEditor.model.document.selection;
+            const insertPosition = selection.getFirstPosition();
+            currentEditor.model.insertContent(imageElement, insertPosition);
+        });
+
+        setMediaLibraryOpen(false);
     };
 
     // CKEditor configuration base
@@ -69,13 +127,35 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
             ],
         },
         placeholder: lang === "fa" ? "محتوای خود را اینجا بنویسید..." : "Write your content here...",
+        // Keep toolbar direction consistent regardless of language
+        ui: {
+            viewportOffset: {
+                top: 0
+            }
+        }
     });
 
     return (
         <Box>
-            <Typography variant="subtitle2" gutterBottom>
-                {label} {required && <span style={{ color: "red" }}>*</span>}
-            </Typography>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                <Typography variant="subtitle2">
+                    {label} {required && <span style={{ color: "red" }}>*</span>}
+                </Typography>
+                <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<Box component="svg" viewBox="0 0 20 20" sx={{ width: 16, height: 16, fill: "currentColor" }}>
+                        <path d="M2 4v12h16V4H2zm14 10H4V6h12v8zM6 8l4 4 2-2 4 4H4l2-4z"/>
+                    </Box>}
+                    onClick={() => {
+                        setCurrentLang(activeTab === 0 ? "fa" : "en");
+                        setMediaLibraryOpen(true);
+                    }}
+                    sx={{ minWidth: "auto", px: 2 }}
+                >
+                    درج تصویر
+                </Button>
+            </Box>
 
             <Paper variant="outlined" sx={{ overflow: "hidden" }}>
                 <Tabs
@@ -123,11 +203,26 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                             maxHeight: `${height - 100}px`,
                             overflow: "auto",
                             backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#FFFFFF",
-                            color: theme.palette.text.primary,
+                            color: theme.palette.mode === "dark" ? "#E0E0E0" : "#000000",
+                            "& p": {
+                                color: theme.palette.mode === "dark" ? "#E0E0E0" : "#000000",
+                            },
+                            "& h1, & h2, & h3, & h4, & h5, & h6": {
+                                color: theme.palette.mode === "dark" ? "#FFFFFF" : "#000000",
+                            },
+                            "& strong, & b": {
+                                color: theme.palette.mode === "dark" ? "#FFFFFF" : "#000000",
+                            },
                         },
                         "& .ck-toolbar": {
-                            backgroundColor: theme.palette.mode === "dark" ? "#2D2D2D" : "#F5F5F5",
+                            backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#F5F5F5",
                             borderColor: theme.palette.divider,
+                        },
+                        "& .ck-editor": {
+                            backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#FFFFFF",
+                        },
+                        "& .ck-content": {
+                            backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#FFFFFF",
                         },
                         "& .ck-button": {
                             color: theme.palette.text.primary,
@@ -143,15 +238,18 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                     {editorLoaded ? (
                         <>
                             {/* Persian Editor */}
-                            {/* Persian Editor */}
                             <Box
                                 sx={{
                                     display: activeTab === 0 ? "block" : "none",
                                     "& .ck-editor__editable": {
                                         direction: "rtl",
+                                        color: theme.palette.mode === "dark" ? "#E0E0E0" : "#000000",
+                                        "& p, & span, & div": {
+                                            color: theme.palette.mode === "dark" ? "#E0E0E0" : "#000000",
+                                        },
                                     },
                                     "& .ck-toolbar": {
-                                        direction: "rtl",
+                                        direction: "rtl", // Keep toolbar RTL for Persian
                                     },
                                 }}
                             >
@@ -176,9 +274,13 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                                     display: activeTab === 1 ? "block" : "none",
                                     "& .ck-editor__editable": {
                                         direction: "ltr",
+                                        color: theme.palette.mode === "dark" ? "#E0E0E0" : "#000000",
+                                        "& p, & span, & div": {
+                                            color: theme.palette.mode === "dark" ? "#E0E0E0" : "#000000",
+                                        },
                                     },
                                     "& .ck-toolbar": {
-                                        direction: "ltr",
+                                        direction: "rtl", // Keep toolbar RTL even for English (consistent with UI)
                                     },
                                 }}
                             >
@@ -209,6 +311,19 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
             </Paper>
 
             {(error?.fa || error?.en || helperText) && <FormHelperText error={!!(error?.fa || error?.en)}>{error?.fa || error?.en || helperText}</FormHelperText>}
+
+            {/* Media Library Dialog */}
+            <MediaLibrary
+                open={mediaLibraryOpen}
+                onClose={() => setMediaLibraryOpen(false)}
+                onSelect={handleImageSelect}
+                multiple={false}
+                maxFiles={1}
+                acceptedTypes={["image/*"]}
+                title="انتخاب تصویر"
+                showUpload={true}
+                optimizeForWeb={true}
+            />
         </Box>
     );
 }

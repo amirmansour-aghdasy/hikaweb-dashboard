@@ -26,6 +26,7 @@ export default function MediaPicker({
     maxFiles = 1,
     showPreview = true,
     showEdit = true,
+    optimizeForWeb = false, // Convert images to WebP for better SEO and performance
 }) {
     const [libraryOpen, setLibraryOpen] = useState(false);
     const [editorOpen, setEditorOpen] = useState(false);
@@ -185,6 +186,7 @@ export default function MediaPicker({
                 maxFiles={maxFiles}
                 acceptedTypes={Array.isArray(accept) ? accept : [accept]}
                 title={label}
+                optimizeForWeb={optimizeForWeb}
             />
 
             {/* Image Editor Dialog */}

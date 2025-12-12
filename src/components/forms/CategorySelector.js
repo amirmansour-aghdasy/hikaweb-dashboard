@@ -17,6 +17,7 @@ export default function CategorySelector({
 }) {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [normalizedValue, setNormalizedValue] = useState(multiple ? [] : null);
 
     const { useFetchData } = useApi();
 
@@ -33,6 +34,39 @@ export default function CategorySelector({
             setCategories([]);
         }
     }, [categoriesData]);
+
+    // Normalize value prop: convert IDs to category objects
+    useEffect(() => {
+        if (!categories.length || !value) {
+            setNormalizedValue(multiple ? [] : null);
+            return;
+        }
+
+        if (multiple) {
+            // Handle array of values (IDs or objects)
+            const normalized = Array.isArray(value)
+                ? value.map(val => {
+                    // If it's already an object with _id, return it
+                    if (typeof val === 'object' && val !== null && val._id) {
+                        return val;
+                    }
+                    // If it's a string ID, find the category object
+                    const id = typeof val === 'string' ? val : (val?._id || val?.id);
+                    return categories.find(cat => cat._id === id || cat.id === id) || val;
+                }).filter(Boolean)
+                : [];
+            setNormalizedValue(normalized);
+        } else {
+            // Handle single value
+            if (typeof value === 'object' && value !== null && value._id) {
+                setNormalizedValue(value);
+            } else {
+                const id = typeof value === 'string' ? value : (value?._id || value?.id);
+                const found = categories.find(cat => cat._id === id || cat.id === id);
+                setNormalizedValue(found || null);
+            }
+        }
+    }, [value, categories, multiple]);
 
     const handleChange = (_, newValue) => {
         if (multiple) {
@@ -89,14 +123,16 @@ export default function CategorySelector({
     return (
         <Autocomplete
             multiple={multiple}
-            value={value || (multiple ? [] : null)}
+            value={normalizedValue}
             onChange={handleChange}
             options={safeOptions}
             loading={isLoading}
             getOptionLabel={getOptionLabel}
             isOptionEqualToValue={(option, value) => {
                 if (!option || !value) return false;
-                return option._id === value._id || option._id === value;
+                const optionId = option._id || option.id;
+                const valueId = value._id || value.id || value;
+                return optionId === valueId || String(optionId) === String(valueId);
             }}
             renderOption={renderOption}
             renderTags={multiple ? renderTags : undefined}
