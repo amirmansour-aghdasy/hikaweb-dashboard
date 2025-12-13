@@ -17,9 +17,10 @@ const ALLOWED_ENDPOINT_PATTERNS = [
     /^\/portfolio(\/.*)?$/,
     // Categories
     /^\/categories(\/.*)?$/,
-    // Users/Team
+    // Users/Team/Roles
     /^\/users(\/.*)?$/,
     /^\/team(\/.*)?$/,
+    /^\/roles(\/.*)?$/,
     // Tasks
     /^\/tasks(\/.*)?$/,
     // Tickets
@@ -43,6 +44,12 @@ const ALLOWED_ENDPOINT_PATTERNS = [
     /^\/banners(\/.*)?$/,
     // Brands
     /^\/brands(\/.*)?$/,
+    // Logs
+    /^\/logs(\/.*)?$/,
+    // Carousel
+    /^\/carousel(\/.*)?$/,
+    // Calendar
+    /^\/calendar(\/.*)?$/,
 ];
 
 /**

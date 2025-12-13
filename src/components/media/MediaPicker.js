@@ -27,6 +27,8 @@ export default function MediaPicker({
     showPreview = true,
     showEdit = true,
     optimizeForWeb = false, // Convert images to WebP for better SEO and performance
+    compact = false, // Compact mode: only show button, no preview
+    buttonProps = {}, // Custom button props
 }) {
     const [libraryOpen, setLibraryOpen] = useState(false);
     const [editorOpen, setEditorOpen] = useState(false);
@@ -81,6 +83,44 @@ export default function MediaPicker({
         ? (Array.isArray(normalizedValue) ? normalizedValue : []) 
         : (normalizedValue ? [normalizedValue] : []);
 
+    // In compact mode, return only the button (for use in ButtonGroup)
+    if (compact) {
+        return (
+            <>
+                <Button
+                    variant="outlined"
+                    startIcon={<Add />}
+                    onClick={() => setLibraryOpen(true)}
+                    {...buttonProps}
+                >
+                    {value ? "تغییر فایل" : label}
+                </Button>
+                <MediaLibrary
+                    open={libraryOpen}
+                    onClose={() => setLibraryOpen(false)}
+                    onSelect={handleSelect}
+                    multiple={multiple}
+                    maxFiles={maxFiles}
+                    acceptedTypes={Array.isArray(accept) ? accept : [accept]}
+                    title={label}
+                    showUpload={true}
+                    optimizeForWeb={optimizeForWeb}
+                />
+                {editorOpen && editingImage && (
+                    <ImageEditor
+                        open={editorOpen}
+                        onClose={() => {
+                            setEditorOpen(false);
+                            setEditingImage(null);
+                        }}
+                        image={editingImage}
+                        onSave={handleEditorSave}
+                    />
+                )}
+            </>
+        );
+    }
+
     return (
         <Box>
             <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
@@ -88,7 +128,8 @@ export default function MediaPicker({
                     variant="outlined"
                     startIcon={<Add />}
                     onClick={() => setLibraryOpen(true)}
-                    sx={{ flex: 1 }}
+                    sx={{ flex: 1, ...buttonProps.sx }}
+                    {...buttonProps}
                 >
                     {value ? "تغییر فایل" : label}
                 </Button>
@@ -100,7 +141,7 @@ export default function MediaPicker({
             </Stack>
 
             {/* Preview */}
-            {showPreview && displayValue.length > 0 && (
+            {showPreview && !compact && displayValue.length > 0 && (
                 <Box sx={{ mt: 2 }}>
                     {(() => {
                         const item = displayValue[0];

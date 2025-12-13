@@ -133,7 +133,7 @@ export default function CarouselForm({ carousel, onSave, onCancel }) {
             toast.success(carousel ? "اسلاید با موفقیت ویرایش شد" : "اسلاید با موفقیت ایجاد شد");
             onSave();
         } catch (error) {
-            console.error("Error saving carousel:", error);
+            // Don't log to console - show user-friendly error message
             toast.error("خطا در ذخیره اسلاید");
         } finally {
             setLoading(false);

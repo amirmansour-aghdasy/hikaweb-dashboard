@@ -61,9 +61,12 @@ export const useApi = () => {
                 const queryKey = options.queryKey || endpoint.split("/")[1] || "data";
                 
                 // Invalidate all queries that start with the queryKey
+                // Use predicate function for more reliable matching
                 queryClient.invalidateQueries({ 
-                    queryKey: [queryKey],
-                    exact: false 
+                    predicate: (query) => {
+                        const queryKeyArray = Array.isArray(query.queryKey) ? query.queryKey : [query.queryKey];
+                        return queryKeyArray[0] === queryKey;
+                    }
                 });
                 
                 // Also invalidate statistics if it's tickets

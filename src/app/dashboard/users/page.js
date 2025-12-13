@@ -8,8 +8,9 @@ import Modal from "@/components/ui/Modal";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePageActions } from "@/hooks/usePageActions";
-import { formatDate, getPersianValue } from "@/lib/utils";
+import { formatDate, getPersianValue, normalizeUserFields, getInitials } from "@/lib/utils";
 import UserForm from "@/components/forms/UserForm";
+import toast from "react-hot-toast";
 
 export default function UsersPage() {
     const [editingUser, setEditingUser] = useState(null);
@@ -72,29 +73,44 @@ export default function UsersPage() {
             field: "avatar",
             headerName: "تصویر",
             width: 80,
-            render: (row) => (
-                <Avatar src={row.avatar} sx={{ width: 40, height: 40, mx: "auto" }}>
-                    {row.name?.charAt(0) || "?"}
-                </Avatar>
-            ),
+            render: (row) => {
+                const normalized = normalizeUserFields(row);
+                return (
+                    <Avatar src={normalized.avatar || undefined} sx={{ width: 40, height: 40, mx: "auto" }}>
+                        {getInitials(normalized.name)}
+                    </Avatar>
+                );
+            },
             align: "center"
         },
         {
             field: "name",
             headerName: "نام",
             flex: 1,
+            render: (row) => {
+                const normalized = normalizeUserFields(row);
+                return normalized.name || "-";
+            },
             align: "left"
         },
         {
             field: "email",
             headerName: "ایمیل",
             flex: 1,
+            render: (row) => {
+                const normalized = normalizeUserFields(row);
+                return normalized.email || "-";
+            },
             align: "left"
         },
         {
             field: "phoneNumber",
             headerName: "تلفن",
             width: 150,
+            render: (row) => {
+                const normalized = normalizeUserFields(row);
+                return normalized.phone || "-";
+            },
             align: "center"
         },
         {
@@ -137,6 +153,19 @@ export default function UsersPage() {
         if (!canDelete) return;
         setUserToDelete(user);
         setIsDeleteDialogOpen(true);
+    };
+
+    const handleBulkDelete = async (selectedIds) => {
+        if (!canDelete || selectedIds.length === 0) return;
+        
+        try {
+            // Delete all selected users
+            await Promise.all(selectedIds.map(id => deleteUser.mutateAsync(id)));
+            toast.success(`${selectedIds.length} کاربر با موفقیت حذف شد`);
+        } catch (error) {
+            console.error("Error deleting users:", error);
+            toast.error("خطا در حذف کاربران");
+        }
     };
 
     const handleConfirmDelete = () => {
@@ -259,10 +288,11 @@ export default function UsersPage() {
                     onSearch={handleSearch}
                     onEdit={canEdit ? handleEdit : undefined}
                     onDelete={canDelete ? handleDelete : undefined}
+                    onBulkDelete={canDelete ? handleBulkDelete : undefined}
                     onView={canView ? handleView : undefined}
                     onAdd={canCreate ? handleAdd : undefined}
                     searchPlaceholder="جستجو در کاربران (حداقل 3 کاراکتر)..."
-                    enableSelection={false}
+                    enableSelection={canDelete}
                     customActions={customActions}
                     filters={filters}
                     canView={canView}
@@ -299,46 +329,53 @@ export default function UsersPage() {
                     <DialogContent>
                         {viewingUser && (
                             <Box sx={{ mt: 2 }}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-                                    <Avatar src={viewingUser.avatar} sx={{ width: 64, height: 64 }}>
-                                        {viewingUser.name?.charAt(0) || "?"}
-                                    </Avatar>
-                                    <Box>
-                                        <Typography variant="h6">{viewingUser.name}</Typography>
-                                        <Typography variant="body2" color="text.secondary">{viewingUser.email}</Typography>
-                                    </Box>
-                                </Box>
-                                
-                                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">نام</Typography>
-                                        <Typography variant="body1">{viewingUser.name || "-"}</Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">ایمیل</Typography>
-                                        <Typography variant="body1">{viewingUser.email || "-"}</Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">شماره تلفن</Typography>
-                                        <Typography variant="body1">{viewingUser.phoneNumber || "-"}</Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">نقش</Typography>
-                                        <Typography variant="body1">
-                                            {viewingUser.role ? (typeof viewingUser.role === "object" ? getPersianValue(viewingUser.role.displayName, viewingUser.role.name) : viewingUser.role) : "-"}
-                                        </Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">وضعیت</Typography>
-                                        <Typography variant="body1">
-                                            {viewingUser.status === "active" ? "فعال" : "غیرفعال"}
-                                        </Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">تاریخ ایجاد</Typography>
-                                        <Typography variant="body1">{formatDate(viewingUser.createdAt)}</Typography>
-                                    </Box>
-                                </Box>
+                                {(() => {
+                                    const normalized = normalizeUserFields(viewingUser);
+                                    return (
+                                        <>
+                                            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+                                                <Avatar src={normalized.avatar || undefined} sx={{ width: 64, height: 64 }}>
+                                                    {getInitials(normalized.name)}
+                                                </Avatar>
+                                                <Box>
+                                                    <Typography variant="h6">{normalized.name || "-"}</Typography>
+                                                    <Typography variant="body2" color="text.secondary">{normalized.email || "-"}</Typography>
+                                                </Box>
+                                            </Box>
+                                            
+                                            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary">نام</Typography>
+                                                    <Typography variant="body1">{normalized.name || "-"}</Typography>
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary">ایمیل</Typography>
+                                                    <Typography variant="body1">{normalized.email || "-"}</Typography>
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary">شماره تلفن</Typography>
+                                                    <Typography variant="body1">{normalized.phone || "-"}</Typography>
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary">نقش</Typography>
+                                                    <Typography variant="body1">
+                                                        {viewingUser.role ? (typeof viewingUser.role === "object" ? getPersianValue(viewingUser.role.displayName, viewingUser.role.name) : viewingUser.role) : "-"}
+                                                    </Typography>
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary">وضعیت</Typography>
+                                                    <Typography variant="body1">
+                                                        {viewingUser.status === "active" ? "فعال" : "غیرفعال"}
+                                                    </Typography>
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary">تاریخ ایجاد</Typography>
+                                                    <Typography variant="body1">{formatDate(viewingUser.createdAt)}</Typography>
+                                                </Box>
+                                            </Box>
+                                        </>
+                                    );
+                                })()}
                             </Box>
                         )}
                     </DialogContent>

@@ -5,6 +5,7 @@ import {
     Typography,
     Avatar,
     Button,
+    ButtonGroup,
     Card,
     CardContent,
     CircularProgress,
@@ -13,6 +14,7 @@ import { Delete } from "@mui/icons-material";
 import { useAuth } from "@/hooks/useAuth";
 import MediaPicker from "@/components/media/MediaPicker";
 import toast from "react-hot-toast";
+import { normalizeUserFields, getInitials } from "@/lib/utils";
 
 export default function ProfileAvatar() {
     const { user, updateProfile } = useAuth();
@@ -71,14 +73,6 @@ export default function ProfileAvatar() {
         }
     };
 
-    const getInitials = (name) => {
-        if (!name) return "?";
-        const parts = name.trim().split(" ");
-        if (parts.length >= 2) {
-            return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-        }
-        return name.substring(0, 2).toUpperCase();
-    };
 
     return (
         <Box>
@@ -102,7 +96,7 @@ export default function ProfileAvatar() {
                                     bgcolor: "primary.main",
                                 }}
                             >
-                                {!avatarUrl && getInitials(user?.name)}
+                                {!avatarUrl && getInitials(user ? normalizeUserFields(user).name : "")}
                             </Avatar>
                             {uploading && (
                                 <Box
@@ -122,7 +116,7 @@ export default function ProfileAvatar() {
                             )}
                         </Box>
 
-                        <Box display="flex" gap={2} flexWrap="wrap" justifyContent="center">
+                        <ButtonGroup variant="outlined" sx={{ justifyContent: "center" }}>
                             <MediaPicker
                                 value={avatarUrl}
                                 onChange={handleAvatarChange}
@@ -131,20 +125,30 @@ export default function ProfileAvatar() {
                                 multiple={false}
                                 showPreview={false}
                                 showEdit={true}
+                                compact={true}
+                                buttonProps={{
+                                    sx: {
+                                        borderTopRightRadius: avatarUrl ? 0 : undefined,
+                                        borderBottomRightRadius: avatarUrl ? 0 : undefined,
+                                    }
+                                }}
                             />
 
                             {avatarUrl && (
                                 <Button
-                                    variant="outlined"
                                     color="error"
                                     startIcon={<Delete />}
                                     onClick={handleRemoveAvatar}
                                     disabled={uploading}
+                                    sx={{
+                                        borderTopLeftRadius: 0,
+                                        borderBottomLeftRadius: 0,
+                                    }}
                                 >
                                     حذف تصویر
                                 </Button>
                             )}
-                        </Box>
+                        </ButtonGroup>
 
                         <Typography variant="caption" color="text.secondary" textAlign="center">
                             تصویر باید در فرمت JPG، PNG یا GIF باشد و حداکثر ۵ مگابایت حجم داشته باشد.

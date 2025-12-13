@@ -17,6 +17,7 @@ const CATEGORY_TYPES = [
 const PRESET_COLORS = ["#1976d2", "#388e3c", "#f57c00", "#d32f2f", "#7b1fa2", "#303f9f", "#c2185b", "#00796b", "#455a64", "#8bc34a", "#ff9800", "#9c27b0"];
 
 export default function CategoryForm({ category, onSave, onCancel }) {
+    const theme = useTheme();
     const [loading, setLoading] = useState(false);
 
     const { useCreateData, useUpdateData, useFetchData } = useApi();
@@ -143,7 +144,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
             toast.success(category ? "دسته‌بندی با موفقیت ویرایش شد" : "دسته‌بندی با موفقیت ایجاد شد");
             onSave();
         } catch (error) {
-            console.error("Error saving category:", error);
+            // Don't log to console - show user-friendly error message
             toast.error("خطا در ذخیره دسته‌بندی");
         } finally {
             setLoading(false);
@@ -151,7 +152,10 @@ export default function CategoryForm({ category, onSave, onCancel }) {
     };
 
     // Filter parent categories based on type and exclude self
-    const parentCategories = categoriesData?.data?.filter((cat) => cat.type === watchedType && cat._id !== category?._id) || [];
+    const categoriesArray = categoriesData?.data?.categories || categoriesData?.data || [];
+    const parentCategories = Array.isArray(categoriesArray) 
+        ? categoriesArray.filter((cat) => cat.type === watchedType && cat._id !== category?._id)
+        : [];
 
     return (
         <Box component="form" onSubmit={handleSubmit(onSubmit)}>

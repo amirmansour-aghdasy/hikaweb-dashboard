@@ -134,7 +134,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
             toast.success(brand ? "برند با موفقیت ویرایش شد" : "برند با موفقیت ایجاد شد");
             onSave();
         } catch (error) {
-            console.error("Error saving brand:", error);
+            // Don't log to console - show user-friendly error message
             toast.error("خطا در ذخیره برند");
         } finally {
             setLoading(false);

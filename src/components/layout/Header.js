@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useUIStore } from "../../store/useUIStore";
 import NotificationButton from "./NotificationButton";
 import NotificationsMenu from "./NotificationsMenu";
+import { normalizeUserFields, getInitials } from "@/lib/utils";
 
 export default function Header({ onMenuClick, sidebarOpen }) {
     const theme = useTheme();
@@ -90,17 +91,22 @@ export default function Header({ onMenuClick, sidebarOpen }) {
 
                         {/* Profile Menu */}
                         <IconButton onClick={handleProfileMenuOpen} sx={{ p: 0.5 }}>
-                            <Avatar
-                                src={user?.avatar || undefined}
-                                sx={{
-                                    width: 36,
-                                    height: 36,
-                                    bgcolor: "primary.main",
-                                    fontSize: "1rem",
-                                }}
-                            >
-                                {!user?.avatar && (user?.name?.charAt(0) || "A")}
-                            </Avatar>
+                            {(() => {
+                                const normalized = user ? normalizeUserFields(user) : null;
+                                return (
+                                    <Avatar
+                                        src={normalized?.avatar || undefined}
+                                        sx={{
+                                            width: 36,
+                                            height: 36,
+                                            bgcolor: "primary.main",
+                                            fontSize: "1rem",
+                                        }}
+                                    >
+                                        {!normalized?.avatar && getInitials(normalized?.name || "")}
+                                    </Avatar>
+                                );
+                            })()}
                         </IconButton>
                     </Box>
                 </Toolbar>
@@ -125,12 +131,19 @@ export default function Header({ onMenuClick, sidebarOpen }) {
                 }}
             >
                 <Box sx={{ px: 2, py: 1.5 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                        {user?.name || "مدیر سیستم"}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                        {user?.email}
-                    </Typography>
+                    {(() => {
+                        const normalized = user ? normalizeUserFields(user) : null;
+                        return (
+                            <>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                    {normalized?.name || "مدیر سیستم"}
+                                </Typography>
+                                <Typography variant="body2" color="textSecondary">
+                                    {normalized?.email || ""}
+                                </Typography>
+                            </>
+                        );
+                    })()}
                 </Box>
                 <Divider />
                 <MenuItem onClick={() => router.push("/dashboard/profile")}>

@@ -9,7 +9,7 @@ import TeamMemberForm from "@/components/forms/TeamMemberForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePageActions } from "@/hooks/usePageActions";
-import { formatDate, getPersianValue, formatNumber } from "@/lib/utils";
+import { formatDate, getPersianValue, formatNumber, normalizeUserFields, getInitials } from "@/lib/utils";
 
 const DEPARTMENT_LABELS = {
     management: "مدیریت",
@@ -75,29 +75,35 @@ export default function TeamPage() {
             field: "avatar",
             headerName: "تصویر",
             width: 80,
-            render: (row) => (
-                <Avatar src={row.avatar} sx={{ width: 40, height: 40, mx: "auto" }}>
-                    {getPersianValue(row.name, "?").charAt(0)}
-                </Avatar>
-            ),
+            render: (row) => {
+                const normalized = normalizeUserFields(row);
+                return (
+                    <Avatar src={normalized.avatar || undefined} sx={{ width: 40, height: 40, mx: "auto" }}>
+                        {getInitials(normalized.name)}
+                    </Avatar>
+                );
+            },
             align: "center"
         },
         {
             field: "name",
             headerName: "نام و نام خانوادگی",
             flex: 2,
-            render: (row) => (
-                <Box>
-                    <Typography variant="body2" fontWeight="bold">
-                        {getPersianValue(row.name, "-")}
-                    </Typography>
-                    {row.email && (
-                        <Typography variant="caption" color="text.secondary">
-                            {row.email}
+            render: (row) => {
+                const normalized = normalizeUserFields(row);
+                return (
+                    <Box>
+                        <Typography variant="body2" fontWeight="bold">
+                            {normalized.name || "-"}
                         </Typography>
-                    )}
-                </Box>
-            ),
+                        {normalized.email && (
+                            <Typography variant="caption" color="text.secondary">
+                                {normalized.email}
+                            </Typography>
+                        )}
+                    </Box>
+                );
+            },
             align: "left"
         },
         {
@@ -125,8 +131,8 @@ export default function TeamPage() {
         },
         {
             field: "experience",
-            headerName: "تجربه",
-            width: 100,
+            headerName: "تجربه کاری",
+            width: 120,
             render: (row) => {
                 // Handle experience: can be object {years, description} or number
                 let experienceYears = 0;
@@ -138,9 +144,56 @@ export default function TeamPage() {
                     }
                 }
                 return (
-                    <Typography variant="caption">
-                        {experienceYears} سال
-                    </Typography>
+                    <Box>
+                        <Typography variant="caption" fontWeight="bold">
+                            {experienceYears} سال
+                        </Typography>
+                        {row.joinDate && (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                                {(() => {
+                                    const joinDate = new Date(row.joinDate);
+                                    const now = new Date();
+                                    const yearsInCompany = Math.floor((now - joinDate) / (1000 * 60 * 60 * 24 * 365));
+                                    return yearsInCompany > 0 ? `${yearsInCompany} سال در شرکت` : "جدید";
+                                })()}
+                            </Typography>
+                        )}
+                    </Box>
+                );
+            },
+            align: "center"
+        },
+        {
+            field: "workInfo",
+            headerName: "اطلاعات کاری",
+            width: 180,
+            render: (row) => {
+                const skillsCount = row.skills?.length || 0;
+                const experienceYears = typeof row.experience === 'object' && row.experience?.years !== undefined
+                    ? row.experience.years
+                    : (typeof row.experience === 'number' ? row.experience : 0);
+                
+                return (
+                    <Box>
+                        <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap" gap={0.5}>
+                            <Chip 
+                                label={`${skillsCount} مهارت`} 
+                                size="small" 
+                                variant="outlined"
+                                color="primary"
+                                sx={{ fontSize: "0.65rem" }}
+                            />
+                            {experienceYears > 0 && (
+                                <Chip 
+                                    label={`${experienceYears} سال تجربه`} 
+                                    size="small" 
+                                    variant="outlined"
+                                    color="secondary"
+                                    sx={{ fontSize: "0.65rem" }}
+                                />
+                            )}
+                        </Stack>
+                    </Box>
                 );
             },
             align: "center"
@@ -272,12 +325,19 @@ export default function TeamPage() {
         <Card sx={{ height: "100%" }}>
             <CardContent>
                 <Box sx={{ textAlign: "center", mb: 2 }}>
-                    <Avatar src={member.avatar} sx={{ width: 80, height: 80, mx: "auto", mb: 2 }}>
-                        {getPersianValue(member.name, "?").charAt(0)}
-                    </Avatar>
-                    <Typography variant="h6" gutterBottom>
-                        {getPersianValue(member.name, "-")}
-                    </Typography>
+                    {(() => {
+                        const normalized = normalizeUserFields(member);
+                        return (
+                            <>
+                                <Avatar src={normalized.avatar || undefined} sx={{ width: 80, height: 80, mx: "auto", mb: 2 }}>
+                                    {getInitials(normalized.name)}
+                                </Avatar>
+                                <Typography variant="h6" gutterBottom>
+                                    {normalized.name || "-"}
+                                </Typography>
+                            </>
+                        );
+                    })()}
                     <Typography variant="body2" color="text.secondary" gutterBottom>
                         {getPersianValue(member.position, "-")}
                     </Typography>

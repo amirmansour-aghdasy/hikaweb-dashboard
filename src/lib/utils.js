@@ -190,3 +190,95 @@ export const formatFileSize = (bytes) => {
     
     return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
 };
+
+/**
+ * Normalize name field - handles both string and multi-language object
+ * @param {string|Object} name - Name field (can be string or {fa, en} object)
+ * @param {string} fallback - Fallback value
+ * @returns {string}
+ */
+export const normalizeName = (name, fallback = "") => {
+    if (!name) return fallback;
+    if (typeof name === "string") return name;
+    if (typeof name === "object" && name !== null) {
+        return name.fa || name.en || fallback;
+    }
+    return fallback;
+};
+
+/**
+ * Normalize phone field - handles both 'phone' and 'phoneNumber' field names
+ * @param {Object} entity - Entity object (user, teamMember, etc.)
+ * @param {string} fallback - Fallback value
+ * @returns {string}
+ */
+export const normalizePhone = (entity, fallback = "") => {
+    if (!entity) return fallback;
+    // Check both 'phone' and 'phoneNumber' fields
+    return entity.phoneNumber || entity.phone || fallback;
+};
+
+/**
+ * Normalize email field
+ * @param {string} email - Email field
+ * @param {string} fallback - Fallback value
+ * @returns {string}
+ */
+export const normalizeEmail = (email, fallback = "") => {
+    if (!email) return fallback;
+    if (typeof email === "string") return email;
+    return fallback;
+};
+
+/**
+ * Normalize avatar field
+ * @param {string} avatar - Avatar URL
+ * @param {string} fallback - Fallback value
+ * @returns {string}
+ */
+export const normalizeAvatar = (avatar, fallback = null) => {
+    if (!avatar) return fallback;
+    if (typeof avatar === "string" && avatar.trim()) return avatar;
+    return fallback;
+};
+
+/**
+ * Normalize all common user fields (name, email, phone, avatar)
+ * This ensures consistent field access across different entity types (User, TeamMember, etc.)
+ * @param {Object} entity - Entity object (user, teamMember, etc.)
+ * @param {Object} options - Options for normalization
+ * @returns {Object} Normalized fields object
+ */
+export const normalizeUserFields = (entity, options = {}) => {
+    if (!entity) {
+        return {
+            name: options.nameFallback || "",
+            email: options.emailFallback || "",
+            phone: options.phoneFallback || "",
+            avatar: options.avatarFallback || null,
+        };
+    }
+
+    return {
+        name: normalizeName(entity.name, options.nameFallback || ""),
+        email: normalizeEmail(entity.email, options.emailFallback || ""),
+        phone: normalizePhone(entity, options.phoneFallback || ""),
+        avatar: normalizeAvatar(entity.avatar, options.avatarFallback || null),
+    };
+};
+
+/**
+ * Get initials from name (for avatar fallback)
+ * @param {string|Object} name - Name field (can be string or {fa, en} object)
+ * @returns {string}
+ */
+export const getInitials = (name) => {
+    const normalizedName = normalizeName(name, "");
+    if (!normalizedName) return "?";
+    
+    const parts = normalizedName.trim().split(" ");
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return normalizedName.substring(0, 2).toUpperCase();
+};

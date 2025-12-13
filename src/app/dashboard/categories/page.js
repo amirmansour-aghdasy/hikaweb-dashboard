@@ -45,7 +45,7 @@ export default function CategoriesPage() {
     const endpoint = `/categories?${queryParams}`;
 
     // Fetch categories
-    const { data: categoriesData, isLoading } = useFetchData(["categories", queryParams], endpoint);
+    const { data: categoriesData, isLoading, refetch: refetchCategories } = useFetchData(["categories", queryParams], endpoint);
 
     // Update category
     const updateCategory = useUpdateData("/categories", {
@@ -129,16 +129,26 @@ export default function CategoriesPage() {
             field: "stats",
             headerName: "آمار",
             width: 100,
-            render: (row) => (
-                <Box>
-                    <Typography variant="caption" display="block">
-                        📄 {formatNumber(row.itemCount || 0)}
-                    </Typography>
-                    <Typography variant="caption" display="block">
-                        📁 {formatNumber(row.childrenCount || 0)}
-                    </Typography>
-                </Box>
-            ),
+            render: (row) => {
+                // Calculate childrenCount from populated children array if not provided
+                const childrenCount = row.childrenCount !== undefined 
+                    ? row.childrenCount 
+                    : (Array.isArray(row.children) ? row.children.length : 0);
+                
+                // Use itemCount from backend (calculated based on category type)
+                const itemCount = row.itemCount !== undefined ? row.itemCount : 0;
+                
+                return (
+                    <Box>
+                        <Typography variant="caption" display="block" title="تعداد آیتم‌های مرتبط">
+                            📄 {formatNumber(itemCount)}
+                        </Typography>
+                        <Typography variant="caption" display="block" title="تعداد زیردسته‌ها">
+                            📁 {formatNumber(childrenCount)}
+                        </Typography>
+                    </Box>
+                );
+            },
             align: "center",
         },
         {
@@ -172,7 +182,12 @@ export default function CategoriesPage() {
 
     const handleDelete = (category) => {
         if (!canDelete) return;
-        if (category.childrenCount > 0) {
+        // Check childrenCount from backend or calculate from children array
+        const childrenCount = category.childrenCount !== undefined 
+            ? category.childrenCount 
+            : (Array.isArray(category.children) ? category.children.length : 0);
+        
+        if (childrenCount > 0) {
             toast.error("ابتدا زیردسته‌ها را حذف کنید");
             return;
         }
@@ -193,10 +208,18 @@ export default function CategoriesPage() {
 
     const handleToggleStatus = (category) => {
         const newStatus = category.status === "active" ? "inactive" : "active";
-        updateCategory.mutate({
-            id: category._id,
-            data: { status: newStatus },
-        });
+        updateCategory.mutate(
+            {
+                id: category._id,
+                data: { status: newStatus },
+            },
+            {
+                onSuccess: () => {
+                    // Force refetch to ensure UI updates immediately
+                    refetchCategories();
+                },
+            }
+        );
     };
 
     const handleAdd = () => {
@@ -286,7 +309,11 @@ export default function CategoriesPage() {
                                 {node.icon ? <span style={{ fontSize: "12px" }}>{node.icon}</span> : <Category />}
                             </Avatar>
                             <Typography variant="body2">{getPersianValue(node.name, "-")}</Typography>
-                            <Chip label={node.itemCount || 0} size="small" />
+                            <Chip 
+                                label={node.itemCount !== undefined ? node.itemCount : 0} 
+                                size="small" 
+                                title="تعداد آیتم‌های مرتبط"
+                            />
                             <Box sx={{ ml: "auto" }}>
                                 {canEdit && (
                                     <IconButton size="small" onClick={() => handleEdit(node)}>

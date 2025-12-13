@@ -300,7 +300,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
             toast.success(project ? "پروژه با موفقیت ویرایش شد" : "پروژه با موفقیت ایجاد شد");
             onSave();
         } catch (error) {
-            console.error("Error saving project:", error);
+            // Don't log to console - show user-friendly error message
             toast.error("خطا در ذخیره پروژه");
         } finally {
             setLoading(false);

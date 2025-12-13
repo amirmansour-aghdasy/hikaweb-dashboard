@@ -188,9 +188,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
             toast.success(member ? "عضو تیم با موفقیت ویرایش شد" : "عضو تیم با موفقیت اضافه شد");
             onSave();
         } catch (error) {
-            console.error("Error saving team member:", error);
-            console.error("Error response:", error.response?.data);
-            console.error("Submit data:", submitData);
+            // Don't log to console - show user-friendly error message
             
             // Show detailed error message from API
             let errorMessage = "خطا در ذخیره عضو تیم";
@@ -237,7 +235,7 @@ export default function TeamMemberForm({ member, onSave, onCancel }) {
     };
 
     const onError = (errors) => {
-        console.error("Form validation errors:", errors);
+        // Don't log to console - errors are already shown in UI via error props
         
         // Field name mapping to Persian
         const fieldLabels = {

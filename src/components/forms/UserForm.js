@@ -1,16 +1,19 @@
 "use client";
 import { Box, Grid, TextField, FormControl, InputLabel, Select, MenuItem, FormHelperText, Switch, FormControlLabel, Button, Typography, Paper, Avatar } from "@mui/material";
-import { Save, Cancel, PhotoCamera } from "@mui/icons-material";
+import { Save, Cancel } from "@mui/icons-material";
 import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useApi } from "@/hooks/useApi";
+import MediaPicker from "../media/MediaPicker";
+import { normalizeUserFields, getInitials } from "@/lib/utils";
+import toast from "react-hot-toast";
 
 export default function UserForm({ user, onSave, onCancel }) {
     const [loading, setLoading] = useState(false);
     const { useFetchData, useCreateData, useUpdateData } = useApi();
 
     // Fetch roles for dropdown
-    const { data: rolesData } = useFetchData("roles", "/users/roles");
+    const { data: rolesData, isLoading: rolesLoading } = useFetchData("roles", "/users/roles");
 
     const {
         control,
@@ -48,17 +51,24 @@ export default function UserForm({ user, onSave, onCancel }) {
     });
 
     useEffect(() => {
+        // Wait for roles to load before setting role value
+        if (rolesLoading) return;
+        
         if (user) {
             // Handle role - it might be populated object or just ObjectId
             const roleValue = typeof user.role === 'object' && user.role?._id 
                 ? user.role._id 
                 : user.role;
             
+            // Verify role exists in available roles
+            const availableRoles = rolesData?.data?.roles || [];
+            const roleExists = roleValue && availableRoles.some(r => r._id === roleValue);
+            
             reset({
                 name: user.name || "",
                 email: user.email || "",
                 phoneNumber: user.phoneNumber || "",
-                role: roleValue || "",
+                role: roleExists ? roleValue : "",
                 status: user.status || "active",
                 avatar: user.avatar || "",
                 bio: user.bio || "",
@@ -83,27 +93,128 @@ export default function UserForm({ user, onSave, onCancel }) {
                 isPhoneNumberVerified: false,
             });
         }
-    }, [user, reset]);
+    }, [user, reset, rolesData, rolesLoading]);
 
     const onSubmit = async (data) => {
         setLoading(true);
 
         try {
-            // Remove password fields if empty (for updates)
-            if (user && !data.password) {
-                delete data.password;
-                delete data.confirmPassword;
+
+            // Prepare clean data object
+            const submitData = {
+                name: data.name,
+                email: data.email,
+                phoneNumber: data.phoneNumber || null,
+                status: data.status,
+                isEmailVerified: data.isEmailVerified,
+                isPhoneNumberVerified: data.isPhoneNumberVerified,
+            };
+
+            // Handle avatar - extract URL from object or use string directly
+            // IMPORTANT: data.avatar should already be a string URL from onChange handler,
+            // but we check for object just in case
+            let avatarUrl = null;
+            
+            if (data.avatar) {
+                if (typeof data.avatar === 'string' && data.avatar.trim()) {
+                    // Direct URL string (expected case)
+                    avatarUrl = data.avatar.trim();
+                } else if (typeof data.avatar === 'object' && data.avatar !== null) {
+                    // Object with url property (fallback - should not happen if onChange works correctly)
+                    // Try multiple possible properties
+                    avatarUrl = data.avatar.url || 
+                               data.avatar.thumbnailUrl || 
+                               data.avatar._id || 
+                               (typeof data.avatar === 'object' && data.avatar.toString ? data.avatar.toString() : null);
+                    
+                    // Convert to string if needed
+                    if (avatarUrl && typeof avatarUrl !== 'string') {
+                        avatarUrl = String(avatarUrl);
+                    }
+                    
+                    if (avatarUrl) {
+                        avatarUrl = avatarUrl.trim();
+                    }
+                }
+            }
+            
+            // Only include avatar if we have a valid URL string
+            if (avatarUrl && typeof avatarUrl === 'string' && avatarUrl.length > 0) {
+                submitData.avatar = avatarUrl;
+            } else if (user && (data.avatar === "" || data.avatar === null)) {
+                // If avatar is explicitly cleared (empty string or null), send null to clear it
+                submitData.avatar = null;
+            }
+            // If avatar is undefined or not provided, don't include it in submitData
+            
+
+            // Handle bio - only include if it has a value
+            if (data.bio && data.bio.trim()) {
+                submitData.bio = data.bio.trim();
+            } else if (user && data.bio === "") {
+                // If bio is explicitly cleared, send null
+                submitData.bio = null;
             }
 
+            // Only include role if it has changed (to avoid backend validation errors)
             if (user) {
-                await updateUser.mutateAsync({ id: user._id, data });
+                const currentRoleId = typeof user.role === 'object' && user.role?._id 
+                    ? user.role._id 
+                    : user.role;
+                
+                // Only send role if it's different from current role
+                if (data.role && data.role !== currentRoleId) {
+                    submitData.role = data.role;
+                }
             } else {
-                await createUser.mutateAsync(data);
+                // For new users, role is required
+                submitData.role = data.role;
+            }
+
+            // Add password only if provided (for new users or password updates)
+            if (data.password && data.password.trim()) {
+                submitData.password = data.password;
+            }
+
+            // Remove undefined values (but keep null for fields that should be cleared)
+            Object.keys(submitData).forEach(key => {
+                if (submitData[key] === undefined) {
+                    delete submitData[key];
+                }
+            });
+
+            if (user) {
+                await updateUser.mutateAsync({ id: user._id, data: submitData });
+            } else {
+                await createUser.mutateAsync(submitData);
             }
 
             if (onSave) onSave();
         } catch (error) {
-            console.error("Error saving user:", error);
+            // Don't log to console - show user-friendly error message
+            
+            // Show user-friendly error message
+            let errorMessage = "خطا در ذخیره کاربر";
+            
+            if (error.response?.data) {
+                // Try to get error message from response
+                if (error.response.data.message) {
+                    errorMessage = error.response.data.message;
+                } else if (error.response.data.error) {
+                    errorMessage = error.response.data.error;
+                } else if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+                    // Handle validation errors
+                    const validationErrors = error.response.data.errors
+                        .map(err => err.message || err.msg || err)
+                        .join("، ");
+                    errorMessage = `خطاهای اعتبارسنجی: ${validationErrors}`;
+                }
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            // Show error toast
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -136,16 +247,59 @@ export default function UserForm({ user, onSave, onCancel }) {
                             </Typography>
 
                             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                                <Avatar sx={{ width: 120, height: 120 }} src={watch("avatar")}>
-                                    {watch("name")?.charAt(0)}
+                                <Avatar 
+                                    sx={{ width: 120, height: 120, fontSize: "3rem", bgcolor: "primary.main" }} 
+                                    src={watch("avatar") || undefined}
+                                >
+                                    {!watch("avatar") && getInitials(watch("name") || "")}
                                 </Avatar>
 
-                                <Button variant="outlined" startIcon={<PhotoCamera />} component="label">
-                                    انتخاب تصویر
-                                    <input type="file" hidden accept="image/*" />
-                                </Button>
-
-                                <Controller name="avatar" control={control} render={({ field }) => <TextField {...field} fullWidth label="URL تصویر" size="small" />} />
+                                <Controller
+                                    name="avatar"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Box sx={{ width: "100%" }}>
+                                            <MediaPicker
+                                                value={field.value || null}
+                                                onChange={(selected) => {
+                                                    if (!selected) {
+                                                        field.onChange("");
+                                                        return;
+                                                    }
+                                                    
+                                                    // Handle different return types from MediaPicker
+                                                    let imageUrl = "";
+                                                    
+                                                    if (typeof selected === 'string') {
+                                                        // Direct URL string
+                                                        imageUrl = selected;
+                                                    } else if (typeof selected === 'object' && selected !== null) {
+                                                        // Object with url property (from MediaPicker/MediaLibrary)
+                                                        imageUrl = selected.url || selected._id || null;
+                                                        
+                                                        // If still not a string, try to convert
+                                                        if (imageUrl && typeof imageUrl !== 'string') {
+                                                            imageUrl = String(imageUrl);
+                                                        }
+                                                    }
+                                                    
+                                                    // Only set if we have a valid URL string
+                                                    if (imageUrl && typeof imageUrl === 'string' && imageUrl.trim()) {
+                                                        field.onChange(imageUrl.trim());
+                                                    } else {
+                                                        field.onChange("");
+                                                    }
+                                                }}
+                                                label="انتخاب تصویر پروفایل"
+                                                accept="image/*"
+                                                multiple={false}
+                                                showPreview={true}
+                                                showEdit={true}
+                                                optimizeForWeb={true}
+                                            />
+                                        </Box>
+                                    )}
+                                />
                             </Box>
                         </Paper>
                     </Grid>
@@ -203,19 +357,41 @@ export default function UserForm({ user, onSave, onCancel }) {
                                         name="role"
                                         control={control}
                                         rules={{ required: "انتخاب نقش الزامی است" }}
-                                        render={({ field }) => (
-                                            <FormControl fullWidth error={!!errors.role}>
-                                                <InputLabel>نقش کاربر</InputLabel>
-                                                <Select {...field} label="نقش کاربر">
-                                                    {rolesData?.data?.roles?.map((role) => (
-                                                        <MenuItem key={role._id} value={role._id}>
-                                                            {role.displayName?.fa || role.name}
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                                {errors.role && <FormHelperText>{errors.role.message}</FormHelperText>}
-                                            </FormControl>
-                                        )}
+                                        render={({ field }) => {
+                                            const availableRoles = rolesData?.data?.roles || [];
+                                            const isValidValue = !field.value || availableRoles.some(r => r._id === field.value);
+                                            
+                                            return (
+                                                <FormControl fullWidth error={!!errors.role || (!rolesLoading && !isValidValue && field.value)}>
+                                                    <InputLabel>نقش کاربر</InputLabel>
+                                                    <Select
+                                                        {...field}
+                                                        label="نقش کاربر"
+                                                        disabled={rolesLoading}
+                                                        value={isValidValue ? field.value : ""}
+                                                        inputProps={{
+                                                            autoComplete: "off"
+                                                        }}
+                                                    >
+                                                        {rolesLoading ? (
+                                                            <MenuItem value="" disabled>در حال بارگذاری...</MenuItem>
+                                                        ) : availableRoles.length > 0 ? (
+                                                            availableRoles.map((role) => (
+                                                                <MenuItem key={role._id} value={role._id}>
+                                                                    {role.displayName?.fa || role.name}
+                                                                </MenuItem>
+                                                            ))
+                                                        ) : (
+                                                            <MenuItem value="" disabled>نقشی یافت نشد</MenuItem>
+                                                        )}
+                                                    </Select>
+                                                    {errors.role && <FormHelperText>{errors.role.message}</FormHelperText>}
+                                                    {!rolesLoading && !isValidValue && field.value && (
+                                                        <FormHelperText error>نقش انتخابی نامعتبر است</FormHelperText>
+                                                    )}
+                                                </FormControl>
+                                            );
+                                        }}
                                     />
                                 </Grid>
 
@@ -227,8 +403,12 @@ export default function UserForm({ user, onSave, onCancel }) {
                                         rules={{
                                             required: !user ? "رمز عبور الزامی است" : false,
                                             minLength: {
-                                                value: 6,
-                                                message: "رمز عبور باید حداقل ۶ کاراکتر باشد",
+                                                value: 8,
+                                                message: "رمز عبور باید حداقل ۸ کاراکتر باشد",
+                                            },
+                                            pattern: {
+                                                value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+                                                message: "رمز عبور باید شامل حروف کوچک، بزرگ و عدد باشد",
                                             },
                                         }}
                                         render={({ field }) => (
@@ -239,6 +419,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                                 label={user ? "رمز عبور جدید (اختیاری)" : "رمز عبور"}
                                                 error={!!errors.password}
                                                 helperText={errors.password?.message}
+                                                autoComplete="new-password"
                                             />
                                         )}
                                     />
@@ -261,6 +442,7 @@ export default function UserForm({ user, onSave, onCancel }) {
                                                 error={!!errors.confirmPassword}
                                                 helperText={errors.confirmPassword?.message}
                                                 disabled={!password}
+                                                autoComplete="new-password"
                                             />
                                         )}
                                     />

@@ -120,7 +120,7 @@ export default function RoleForm({ role, onSave, onCancel }) {
 
             if (onSave) onSave();
         } catch (error) {
-            console.error("Error saving role:", error);
+            // Don't log to console - show user-friendly error message
         } finally {
             setLoading(false);
         }

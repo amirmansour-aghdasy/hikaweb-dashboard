@@ -25,8 +25,14 @@ import {
     InputLabel,
     Popover,
     Stack,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions,
+    CircularProgress,
 } from "@mui/material";
-import { Search, FilterList, MoreVert, Edit, Delete, Visibility, Add } from "@mui/icons-material";
+import { Search, FilterList, MoreVert, Edit, Delete, Visibility, Add, DeleteSweep } from "@mui/icons-material";
 import { useState } from "react";
 import { formatDate } from "../../lib/utils";
 import Image from "next/image";
@@ -43,6 +49,7 @@ export default function DataTable({
     onFilter,
     onEdit,
     onDelete,
+    onBulkDelete,
     onView,
     onAdd,
     searchPlaceholder = "جستجو...",
@@ -74,6 +81,8 @@ export default function DataTable({
     const [anchorEl, setAnchorEl] = useState(null);
     const [selectedRow, setSelectedRow] = useState(null);
     const [filterAnchorEl, setFilterAnchorEl] = useState(null);
+    const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
     const handleSelectAll = (event) => {
         if (event.target.checked) {
@@ -108,6 +117,31 @@ export default function DataTable({
     const handleMenuClose = () => {
         setAnchorEl(null);
         setSelectedRow(null);
+    };
+
+    const handleBulkDeleteClick = () => {
+        if (selected.length > 0 && onBulkDelete) {
+            setBulkDeleteDialogOpen(true);
+        }
+    };
+
+    const handleBulkDeleteConfirm = async () => {
+        if (!onBulkDelete || selected.length === 0) return;
+        
+        setIsBulkDeleting(true);
+        try {
+            await onBulkDelete(selected);
+            setSelected([]);
+            setBulkDeleteDialogOpen(false);
+        } catch (error) {
+            console.error("Error in bulk delete:", error);
+        } finally {
+            setIsBulkDeleting(false);
+        }
+    };
+
+    const handleBulkDeleteCancel = () => {
+        setBulkDeleteDialogOpen(false);
     };
 
     const handleSearch = (value) => {
@@ -183,7 +217,41 @@ export default function DataTable({
 
     return (
         <Paper sx={{ width: "100%", mb: 2 }}>
-            {/* Toolbar */}
+            {/* Bulk Actions Toolbar - shown when items are selected */}
+            {enableSelection && selected.length > 0 && (
+                <Toolbar
+                    sx={{
+                        pl: { sm: 2 },
+                        pr: { xs: 1, sm: 1 },
+                        bgcolor: (theme) => theme.palette.mode === 'dark' ? 'action.selected' : 'action.hover',
+                    }}
+                >
+                    <Typography sx={{ flex: '1 1 100%' }} color="inherit" variant="subtitle1" component="div">
+                        {selected.length} مورد انتخاب شده
+                    </Typography>
+                    {onBulkDelete && canDelete && (
+                        <Button
+                            color="error"
+                            variant="outlined"
+                            startIcon={<DeleteSweep />}
+                            onClick={handleBulkDeleteClick}
+                            disabled={isBulkDeleting}
+                            size="small"
+                        >
+                            حذف انتخاب شده‌ها
+                        </Button>
+                    )}
+                    <IconButton
+                        onClick={() => setSelected([])}
+                        size="small"
+                        sx={{ ml: 1 }}
+                    >
+                        <Box component="span" sx={{ fontSize: '0.875rem' }}>✕</Box>
+                    </IconButton>
+                </Toolbar>
+            )}
+
+            {/* Main Toolbar */}
             <Toolbar sx={{ px: 2, py: 1 }}>
                 <Typography variant="h6" sx={{ flex: 1 }}>
                     {title}
@@ -494,8 +562,39 @@ export default function DataTable({
                         <Delete sx={{ mr: 1 }} fontSize="small" />
                         حذف
                     </MenuItem>
-                )}
-            </Menu>
+                    )}
+                </Menu>
+
+            {/* Bulk Delete Confirmation Dialog */}
+            <Dialog
+                open={bulkDeleteDialogOpen}
+                onClose={handleBulkDeleteCancel}
+                aria-labelledby="bulk-delete-dialog-title"
+                aria-describedby="bulk-delete-dialog-description"
+            >
+                <DialogTitle id="bulk-delete-dialog-title">
+                    تایید حذف گروهی
+                </DialogTitle>
+                <DialogContent>
+                    <DialogContentText id="bulk-delete-dialog-description">
+                        آیا از حذف {selected.length} مورد انتخاب شده اطمینان دارید؟ این عمل قابل بازگشت نیست.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleBulkDeleteCancel} disabled={isBulkDeleting}>
+                        انصراف
+                    </Button>
+                    <Button 
+                        onClick={handleBulkDeleteConfirm} 
+                        color="error" 
+                        variant="contained"
+                        disabled={isBulkDeleting}
+                        startIcon={isBulkDeleting ? <CircularProgress size={16} color="inherit" /> : <Delete />}
+                    >
+                        {isBulkDeleting ? "در حال حذف..." : "حذف"}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Paper>
     );
 }

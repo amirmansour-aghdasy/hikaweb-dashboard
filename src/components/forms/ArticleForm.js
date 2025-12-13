@@ -2,7 +2,7 @@
 import { Box, TextField, Button, Grid, Switch, FormControlLabel, Typography, Divider, Accordion, AccordionSummary, AccordionDetails, Alert, Stack } from "@mui/material";
 import { Save, Cancel, ExpandMore, Publish, Star, Visibility, Language, Image, Tag, Category, Person, Article } from "@mui/icons-material";
 import { useState, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import MultiLangTextField from "./MultiLangTextField";
 import MultiLangEditor from "./MultiLangEditor";
 import CategorySelector from "./CategorySelector";
@@ -28,6 +28,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
         handleSubmit,
         watch,
         setValue,
+        getValues,
         formState: { errors, isDirty },
         reset,
     } = useForm({
@@ -56,9 +57,6 @@ export default function ArticleForm({ article, onSave, onCancel }) {
             },
         },
     });
-
-    // Watch title changes to auto-generate slug
-    const watchedTitle = watch("title");
 
     useEffect(() => {
         if (article) {
@@ -126,28 +124,12 @@ export default function ArticleForm({ article, onSave, onCancel }) {
         }
     }, [article, reset]);
 
-    // Auto-generate slug from title (only in create mode)
-    useEffect(() => {
-        // Only auto-generate in create mode (not edit mode)
-        if (!article && watchedTitle?.fa) {
-            const newSlugFa = generateSlugFa(watchedTitle.fa);
-            const newSlugEn = watchedTitle.en ? generateSlugEn(watchedTitle.en) : "";
-            
-            // Get current slug value
-            const currentSlug = watch("slug");
-            const currentSlugFa = currentSlug?.fa || "";
-            
-            // Auto-generate if slug is empty or if it matches the auto-generated version
-            // This allows manual editing: if user manually changes slug, it won't be overwritten
-            if (newSlugFa && (!currentSlugFa || currentSlugFa === newSlugFa)) {
-                setValue("slug", {
-                    fa: newSlugFa,
-                    en: newSlugEn,
-                }, { shouldValidate: false, shouldDirty: false });
-            }
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [watchedTitle?.fa, watchedTitle?.en]);
+    // Watch title changes using useWatch for better reactivity
+    const watchedTitle = useWatch({
+        control,
+        name: "title",
+        defaultValue: { fa: "", en: "" }
+    });
 
     // Generate slug for Persian (replace spaces with dash, remove dots and commas, keep Persian characters)
     const generateSlugFa = (title) => {
@@ -170,6 +152,36 @@ export default function ArticleForm({ article, onSave, onCancel }) {
             .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with dash
             .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
     };
+
+    // Auto-generate slug when title changes (only in create mode) - using useWatch
+    useEffect(() => {
+        if (!article && watchedTitle) {
+            const titleFa = watchedTitle?.fa || "";
+            const titleEn = watchedTitle?.en || "";
+            
+            if (titleFa) {
+                const newSlugFa = generateSlugFa(titleFa);
+                const newSlugEn = titleEn ? generateSlugEn(titleEn) : "";
+                
+                // Get current slug value
+                const currentSlug = getValues("slug") || { fa: "", en: "" };
+                const currentSlugFa = currentSlug.fa || "";
+                
+                // Auto-generate if slug is empty or if it matches the auto-generated version
+                // This allows manual editing: if user manually changes slug, it won't be overwritten
+                if (newSlugFa && (!currentSlugFa || currentSlugFa === newSlugFa)) {
+                    setValue("slug", {
+                        fa: newSlugFa,
+                        en: newSlugEn,
+                    }, { 
+                        shouldValidate: false, 
+                        shouldDirty: true,
+                        shouldTouch: false 
+                    });
+                }
+            }
+        }
+    }, [watchedTitle, article, setValue, getValues]);
 
     const onSubmit = async (data) => {
         setLoading(true);
@@ -295,8 +307,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
             toast.success(article ? "مقاله با موفقیت ویرایش شد" : "مقاله با موفقیت ایجاد شد");
             onSave();
         } catch (error) {
-            console.error("Error saving article:", error);
-            console.error("Error response:", error?.response?.data);
+            // Don't log to console - show user-friendly error message
             
             // Handle validation errors from backend
             if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
@@ -332,32 +343,31 @@ export default function ArticleForm({ article, onSave, onCancel }) {
         }
     };
 
-    const onError = (errors) => {
-        console.error("Form validation errors:", errors);
-        // Show first error with better message handling
-        const firstError = Object.keys(errors)[0];
-        if (firstError) {
-            let errorMessage = "لطفاً تمام فیلدهای الزامی را پر کنید";
-            
-            // Handle nested validation errors
-            const errorObj = errors[firstError];
-            if (errorObj) {
-                // Check if it's a validation error object
-                if (errorObj.message) {
-                    errorMessage = errorObj.message;
-                } else if (errorObj.type) {
-                    // Handle validation type errors
-                    const typeMessages = {
-                        faRequired: `فیلد ${firstError === 'title' ? 'عنوان' : firstError === 'content' ? 'محتوا' : firstError} فارسی الزامی است`,
-                        enRequired: `فیلد ${firstError === 'title' ? 'عنوان' : firstError} انگلیسی الزامی است`,
-                    };
-                    errorMessage = typeMessages[errorObj.type] || errorObj.message || `فیلد ${firstError} الزامی است`;
-                } else if (typeof errorObj === 'string') {
-                    errorMessage = errorObj;
-                }
+    const onError = (validationErrors) => {
+        // Don't log to console - errors are already shown in UI via error props
+        // Find first error and scroll to it
+        const firstErrorKey = Object.keys(validationErrors)[0];
+        if (firstErrorKey) {
+            // Scroll to the first error field
+            const errorElement = document.querySelector(`[name="${firstErrorKey}"]`) || 
+                                document.querySelector(`[id="${firstErrorKey}"]`);
+            if (errorElement) {
+                errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                errorElement.focus();
             }
             
-            toast.error(errorMessage);
+            // Show a general toast message (specific errors are shown in input fields)
+            const fieldLabels = {
+                'title': 'عنوان',
+                'slug': 'نامک',
+                'excerpt': 'خلاصه',
+                'content': 'محتوا',
+                'featuredImage': 'تصویر شاخص',
+                'categories': 'دسته‌بندی‌ها',
+            };
+            
+            const fieldLabel = fieldLabels[firstErrorKey] || firstErrorKey;
+            toast.error(`لطفاً ${fieldLabel} را به درستی پر کنید`);
         } else {
             toast.error("لطفاً تمام فیلدهای الزامی را پر کنید");
         }
@@ -418,6 +428,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                     <MultiLangTextField
                                         {...field}
                                         label="نامک"
+                                        error={errors.slug}
                                         placeholder={{
                                             fa: "article-slug-in-persian",
                                             en: "article-slug-in-english",
@@ -441,6 +452,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                         label="خلاصه"
                                         multiline
                                         rows={3}
+                                        error={errors.excerpt}
                                         placeholder={{
                                             fa: "خلاصه‌ای از محتوای مقاله...",
                                             en: "Brief summary of the article...",
@@ -546,7 +558,18 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                             <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                 <Category /> دسته‌بندی
                             </Typography>
-                            <Controller name="categories" control={control} render={({ field }) => <CategorySelector {...field} type="article" label="انتخاب دسته‌بندی" />} />
+                            <Controller 
+                                name="categories" 
+                                control={control} 
+                                render={({ field }) => (
+                                    <CategorySelector 
+                                        {...field} 
+                                        type="article" 
+                                        label="انتخاب دسته‌بندی" 
+                                        error={errors.categories}
+                                    />
+                                )} 
+                            />
                         </Box>
 
                         {/* Tags */}
@@ -554,9 +577,31 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                             <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                 <Tag /> برچسب‌ها
                             </Typography>
-                            <Controller name="tags.fa" control={control} render={({ field }) => <TagInput {...field} label="برچسب‌های فارسی" placeholder="برچسب فارسی اضافه کنید..." />} />
+                            <Controller 
+                                name="tags.fa" 
+                                control={control} 
+                                render={({ field }) => (
+                                    <TagInput 
+                                        {...field} 
+                                        label="برچسب‌های فارسی" 
+                                        placeholder="برچسب فارسی اضافه کنید..." 
+                                        error={errors.tags?.fa}
+                                    />
+                                )} 
+                            />
                             <Box sx={{ mt: 2 }}>
-                                <Controller name="tags.en" control={control} render={({ field }) => <TagInput {...field} label="برچسب‌های انگلیسی" placeholder="Add English tags..." />} />
+                                <Controller 
+                                    name="tags.en" 
+                                    control={control} 
+                                    render={({ field }) => (
+                                        <TagInput 
+                                            {...field} 
+                                            label="برچسب‌های انگلیسی" 
+                                            placeholder="Add English tags..." 
+                                            error={errors.tags?.en}
+                                        />
+                                    )} 
+                                />
                             </Box>
                         </Box>
 
@@ -585,6 +630,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                                 <MultiLangTextField
                                                     {...field}
                                                     label="عنوان باکس دانلود"
+                                                    error={errors.downloadBox?.title}
                                                     placeholder={{
                                                         fa: "عنوان باکس دانلود...",
                                                         en: "Download box title...",
@@ -601,6 +647,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                                     label="توضیحات"
                                                     multiline
                                                     rows={2}
+                                                    error={errors.downloadBox?.description}
                                                     placeholder={{
                                                         fa: "توضیحات فایل قابل دانلود...",
                                                         en: "Description of downloadable file...",
@@ -650,6 +697,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                             <MultiLangTextField
                                                 {...field}
                                                 label="عنوان Meta"
+                                                error={errors.metaTitle}
                                                 placeholder={{
                                                     fa: "عنوان سئو فارسی...",
                                                     en: "SEO title in English...",
@@ -668,6 +716,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                                 label="توضیحات Meta"
                                                 multiline
                                                 rows={3}
+                                                error={errors.metaDescription}
                                                 placeholder={{
                                                     fa: "توضیحات سئو فارسی...",
                                                     en: "SEO description in English...",
@@ -680,10 +729,28 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                     <Controller
                                         name="metaKeywords.fa"
                                         control={control}
-                                        render={({ field }) => <TagInput {...field} label="کلمات کلیدی فارسی" placeholder="کلمه کلیدی اضافه کنید..." />}
+                                        render={({ field }) => (
+                                            <TagInput 
+                                                {...field} 
+                                                label="کلمات کلیدی فارسی" 
+                                                placeholder="کلمه کلیدی اضافه کنید..." 
+                                                error={errors.metaKeywords?.fa}
+                                            />
+                                        )}
                                     />
 
-                                    <Controller name="metaKeywords.en" control={control} render={({ field }) => <TagInput {...field} label="English Keywords" placeholder="Add keyword..." />} />
+                                    <Controller 
+                                        name="metaKeywords.en" 
+                                        control={control} 
+                                        render={({ field }) => (
+                                            <TagInput 
+                                                {...field} 
+                                                label="English Keywords" 
+                                                placeholder="Add keyword..." 
+                                                error={errors.metaKeywords?.en}
+                                            />
+                                        )} 
+                                    />
                                 </Stack>
                             </AccordionDetails>
                         </Accordion>

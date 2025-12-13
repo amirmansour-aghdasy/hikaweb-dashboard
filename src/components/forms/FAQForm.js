@@ -124,7 +124,7 @@ export default function FAQForm({ faq, onSave, onCancel }) {
             toast.success(faq ? "سوال با موفقیت ویرایش شد" : "سوال با موفقیت ایجاد شد");
             onSave();
         } catch (error) {
-            console.error("Error saving FAQ:", error);
+            // Don't log to console - show user-friendly error message
             toast.error("خطا در ذخیره سوال");
         } finally {
             setLoading(false);

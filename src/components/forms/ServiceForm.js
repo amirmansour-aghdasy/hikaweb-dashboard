@@ -421,7 +421,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
             toast.success(service ? "خدمت با موفقیت ویرایش شد" : "خدمت با موفقیت ایجاد شد");
             onSave();
         } catch (error) {
-            console.error("Error saving service:", error);
+            // Don't log to console - show user-friendly error message
             
             // Handle validation errors from backend
             if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
@@ -456,7 +456,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
     };
 
     const onError = (errors) => {
-        console.error("Form validation errors:", errors);
+        // Don't log to console - errors are already shown in UI via error props
         
         // Field name mapping to Persian
         const fieldLabels = {

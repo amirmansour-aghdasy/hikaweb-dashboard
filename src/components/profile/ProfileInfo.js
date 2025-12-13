@@ -17,7 +17,7 @@ import { Save, Email, Phone, Language } from "@mui/icons-material";
 import { useAuth } from "@/hooks/useAuth";
 import { useForm, Controller } from "react-hook-form";
 import toast from "react-hot-toast";
-import { formatDate } from "@/lib/utils";
+import { formatDate, normalizeUserFields } from "@/lib/utils";
 
 export default function ProfileInfo() {
     const { user, updateProfile, loading: authLoading } = useAuth();
@@ -40,10 +40,11 @@ export default function ProfileInfo() {
 
     useEffect(() => {
         if (user) {
+            const normalized = normalizeUserFields(user);
             reset({
-                name: user.name || "",
-                email: user.email || "",
-                phoneNumber: user.phoneNumber || "",
+                name: normalized.name || "",
+                email: normalized.email || "",
+                phoneNumber: normalized.phone || "",
                 language: user.language || "fa",
             });
         }

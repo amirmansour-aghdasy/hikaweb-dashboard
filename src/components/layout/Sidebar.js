@@ -30,6 +30,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { usePermission } from "../../hooks/usePermission";
+import { normalizeUserFields, getInitials } from "@/lib/utils";
 
 const menuItems = [
     {
@@ -187,28 +188,33 @@ export default function Sidebar({ open, onClose, isMobile }) {
 
             {/* User Info */}
             <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                    <Avatar
-                        src={user?.avatar || undefined}
-                        sx={{
-                            width: 40,
-                            height: 40,
-                            bgcolor: "primary.main",
-                            fontSize: "1.2rem",
-                            fontWeight: "bold",
-                        }}
-                    >
-                        {!user?.avatar && (user?.name?.charAt(0) || "A")}
-                    </Avatar>
-                    <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-                            {user?.name || "مدیر سیستم"}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                            {user?.role?.displayName?.fa || user?.role?.name || "مدیر"}
-                        </Typography>
-                    </Box>
-                </Box>
+                {(() => {
+                    const normalized = user ? normalizeUserFields(user) : null;
+                    return (
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                            <Avatar
+                                src={normalized?.avatar || undefined}
+                                sx={{
+                                    width: 40,
+                                    height: 40,
+                                    bgcolor: "primary.main",
+                                    fontSize: "1.2rem",
+                                    fontWeight: "bold",
+                                }}
+                            >
+                                {!normalized?.avatar && getInitials(normalized?.name || "")}
+                            </Avatar>
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                    {normalized?.name || "مدیر سیستم"}
+                                </Typography>
+                                <Typography variant="caption" color="textSecondary">
+                                    {user?.role?.displayName?.fa || user?.role?.name || "مدیر"}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    );
+                })()}
             </Box>
 
             {/* Navigation Menu */}

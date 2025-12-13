@@ -2,7 +2,7 @@
 import { Box, Tabs, Tab, Paper, Typography, FormHelperText, CircularProgress, useTheme, Button } from "@mui/material";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import MediaLibrary from "../media/MediaLibrary";
+import MediaPicker from "../media/MediaPicker";
 
 // Dynamically import CKEditor to avoid SSR issues
 const CKEditor = dynamic(() => import("@ckeditor/ckeditor5-react").then((mod) => mod.CKEditor), {
@@ -26,7 +26,7 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
     const [editorLoaded, setEditorLoaded] = useState(false);
     const editorRef = useRef({ fa: null, en: null });
     const isInitialMount = useRef(true);
-    const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+    const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
     const [currentLang, setCurrentLang] = useState("fa");
 
     useEffect(() => {
@@ -73,22 +73,28 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
         return error && error[lang];
     };
 
-    // Handle image selection from MediaLibrary
+    // Handle image selection from MediaPicker
     const handleImageSelect = (selected) => {
-        if (!selected) return;
+        if (!selected) {
+            setMediaPickerOpen(false);
+            return;
+        }
         
         const imageData = Array.isArray(selected) ? selected[0] : selected;
         const imageUrl = typeof imageData === 'string' 
             ? imageData 
-            : (imageData.url || imageData);
+            : (imageData.url || imageData._id || imageData);
         
         const imageAlt = typeof imageData === 'object' 
-            ? (imageData.altText?.fa || imageData.originalName || '') 
+            ? (imageData.altText?.fa || imageData.originalName || imageData.fileName || '') 
             : '';
 
         // Get current editor
         const currentEditor = editorRef.current[currentLang];
-        if (!currentEditor) return;
+        if (!currentEditor) {
+            setMediaPickerOpen(false);
+            return;
+        }
 
         // Insert image into editor
         currentEditor.model.change((writer) => {
@@ -103,7 +109,7 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
             currentEditor.model.insertContent(imageElement, insertPosition);
         });
 
-        setMediaLibraryOpen(false);
+        setMediaPickerOpen(false);
     };
 
     // CKEditor configuration base
@@ -141,20 +147,24 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                 <Typography variant="subtitle2">
                     {label} {required && <span style={{ color: "red" }}>*</span>}
                 </Typography>
-                <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<Box component="svg" viewBox="0 0 20 20" sx={{ width: 16, height: 16, fill: "currentColor" }}>
-                        <path d="M2 4v12h16V4H2zm14 10H4V6h12v8zM6 8l4 4 2-2 4 4H4l2-4z"/>
-                    </Box>}
-                    onClick={() => {
-                        setCurrentLang(activeTab === 0 ? "fa" : "en");
-                        setMediaLibraryOpen(true);
+                <MediaPicker
+                    value={null}
+                    onChange={handleImageSelect}
+                    label="درج تصویر"
+                    accept="image/*"
+                    multiple={false}
+                    showPreview={false}
+                    showEdit={true}
+                    optimizeForWeb={true}
+                    compact={true}
+                    buttonProps={{
+                        size: "small",
+                        startIcon: <Box component="svg" viewBox="0 0 20 20" sx={{ width: 16, height: 16, fill: "currentColor" }}>
+                            <path d="M2 4v12h16V4H2zm14 10H4V6h12v8zM6 8l4 4 2-2 4 4H4l2-4z"/>
+                        </Box>,
+                        sx: { minWidth: "auto", px: 2 }
                     }}
-                    sx={{ minWidth: "auto", px: 2 }}
-                >
-                    درج تصویر
-                </Button>
+                />
             </Box>
 
             <Paper variant="outlined" sx={{ overflow: "hidden" }}>
@@ -311,19 +321,6 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
             </Paper>
 
             {(error?.fa || error?.en || helperText) && <FormHelperText error={!!(error?.fa || error?.en)}>{error?.fa || error?.en || helperText}</FormHelperText>}
-
-            {/* Media Library Dialog */}
-            <MediaLibrary
-                open={mediaLibraryOpen}
-                onClose={() => setMediaLibraryOpen(false)}
-                onSelect={handleImageSelect}
-                multiple={false}
-                maxFiles={1}
-                acceptedTypes={["image/*"]}
-                title="انتخاب تصویر"
-                showUpload={true}
-                optimizeForWeb={true}
-            />
         </Box>
     );
 }

@@ -159,7 +159,7 @@ export default function BannerForm({ banner, onSave, onCancel }) {
             toast.success(banner ? "بنر با موفقیت ویرایش شد" : "بنر با موفقیت ایجاد شد");
             onSave();
         } catch (error) {
-            console.error("Error saving banner:", error);
+            // Don't log to console - show user-friendly error message
             const errorMessage = error.response?.data?.message || error.message || "خطا در ذخیره بنر";
             toast.error(errorMessage);
         } finally {

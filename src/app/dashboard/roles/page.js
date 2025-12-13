@@ -146,6 +146,19 @@ export default function RolesPage() {
         setIsDeleteDialogOpen(true);
     };
 
+    const handleBulkDelete = async (selectedIds) => {
+        if (selectedIds.length === 0) return;
+        
+        try {
+            // Delete all selected roles
+            await Promise.all(selectedIds.map(id => deleteRole.mutateAsync(id)));
+            toast.success(`${selectedIds.length} نقش با موفقیت حذف شد`);
+        } catch (error) {
+            console.error("Error deleting roles:", error);
+            toast.error("خطا در حذف نقش‌ها");
+        }
+    };
+
     const handleConfirmDelete = () => {
         if (roleToDelete) {
             deleteRole.mutate(roleToDelete._id, {
@@ -238,9 +251,12 @@ export default function RolesPage() {
                     onRowsPerPageChange={handleRowsPerPageChange}
                     onSearch={handleSearch}
                     onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onBulkDelete={handleBulkDelete}
                     onAdd={handleAdd}
                     searchPlaceholder="جستجو در نقش‌ها (حداقل 3 کاراکتر)..."
                     enableSelection={true}
+                    canDelete={true}
                     customActions={customActions}
                     filters={filters}
                     emptyStateProps={{

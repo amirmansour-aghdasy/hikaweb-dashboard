@@ -208,7 +208,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
 
             onSave();
         } catch (error) {
-            console.error("Error saving ticket:", error);
+            // Don't log to console - show user-friendly error message
             toast.error("خطا در ذخیره تیکت");
         } finally {
             setLoading(false);
