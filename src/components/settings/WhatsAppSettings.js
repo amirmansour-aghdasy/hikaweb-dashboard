@@ -234,7 +234,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                     </AccordionSummary>
                                     <AccordionDetails>
                                         <Grid container spacing={3}>
-                                            <Grid item size={{ xs: 12, md: 6 }}>
+                                            <Grid size={{ xs: 12, md: 6 }}>
                                                 <TextField
                                                     fullWidth
                                                     label="نام کارشناس"
@@ -243,7 +243,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                                     required
                                                 />
                                             </Grid>
-                                            <Grid item size={{ xs: 12, md: 6 }}>
+                                            <Grid size={{ xs: 12, md: 6 }}>
                                                 <TextField
                                                     fullWidth
                                                     label="شماره واتساپ"
@@ -254,7 +254,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                                     helperText="شماره را بدون + و فاصله وارد کنید"
                                                 />
                                             </Grid>
-                                            <Grid item size={{ xs: 12 }}>
+                                            <Grid size={{ xs: 12 }}>
                                                 <TextField
                                                     fullWidth
                                                     label="پیام پیش‌فرض"
@@ -264,7 +264,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                                     rows={2}
                                                 />
                                             </Grid>
-                                            <Grid item size={{ xs: 12 }}>
+                                            <Grid size={{ xs: 12 }}>
                                                 <TextField
                                                     fullWidth
                                                     label="پیام آفلاین"
@@ -276,7 +276,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                             </Grid>
 
                                             {/* Working Hours */}
-                                            <Grid item size={{ xs: 12 }}>
+                                            <Grid size={{ xs: 12 }}>
                                                 <Divider sx={{ my: 2 }} />
                                                 <Box display="flex" alignItems="center" gap={1} mb={2}>
                                                     <Schedule />
@@ -296,7 +296,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
 
                                                 {agent.workingHours?.enabled && (
                                                     <Grid container spacing={2} sx={{ mt: 1 }}>
-                                                        <Grid item size={{ xs: 12, md: 6 }}>
+                                                        <Grid size={{ xs: 12, md: 6 }}>
                                                             <FormControl fullWidth>
                                                                 <InputLabel>منطقه زمانی</InputLabel>
                                                                 <Select
@@ -312,7 +312,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                                                 </Select>
                                                             </FormControl>
                                                         </Grid>
-                                                        <Grid item size={{ xs: 12 }}>
+                                                        <Grid size={{ xs: 12 }}>
                                                             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
                                                                 برنامه هفتگی:
                                                             </Typography>
@@ -407,7 +407,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                     </Box>
 
                     <Grid container spacing={3}>
-                        <Grid item size={{ xs: 12, md: 6 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <FormControl fullWidth>
                                 <InputLabel>موقعیت دکمه</InputLabel>
                                 <Select
@@ -420,7 +420,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item size={{ xs: 12, md: 6 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <FormControl fullWidth>
                                 <InputLabel>اندازه دکمه</InputLabel>
                                 <Select
@@ -434,7 +434,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item size={{ xs: 12, md: 6 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <FormControlLabel
                                 control={
                                     <Switch
@@ -445,7 +445,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                 label="نمایش انیمیشن پالس"
                             />
                         </Grid>
-                        <Grid item size={{ xs: 12, md: 6 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <FormControlLabel
                                 control={
                                     <Switch
@@ -456,7 +456,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                 label="دریافت اطلاعات کاربر قبل از چت"
                             />
                         </Grid>
-                            <Grid item size={{ xs: 12, md: 6 }}>
+                            <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 type="number"
@@ -467,7 +467,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                 InputProps={{ inputProps: { min: 0 } }}
                             />
                         </Grid>
-                        <Grid item size={{ xs: 12, md: 6 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 type="number"
@@ -480,7 +480,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                 InputProps={{ inputProps: { min: 0 } }}
                             />
                         </Grid>
-                        <Grid item size={{ xs: 12, md: 6 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <FormControl fullWidth>
                                 <InputLabel>حالت آفلاین</InputLabel>
                                 <Select
@@ -494,7 +494,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item size={{ xs: 12, md: 6 }}>
+                        <Grid size={{ xs: 12, md: 6 }}>
                             <FormControl fullWidth>
                                 <InputLabel>زبان</InputLabel>
                                 <Select
@@ -507,7 +507,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid item size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12 }}>
                             <TextField
                                 fullWidth
                                 label="صفحات نمایش (جدا شده با کاما)"
@@ -524,7 +524,7 @@ export default function WhatsAppSettings({ settings, onChange }) {
                                 helperText="خالی = همه صفحات. مثال: /, /contact-us"
                             />
                         </Grid>
-                            <Grid item size={{ xs: 12 }}>
+                            <Grid size={{ xs: 12 }}>
                             <TextField
                                 fullWidth
                                 label="صفحات مخفی (جدا شده با کاما)"
