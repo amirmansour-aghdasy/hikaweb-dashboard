@@ -5,6 +5,9 @@ import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import MultiLangTextField from "./MultiLangTextField";
 import { useApi } from "../../hooks/useApi";
+import { useJoiValidation } from "../../hooks/useJoiValidation";
+import { useFormErrorHandler } from "../../hooks/useFormErrorHandler";
+import { categoryValidation, categoryUpdateValidation } from "../../lib/validations";
 import toast from "react-hot-toast";
 
 const CATEGORY_TYPES = [
@@ -28,14 +31,19 @@ export default function CategoryForm({ category, onSave, onCancel }) {
     // Fetch parent categories
     const { data: categoriesData } = useFetchData("parent-categories", "/categories?status=active");
 
+    // Use joi resolver for validation
+    const resolver = useJoiValidation(category ? categoryUpdateValidation : categoryValidation);
+
     const {
         control,
         handleSubmit,
         watch,
         setValue,
+        getValues,
         formState: { errors, isDirty },
         reset,
     } = useForm({
+        resolver,
         defaultValues: {
             name: { fa: "", en: "" },
             slug: { fa: "", en: "" },
@@ -50,6 +58,8 @@ export default function CategoryForm({ category, onSave, onCancel }) {
             metaDescription: { fa: "", en: "" },
         },
     });
+
+    const handleFormError = useFormErrorHandler(setValue, getValues);
 
     const watchedName = watch("name");
     const watchedType = watch("type");
@@ -76,25 +86,29 @@ export default function CategoryForm({ category, onSave, onCancel }) {
     // Auto-generate slug from name (only in create mode)
     useEffect(() => {
         // Only auto-generate in create mode (not edit mode)
-        if (!category && watchedName?.fa) {
+        if (!category && watchedName?.fa && watchedName.fa.trim()) {
             const newSlugFa = generateSlug(watchedName.fa, true);
-            const newSlugEn = watchedName.en ? generateSlug(watchedName.en, false) : "";
+            const newSlugEn = watchedName.en && watchedName.en.trim() ? generateSlug(watchedName.en, false) : "";
             
             // Get current slug value
-            const currentSlug = watch("slug");
-            const currentSlugFa = currentSlug?.fa || "";
+            const currentSlug = watch("slug") || { fa: "", en: "" };
+            const currentSlugFa = currentSlug.fa || "";
+            const currentSlugEn = currentSlug.en || "";
             
             // Auto-generate if slug is empty or if it matches the auto-generated version
             // This allows manual editing: if user manually changes slug, it won't be overwritten
-            if (newSlugFa && (!currentSlugFa || currentSlugFa === newSlugFa)) {
+            const shouldUpdateFa = !currentSlugFa || currentSlugFa === generateSlug(watchedName.fa, true);
+            const shouldUpdateEn = !currentSlugEn || (watchedName.en && watchedName.en.trim() && currentSlugEn === generateSlug(watchedName.en, false));
+            
+            if (shouldUpdateFa || shouldUpdateEn) {
                 setValue("slug", {
-                    fa: newSlugFa,
-                    en: newSlugEn,
+                    fa: shouldUpdateFa ? newSlugFa : currentSlugFa,
+                    en: shouldUpdateEn ? newSlugEn : currentSlugEn,
                 }, { shouldValidate: false, shouldDirty: false });
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [watchedName?.fa, watchedName?.en]);
+    }, [watchedName, category]);
 
     // Generate slug - for Persian: replace spaces, remove dots and commas, for English: clean to a-z, 0-9, -
     const generateSlug = (title, isPersian = false) => {
@@ -144,10 +158,37 @@ export default function CategoryForm({ category, onSave, onCancel }) {
             toast.success(category ? "دسته‌بندی با موفقیت ویرایش شد" : "دسته‌بندی با موفقیت ایجاد شد");
             onSave();
         } catch (error) {
-            // Don't log to console - show user-friendly error message
-            toast.error("خطا در ذخیره دسته‌بندی");
+            // Handle validation errors from backend - set them in form state
+            const hasValidationErrors = handleFormError(error);
+            if (!hasValidationErrors) {
+                // Show only non-validation errors
+                const errorMessage = error.response?.data?.message || error.message || "خطا در ذخیره دسته‌بندی";
+                toast.error(errorMessage);
+            } else {
+                // Show general message for validation errors
+                toast.error("لطفاً خطاهای اعتبارسنجی را برطرف کنید");
+            }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const onError = (validationErrors) => {
+        // Errors are already shown in UI via error props under inputs
+        // Just scroll to the first error field for better UX
+        const firstErrorKey = Object.keys(validationErrors)[0];
+        if (firstErrorKey) {
+            const fieldName = firstErrorKey.split('.')[0];
+            const errorElement = document.querySelector(`[name="${firstErrorKey}"]`) || 
+                                document.querySelector(`[name="${fieldName}"]`) ||
+                                document.querySelector(`[id="${firstErrorKey}"]`) ||
+                                document.querySelector(`[id="${fieldName}"]`);
+            if (errorElement) {
+                setTimeout(() => {
+                    errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    errorElement.focus();
+                }, 100);
+            }
         }
     };
 
@@ -158,7 +199,7 @@ export default function CategoryForm({ category, onSave, onCancel }) {
         : [];
 
     return (
-        <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+        <Box component="form" onSubmit={handleSubmit(onSubmit, onError)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
                 <Grid size={{xs:12, md:8}}>

@@ -10,7 +10,12 @@ export default function ClientOnlyWrapper({ children, fallback = null }) {
     }, []);
 
     if (!mounted) {
-        return fallback;
+        // Use a div wrapper with suppressHydrationWarning to prevent hydration mismatch
+        return (
+            <div suppressHydrationWarning>
+                {fallback}
+            </div>
+        );
     }
 
     return <>{children}</>;

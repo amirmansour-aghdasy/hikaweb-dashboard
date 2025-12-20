@@ -28,7 +28,11 @@ import MultiLangEditor from "./MultiLangEditor";
 import CategorySelector from "./CategorySelector";
 import MediaUploader from "../media/MediaUploader";
 import GalleryManager from "../media/GalleryManager";
+import PersianDatePicker from "../ui/PersianDatePicker";
 import { useApi } from "../../hooks/useApi";
+import { useJoiValidation } from "../../hooks/useJoiValidation";
+import { useFormErrorHandler } from "../../hooks/useFormErrorHandler";
+import { portfolioValidation, portfolioUpdateValidation } from "../../lib/validations";
 import toast from "react-hot-toast";
 
 const PROJECT_BUDGETS = [
@@ -58,14 +62,19 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
     // Fetch services for selection
     const { data: servicesData } = useFetchData("services-list", "/services?status=active");
 
+    // Use joi resolver for validation
+    const resolver = useJoiValidation(project ? portfolioUpdateValidation : portfolioValidation);
+
     const {
         control,
         handleSubmit,
         watch,
         setValue,
+        getValues,
         formState: { errors, isDirty },
         reset,
     } = useForm({
+        resolver,
         defaultValues: {
             title: { fa: "", en: "" },
             slug: { fa: "", en: "" },
@@ -107,6 +116,9 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
             },
         },
     });
+
+    // Initialize form error handler after useForm
+    const handleFormError = useFormErrorHandler(setValue, getValues);
 
     // Field Arrays
     const {
@@ -241,25 +253,29 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
     // Auto-generate slug from title (only in create mode)
     useEffect(() => {
         // Only auto-generate in create mode (not edit mode)
-        if (!project && watchedTitle?.fa) {
+        if (!project && watchedTitle?.fa && watchedTitle.fa.trim()) {
             const newSlugFa = generateSlug(watchedTitle.fa, true);
-            const newSlugEn = watchedTitle.en ? generateSlug(watchedTitle.en, false) : "";
+            const newSlugEn = watchedTitle.en && watchedTitle.en.trim() ? generateSlug(watchedTitle.en, false) : "";
             
             // Get current slug value
-            const currentSlug = watch("slug");
-            const currentSlugFa = currentSlug?.fa || "";
+            const currentSlug = watch("slug") || { fa: "", en: "" };
+            const currentSlugFa = currentSlug.fa || "";
+            const currentSlugEn = currentSlug.en || "";
             
             // Auto-generate if slug is empty or if it matches the auto-generated version
             // This allows manual editing: if user manually changes slug, it won't be overwritten
-            if (newSlugFa && (!currentSlugFa || currentSlugFa === newSlugFa)) {
+            const shouldUpdateFa = !currentSlugFa || currentSlugFa === generateSlug(watchedTitle.fa, true);
+            const shouldUpdateEn = !currentSlugEn || (watchedTitle.en && watchedTitle.en.trim() && currentSlugEn === generateSlug(watchedTitle.en, false));
+            
+            if (shouldUpdateFa || shouldUpdateEn) {
                 setValue("slug", {
-                    fa: newSlugFa,
-                    en: newSlugEn,
+                    fa: shouldUpdateFa ? newSlugFa : currentSlugFa,
+                    en: shouldUpdateEn ? newSlugEn : currentSlugEn,
                 }, { shouldValidate: false, shouldDirty: false });
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [watchedTitle?.fa, watchedTitle?.en]);
+    }, [watchedTitle, project]);
 
     // Generate slug - for Persian: replace spaces, remove dots and commas, for English: clean to a-z, 0-9, -
     const generateSlug = (title, isPersian = false) => {
@@ -300,10 +316,37 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
             toast.success(project ? "پروژه با موفقیت ویرایش شد" : "پروژه با موفقیت ایجاد شد");
             onSave();
         } catch (error) {
-            // Don't log to console - show user-friendly error message
-            toast.error("خطا در ذخیره پروژه");
+            // Handle validation errors from backend - set them in form state
+            const hasValidationErrors = handleFormError(error);
+            if (!hasValidationErrors) {
+                // Show only non-validation errors
+                const errorMessage = error.response?.data?.message || error.message || "خطا در ذخیره پروژه";
+                toast.error(errorMessage);
+            } else {
+                // Show general message for validation errors
+                toast.error("لطفاً خطاهای اعتبارسنجی را برطرف کنید");
+            }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const onError = (validationErrors) => {
+        // Errors are already shown in UI via error props under inputs
+        // Just scroll to the first error field for better UX
+        const firstErrorKey = Object.keys(validationErrors)[0];
+        if (firstErrorKey) {
+            const fieldName = firstErrorKey.split('.')[0];
+            const errorElement = document.querySelector(`[name="${firstErrorKey}"]`) || 
+                                document.querySelector(`[name="${fieldName}"]`) ||
+                                document.querySelector(`[id="${firstErrorKey}"]`) ||
+                                document.querySelector(`[id="${fieldName}"]`);
+            if (errorElement) {
+                setTimeout(() => {
+                    errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    errorElement.focus();
+                }, 100);
+            }
         }
     };
 
@@ -326,7 +369,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
     };
 
     return (
-        <Box component="form" onSubmit={handleSubmit(onSubmit)}>
+        <Box component="form" onSubmit={handleSubmit(onSubmit, onError)}>
             <Grid container spacing={3}>
                 {/* Main Content */}
                 <Grid size={{ xs: 12, lg: 8 }}>
@@ -381,7 +424,7 @@ export default function PortfolioForm({ project, onSave, onCancel }) {
                                             control={control}
                                             rules={{ required: "نام مشتری الزامی است" }}
                                             render={({ field }) => (
-                                                <TextField {...field} label="نام مشتری" required error={!!errors.client?.name} helperText={errors.client?.name?.message} fullWidth />
+                                                <TextField {...field} label="نام مشتری" error={!!errors.client?.name} helperText={errors.client?.name?.message} fullWidth />
                                             )}
                                         />
                                     </Grid>

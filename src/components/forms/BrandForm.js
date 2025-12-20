@@ -4,6 +4,7 @@ import { Save, Cancel, Business, Person, Language, Email, Phone, Star, Image, Li
 import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import MediaUploader from "../media/MediaUploader";
+import PersianDatePicker from "../ui/PersianDatePicker";
 import { useApi } from "../../hooks/useApi";
 import toast from "react-hot-toast";
 
@@ -165,7 +166,7 @@ export default function BrandForm({ brand, onSave, onCancel }) {
                                         name="name"
                                         control={control}
                                         rules={{ required: "نام برند الزامی است" }}
-                                        render={({ field }) => <TextField {...field} label="نام برند" required error={!!errors.name} helperText={errors.name?.message} fullWidth />}
+                                        render={({ field }) => <TextField {...field} label="نام برند" error={!!errors.name} helperText={errors.name?.message} fullWidth />}
                                     />
                                 </Grid>
 

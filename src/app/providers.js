@@ -11,7 +11,7 @@ import { useUIStore } from "../store/useUIStore";
 import PWAInstallPrompt from "../components/ui/PWAInstallPrompt";
 import ClientOnlyToaster from "../components/ui/ClientOnlyToaster";
 
-// Create RTL cache only on client-side to avoid hydration mismatch
+// Create RTL cache for both server and client with same configuration
 function createEmotionCache() {
     return createCache({
         key: "muirtl",
@@ -155,13 +155,10 @@ export function Providers({ children }) {
     const theme = useMemo(() => getTheme(darkMode ? "dark" : "light"), [darkMode]);
     const [mounted, setMounted] = useState(false);
     
-    // Create cache only on client-side to avoid hydration mismatch
+    // Create cache for both server and client with same configuration to avoid hydration mismatch
     const emotionCache = useMemo(() => {
-        // Only create cache on client-side
-        if (typeof window !== 'undefined') {
-            return createEmotionCache();
-        }
-        return null;
+        // Create cache with same configuration for both server and client
+        return createEmotionCache();
     }, []);
 
     // Mark component as mounted (client-side only)
@@ -182,10 +179,7 @@ export function Providers({ children }) {
         }
     }, [darkMode]);
 
-    // Don't render until cache is ready (client-side only)
-    if (!emotionCache) {
-        return <>{children}</>;
-    }
+    // Always render with cache (both server and client)
 
     return (
         <CacheProvider value={emotionCache}>

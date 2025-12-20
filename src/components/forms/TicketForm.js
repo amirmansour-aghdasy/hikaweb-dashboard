@@ -326,7 +326,6 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                                         label="متن پاسخ"
                                                         multiline
                                                         rows={4}
-                                                        required
                                                         error={!!errors.responseText}
                                                         helperText={errors.responseText?.message}
                                                         fullWidth
@@ -389,7 +388,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                                 name="subject"
                                                 control={control}
                                                 rules={{ required: "موضوع تیکت الزامی است" }}
-                                                render={({ field }) => <TextField {...field} label="موضوع تیکت" required error={!!errors.subject} helperText={errors.subject?.message} fullWidth />}
+                                                render={({ field }) => <TextField {...field} label="موضوع تیکت" error={!!errors.subject} helperText={errors.subject?.message} fullWidth />}
                                             />
                                         </Grid>
 
@@ -404,7 +403,6 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                                         label="توضیحات کامل"
                                                         multiline
                                                         rows={4}
-                                                        required
                                                         error={!!errors.description}
                                                         helperText={errors.description?.message}
                                                         fullWidth
@@ -433,7 +431,7 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                                 control={control}
                                                 rules={{ required: "نام مشتری الزامی است" }}
                                                 render={({ field }) => (
-                                                    <TextField {...field} label="نام مشتری" required error={!!errors.customerName} helperText={errors.customerName?.message} fullWidth />
+                                                    <TextField {...field} label="نام مشتری" error={!!errors.customerName} helperText={errors.customerName?.message} fullWidth />
                                                 )}
                                             />
                                         </Grid>
@@ -454,7 +452,6 @@ export default function TicketForm({ ticket, onSave, onCancel }) {
                                                         {...field}
                                                         label="ایمیل مشتری"
                                                         type="email"
-                                                        required
                                                         error={!!errors.customerEmail}
                                                         helperText={errors.customerEmail?.message}
                                                         fullWidth

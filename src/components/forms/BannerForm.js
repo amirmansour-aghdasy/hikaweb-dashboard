@@ -35,6 +35,7 @@ export default function BannerForm({ banner, onSave, onCancel }) {
                 text: { fa: "", en: "" },
             },
             position: "home-page-banners",
+            serviceSlug: "",
             orderIndex: 0,
             isActive: true,
             schedule: {
@@ -64,6 +65,7 @@ export default function BannerForm({ banner, onSave, onCancel }) {
                     text: { fa: "", en: "" },
                 },
                 position: banner.position || "home-page-banners",
+                serviceSlug: banner.serviceSlug || "",
                 orderIndex: banner.orderIndex || 0,
                 isActive: banner.isActive !== false,
                 schedule: banner.schedule || {
@@ -311,6 +313,64 @@ export default function BannerForm({ banner, onSave, onCancel }) {
                                 </Grid>
                             </Grid>
                         </Box>
+
+                        {/* Position */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                موقعیت نمایش بنر *
+                            </Typography>
+                            <Controller
+                                name="position"
+                                control={control}
+                                rules={{ required: "موقعیت نمایش الزامی است" }}
+                                render={({ field }) => (
+                                    <TextField
+                                        {...field}
+                                        select
+                                        fullWidth
+                                        SelectProps={{ native: true }}
+                                        label="موقعیت"
+                                        error={!!errors.position}
+                                        helperText={errors.position?.message}
+                                    >
+                                        <option value="home-page-banners">صفحه اصلی</option>
+                                        <option value="service-page-banner">صفحات خدمت (عمومی)</option>
+                                        <option value="portfolio-page-banner">صفحه نمونه کارها</option>
+                                        <option value="mag-page-banner">صفحه مجله</option>
+                                        <option value="article-page-banner">صفحات مقاله</option>
+                                    </TextField>
+                                )}
+                            />
+                        </Box>
+
+                        {/* Service Slug (for service-specific banners) */}
+                        <Controller
+                            name="position"
+                            control={control}
+                            render={({ field: positionField }) => {
+                                const isServiceSpecific = positionField.value?.startsWith('service-') && positionField.value !== 'service-page-banner';
+                                return (
+                                    <Controller
+                                        name="serviceSlug"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <TextField
+                                                {...field}
+                                                fullWidth
+                                                label="Slug خدمت (برای بنر مخصوص یک خدمت)"
+                                                placeholder="مثال: logo-design"
+                                                helperText={
+                                                    isServiceSpecific 
+                                                        ? "این بنر برای خدمت مشخص شده نمایش داده می‌شود"
+                                                        : "اگر می‌خواهید بنر مخصوص یک خدمت خاص باشد، ابتدا موقعیت را به 'service-[slug]-banner' تغییر دهید"
+                                                }
+                                                disabled={!isServiceSpecific}
+                                            />
+                                        )}
+                                    />
+                                );
+                            }}
+                        />
 
                         {/* Order Index */}
                         <Controller

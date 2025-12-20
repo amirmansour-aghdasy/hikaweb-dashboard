@@ -1,27 +1,42 @@
 "use client";
 import { Box, TextField, Button, Grid, Switch, FormControlLabel, Typography, Divider, Accordion, AccordionSummary, AccordionDetails, Alert, Stack } from "@mui/material";
 import { Save, Cancel, ExpandMore, Publish, Star, Visibility, Language, Image, Tag, Category, Person, Article } from "@mui/icons-material";
-import { useState, useEffect } from "react";
-import { useForm, Controller, useWatch } from "react-hook-form";
+import { Controller, useWatch } from "react-hook-form";
 import MultiLangTextField from "./MultiLangTextField";
 import MultiLangEditor from "./MultiLangEditor";
 import CategorySelector from "./CategorySelector";
 import TagInput from "./TagInput";
 import MediaPicker from "../media/MediaPicker";
-import { useApi } from "../../hooks/useApi";
-import toast from "react-hot-toast";
+import { useFormSetup } from "../../hooks/useFormSetup";
+import { useFormSubmission } from "../../hooks/useFormSubmission";
+import { articleValidation, articleUpdateValidation } from "../../lib/validations";
+import { normalizeCategories, normalizeSEO, normalizeTags } from "../../lib/utils/formTransformers";
+import { normalizeMultiLang, normalizeCategoriesForForm, normalizeSEOForForm, normalizeTagsForForm } from "../../lib/utils/formNormalizers";
 
 export default function ArticleForm({ article, onSave, onCancel }) {
-    const [loading, setLoading] = useState(false);
-
-    const { useCreateData, useUpdateData } = useApi();
-
-    const createArticle = useCreateData("/articles", {
-        queryKey: "articles"
-    });
-    const updateArticle = useUpdateData("/articles", {
-        queryKey: "articles"
-    });
+    const defaultValues = {
+        title: { fa: "", en: "" },
+        excerpt: { fa: "", en: "" },
+        content: { fa: "", en: "" },
+        featuredImage: "",
+        categories: [],
+        tags: { fa: [], en: [] },
+        isPublished: false,
+        isFeatured: false,
+        allowComments: true,
+        metaTitle: { fa: "", en: "" },
+        metaDescription: { fa: "", en: "" },
+        metaKeywords: { fa: [], en: [] },
+        downloadBox: {
+            title: { fa: "", en: "" },
+            description: { fa: "", en: "" },
+            fileUrl: "",
+            fileName: "",
+            fileSize: 0,
+            fileType: "",
+            isActive: false
+        },
+    };
 
     const {
         control,
@@ -29,307 +44,103 @@ export default function ArticleForm({ article, onSave, onCancel }) {
         watch,
         setValue,
         getValues,
+        trigger,
         formState: { errors, isDirty },
-        reset,
-    } = useForm({
-        defaultValues: {
-            title: { fa: "", en: "" },
-            slug: { fa: "", en: "" },
-            excerpt: { fa: "", en: "" },
-            content: { fa: "", en: "" },
-            featuredImage: "",
-            categories: [],
-            tags: { fa: [], en: [] },
-            isPublished: false,
-            isFeatured: false,
-            allowComments: true,
-            metaTitle: { fa: "", en: "" },
-            metaDescription: { fa: "", en: "" },
-            metaKeywords: { fa: [], en: [] },
-            downloadBox: {
-                title: { fa: "", en: "" },
-                description: { fa: "", en: "" },
-                fileUrl: "",
-                fileName: "",
-                fileSize: 0,
-                fileType: "",
-                isActive: false
-            },
-        },
+    } = useFormSetup({
+        validationSchema: article ? articleUpdateValidation : articleValidation,
+        defaultValues,
+        existingItem: article,
+        normalizeItem: (item) => ({
+            title: normalizeMultiLang(item.title),
+            excerpt: normalizeMultiLang(item.excerpt),
+            content: normalizeMultiLang(item.content),
+            featuredImage: item.featuredImage || "",
+            categories: normalizeCategoriesForForm(item.categories),
+            tags: normalizeTagsForForm(item.tags),
+            isPublished: item.isPublished || false,
+            isFeatured: item.isFeatured || false,
+            allowComments: item.allowComments !== false,
+            metaTitle: normalizeMultiLang(item.seo?.metaTitle),
+            metaDescription: normalizeMultiLang(item.seo?.metaDescription),
+            metaKeywords: item.seo?.metaKeywords || { fa: [], en: [] },
+            downloadBox: item.downloadBox || defaultValues.downloadBox,
+        }),
+        mode: "onChange",
     });
 
-    useEffect(() => {
-        if (article) {
-            // Handle categories - they might be populated objects or just ObjectIds
-            const categoriesValue = Array.isArray(article.categories)
-                ? article.categories.map(cat => 
-                    typeof cat === 'object' && cat._id ? cat._id : cat
-                  )
-                : [];
-            
-            // Normalize multi-lang fields to ensure they're always objects
-            const normalizeMultiLang = (value) => {
-                if (!value) return { fa: "", en: "" };
-                if (typeof value === 'string') return { fa: value, en: "" };
-                if (typeof value === 'object') {
-                    return {
-                        fa: value.fa || "",
-                        en: value.en || ""
-                    };
-                }
-                return { fa: "", en: "" };
+    // Transform data before submission
+    const transformArticleData = (data) => {
+        // Normalize form data using utility functions
+        const categories = normalizeCategories(data.categories);
+        const seo = normalizeSEO({
+            metaTitle: data.metaTitle,
+            metaDescription: data.metaDescription,
+            metaKeywords: data.metaKeywords,
+        });
+        const tags = normalizeTags(data.tags);
+
+        // Ensure content.en is not empty - backend requires it
+        const content = data.content || { fa: "", en: "" };
+        if (!content.en || content.en.trim() === "") {
+            content.en = content.fa || "<p>English content is required</p>";
+        }
+        
+        // Trim excerpt to max 500 characters as per backend validation
+        const excerpt = data.excerpt || { fa: "", en: "" };
+        if (excerpt.fa && excerpt.fa.length > 500) {
+            excerpt.fa = excerpt.fa.substring(0, 500);
+        }
+        if (excerpt.en && excerpt.en.length > 500) {
+            excerpt.en = excerpt.en.substring(0, 500);
+        }
+
+        const articleData = {
+            title: data.title || { fa: "", en: "" },
+            excerpt: excerpt,
+            content: content,
+            featuredImage: data.featuredImage || "",
+            categories,
+            tags,
+            isPublished: data.isPublished || false,
+            isFeatured: data.isFeatured || false,
+            allowComments: data.allowComments !== false,
+        };
+
+        // Only add seo if it has at least one field
+        if (Object.keys(seo).length > 0) {
+            articleData.seo = seo;
+        }
+
+        // Add downloadBox if it has active content
+        if (data.downloadBox && data.downloadBox.isActive) {
+            articleData.downloadBox = {
+                title: data.downloadBox.title || { fa: "", en: "" },
+                description: data.downloadBox.description || { fa: "", en: "" },
+                fileUrl: data.downloadBox.fileUrl || "",
+                fileName: data.downloadBox.fileName || "",
+                fileSize: data.downloadBox.fileSize || 0,
+                fileType: data.downloadBox.fileType || "",
+                isActive: true
             };
-            
-            reset({
-                title: normalizeMultiLang(article.title),
-                slug: normalizeMultiLang(article.slug),
-                excerpt: normalizeMultiLang(article.excerpt),
-                content: normalizeMultiLang(article.content),
-                featuredImage: article.featuredImage || "",
-                categories: categoriesValue,
-                tags: article.tags || { fa: [], en: [] },
-                isPublished: article.isPublished || false,
-                isFeatured: article.isFeatured || false,
-                allowComments: article.allowComments !== false,
-                metaTitle: normalizeMultiLang(article.seo?.metaTitle),
-                metaDescription: normalizeMultiLang(article.seo?.metaDescription),
-                metaKeywords: article.seo?.metaKeywords || { fa: [], en: [] },
-                downloadBox: article.downloadBox || {
-                    title: { fa: "", en: "" },
-                    description: { fa: "", en: "" },
-                    fileUrl: "",
-                    fileName: "",
-                    fileSize: 0,
-                    fileType: "",
-                    isActive: false
-                },
-            }, { keepDefaultValues: false });
-        } else {
-            // Reset to default when no article
-            reset({
-                title: { fa: "", en: "" },
-                slug: { fa: "", en: "" },
-                excerpt: { fa: "", en: "" },
-                content: { fa: "", en: "" },
-                featuredImage: "",
-                categories: [],
-                tags: { fa: [], en: [] },
-                isPublished: false,
-                isFeatured: false,
-                allowComments: true,
-                metaTitle: { fa: "", en: "" },
-                metaDescription: { fa: "", en: "" },
-                metaKeywords: { fa: [], en: [] },
-            }, { keepDefaultValues: false });
         }
-    }, [article, reset]);
 
-    // Watch title changes using useWatch for better reactivity
-    const watchedTitle = useWatch({
-        control,
-        name: "title",
-        defaultValue: { fa: "", en: "" }
+        return articleData;
+    };
+
+    const { submit, loading } = useFormSubmission({
+        endpoint: "/articles",
+        queryKey: "articles",
+        existingItem: article,
+        createMessage: "مقاله با موفقیت ایجاد شد",
+        updateMessage: "مقاله با موفقیت ویرایش شد",
+        onSuccess: onSave,
+        transformData: transformArticleData,
+        setValue,
+        getValues,
     });
-
-    // Generate slug for Persian (replace spaces with dash, remove dots and commas, keep Persian characters)
-    const generateSlugFa = (title) => {
-        if (!title) return "";
-        return title
-            .trim()
-            .replace(/[،,\.]/g, "") // Remove Persian comma (،), English comma, and dots
-            .replace(/\s+/g, "-") // Replace spaces with dash
-            .replace(/-+/g, "-") // Replace multiple dashes with single dash
-            .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
-    };
-
-    // Generate slug for English (only a-z, 0-9, -)
-    const generateSlugEn = (title) => {
-        if (!title) return "";
-        return title
-            .toLowerCase()
-            .trim()
-            .replace(/[^a-z0-9\s-]/g, "") // Only keep a-z, 0-9, spaces, and dashes
-            .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with dash
-            .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
-    };
-
-    // Auto-generate slug when title changes (only in create mode) - using useWatch
-    useEffect(() => {
-        if (!article && watchedTitle) {
-            const titleFa = watchedTitle?.fa || "";
-            const titleEn = watchedTitle?.en || "";
-            
-            if (titleFa) {
-                const newSlugFa = generateSlugFa(titleFa);
-                const newSlugEn = titleEn ? generateSlugEn(titleEn) : "";
-                
-                // Get current slug value
-                const currentSlug = getValues("slug") || { fa: "", en: "" };
-                const currentSlugFa = currentSlug.fa || "";
-                
-                // Auto-generate if slug is empty or if it matches the auto-generated version
-                // This allows manual editing: if user manually changes slug, it won't be overwritten
-                if (newSlugFa && (!currentSlugFa || currentSlugFa === newSlugFa)) {
-                    setValue("slug", {
-                        fa: newSlugFa,
-                        en: newSlugEn,
-                    }, { 
-                        shouldValidate: false, 
-                        shouldDirty: true,
-                        shouldTouch: false 
-                    });
-                }
-            }
-        }
-    }, [watchedTitle, article, setValue, getValues]);
 
     const onSubmit = async (data) => {
-        setLoading(true);
-
-        try {
-            console.log("Form data before processing:", data);
-            
-            // Convert categories to strings (ObjectIds)
-            const categories = Array.isArray(data.categories)
-                ? data.categories.map(cat => {
-                    // If it's an object with _id, use _id; otherwise use the value directly
-                    if (typeof cat === 'object' && cat !== null) {
-                        return cat._id || cat.id || String(cat);
-                    }
-                    return String(cat);
-                })
-                : [];
-
-            // Build SEO object - only include fields that have non-empty values
-            const seo = {};
-            if (data.metaTitle) {
-                const metaTitle = {};
-                if (data.metaTitle.fa?.trim()) metaTitle.fa = data.metaTitle.fa.trim();
-                if (data.metaTitle.en?.trim()) metaTitle.en = data.metaTitle.en.trim();
-                if (Object.keys(metaTitle).length > 0) seo.metaTitle = metaTitle;
-            }
-            if (data.metaDescription) {
-                const metaDescription = {};
-                if (data.metaDescription.fa?.trim()) metaDescription.fa = data.metaDescription.fa.trim();
-                if (data.metaDescription.en?.trim()) metaDescription.en = data.metaDescription.en.trim();
-                if (Object.keys(metaDescription).length > 0) seo.metaDescription = metaDescription;
-            }
-            if (data.metaKeywords) {
-                const metaKeywords = {};
-                if (Array.isArray(data.metaKeywords.fa) && data.metaKeywords.fa.length > 0) {
-                    metaKeywords.fa = data.metaKeywords.fa;
-                }
-                if (Array.isArray(data.metaKeywords.en) && data.metaKeywords.en.length > 0) {
-                    metaKeywords.en = data.metaKeywords.en;
-                }
-                if (Object.keys(metaKeywords).length > 0) seo.metaKeywords = metaKeywords;
-            }
-
-            // Ensure slug.fa and slug.en are valid
-            const slug = data.slug || { fa: "", en: "" };
-            
-            // For Persian slug: only replace spaces with dash, keep all Persian characters
-            if (slug.fa) {
-                slug.fa = generateSlugFa(slug.fa);
-            }
-            
-            // Ensure slug.en is not empty - use slug.fa if empty (but convert to English format)
-            if (!slug.en || slug.en.trim() === "") {
-                slug.en = generateSlugEn(data.title?.en || data.title?.fa || "");
-            } else {
-                // Clean slug.en to only allow a-z, 0-9, - (English format)
-                slug.en = slug.en
-                    .toLowerCase()
-                    .trim()
-                    .replace(/[^a-z0-9-]/g, "-")
-                    .replace(/-+/g, "-")
-                    .replace(/^-+|-+$/g, "");
-            }
-            
-            // Ensure content.en is not empty - backend requires it
-            const content = data.content || { fa: "", en: "" };
-            if (!content.en || content.en.trim() === "") {
-                // If English content is empty, use a placeholder or copy from Persian
-                content.en = content.fa || "<p>English content is required</p>";
-            }
-            
-            // Trim excerpt to max 500 characters as per backend validation
-            const excerpt = data.excerpt || { fa: "", en: "" };
-            if (excerpt.fa && excerpt.fa.length > 500) {
-                excerpt.fa = excerpt.fa.substring(0, 500);
-            }
-            if (excerpt.en && excerpt.en.length > 500) {
-                excerpt.en = excerpt.en.substring(0, 500);
-            }
-
-            const articleData = {
-                title: data.title || { fa: "", en: "" },
-                slug: slug,
-                excerpt: excerpt,
-                content: content,
-                featuredImage: data.featuredImage || "",
-                categories,
-                tags: data.tags || { fa: [], en: [] },
-                isPublished: data.isPublished || false,
-                isFeatured: data.isFeatured || false,
-                allowComments: data.allowComments !== false,
-            };
-
-            // Only add seo if it has at least one field
-            if (Object.keys(seo).length > 0) {
-                articleData.seo = seo;
-            }
-
-            // Add downloadBox if it has active content
-            if (data.downloadBox && data.downloadBox.isActive) {
-                articleData.downloadBox = {
-                    title: data.downloadBox.title || { fa: "", en: "" },
-                    description: data.downloadBox.description || { fa: "", en: "" },
-                    fileUrl: data.downloadBox.fileUrl || "",
-                    fileName: data.downloadBox.fileName || "",
-                    fileSize: data.downloadBox.fileSize || 0,
-                    fileType: data.downloadBox.fileType || "",
-                    isActive: true
-                };
-            }
-
-            console.log("Article data to send:", articleData);
-
-            if (article) {
-                await updateArticle.mutateAsync({
-                    id: article._id,
-                    data: articleData,
-                });
-            } else {
-                await createArticle.mutateAsync(articleData);
-            }
-
-            toast.success(article ? "مقاله با موفقیت ویرایش شد" : "مقاله با موفقیت ایجاد شد");
-            onSave();
-        } catch (error) {
-            // Don't log to console - show user-friendly error message
-            
-            // Handle validation errors from backend
-            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-                const validationErrors = error.response.data.errors;
-                // Show all validation errors
-                validationErrors.forEach(err => {
-                    const field = err.path?.join('.') || err.field || 'unknown';
-                    const message = err.message || 'خطای اعتبارسنجی';
-                    toast.error(`${field}: ${message}`, { duration: 5000 });
-                });
-            } else if (error?.response?.data?.message) {
-                // Show backend error message
-                toast.error(error.response.data.message);
-            } else if (error?.message) {
-                // Show general error message
-                toast.error(error.message);
-            } else {
-                toast.error("خطا در ذخیره مقاله");
-            }
-        } finally {
-            setLoading(false);
-        }
+        await submit(data);
     };
 
     // Handle image selection
@@ -344,32 +155,22 @@ export default function ArticleForm({ article, onSave, onCancel }) {
     };
 
     const onError = (validationErrors) => {
-        // Don't log to console - errors are already shown in UI via error props
-        // Find first error and scroll to it
+        // Errors are already shown in UI via error props under inputs
+        // Just scroll to the first error field for better UX
         const firstErrorKey = Object.keys(validationErrors)[0];
         if (firstErrorKey) {
-            // Scroll to the first error field
+            // Try to find the error field element
+            const fieldName = firstErrorKey.split('.')[0]; // Get base field name
             const errorElement = document.querySelector(`[name="${firstErrorKey}"]`) || 
-                                document.querySelector(`[id="${firstErrorKey}"]`);
+                                document.querySelector(`[name="${fieldName}"]`) ||
+                                document.querySelector(`[id="${firstErrorKey}"]`) ||
+                                document.querySelector(`[id="${fieldName}"]`);
             if (errorElement) {
-                errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                errorElement.focus();
+                setTimeout(() => {
+                    errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    errorElement.focus();
+                }, 100);
             }
-            
-            // Show a general toast message (specific errors are shown in input fields)
-            const fieldLabels = {
-                'title': 'عنوان',
-                'slug': 'نامک',
-                'excerpt': 'خلاصه',
-                'content': 'محتوا',
-                'featuredImage': 'تصویر شاخص',
-                'categories': 'دسته‌بندی‌ها',
-            };
-            
-            const fieldLabel = fieldLabels[firstErrorKey] || firstErrorKey;
-            toast.error(`لطفاً ${fieldLabel} را به درستی پر کنید`);
-        } else {
-            toast.error("لطفاً تمام فیلدهای الزامی را پر کنید");
         }
     };
 
@@ -405,7 +206,6 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                     <MultiLangTextField
                                         {...field}
                                         label="عنوان"
-                                        required
                                         error={errors.title}
                                         placeholder={{
                                             fa: "عنوان مقاله به فارسی...",
@@ -416,27 +216,6 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                             />
                         </Box>
 
-                        {/* Slug Section */}
-                        <Box>
-                            <Typography variant="h6" gutterBottom>
-                                نامک (URL Slug)
-                            </Typography>
-                            <Controller
-                                name="slug"
-                                control={control}
-                                render={({ field }) => (
-                                    <MultiLangTextField
-                                        {...field}
-                                        label="نامک"
-                                        error={errors.slug}
-                                        placeholder={{
-                                            fa: "article-slug-in-persian",
-                                            en: "article-slug-in-english",
-                                        }}
-                                    />
-                                )}
-                            />
-                        </Box>
 
                         {/* Excerpt Section */}
                         <Box>
@@ -490,7 +269,6 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                                             field.onChange(newValue);
                                         }}
                                         label="محتوا" 
-                                        required 
                                         error={errors.content} 
                                         height={400} 
                                     />
@@ -561,12 +339,14 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                             <Controller 
                                 name="categories" 
                                 control={control} 
-                                render={({ field }) => (
+                                render={({ field, fieldState }) => (
                                     <CategorySelector 
-                                        {...field} 
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        onBlur={field.onBlur}
                                         type="article" 
                                         label="انتخاب دسته‌بندی" 
-                                        error={errors.categories}
+                                        error={fieldState.error}
                                     />
                                 )} 
                             />
@@ -764,7 +544,7 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                     type="button"
                     variant="outlined" 
                     onClick={onCancel} 
-                    disabled={loading || updateArticle.isPending || createArticle.isPending} 
+                    disabled={loading} 
                     startIcon={<Cancel />}
                 >
                     انصراف
@@ -773,10 +553,10 @@ export default function ArticleForm({ article, onSave, onCancel }) {
                 <Button 
                     type="submit" 
                     variant="contained" 
-                    disabled={loading || updateArticle.isPending || createArticle.isPending} 
+                    disabled={loading} 
                     startIcon={<Save />}
                 >
-                    {loading || updateArticle.isPending || createArticle.isPending 
+                    {loading 
                         ? "در حال ذخیره..." 
                         : article 
                             ? "ویرایش مقاله" 

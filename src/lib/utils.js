@@ -4,6 +4,48 @@
 import { toJalali, format as jalaaliFormat } from "jalaali-js";
 
 /**
+ * Get full media URL from relative or absolute URL
+ * @param {string} url - Media URL (can be relative or absolute)
+ * @returns {string} Full URL
+ */
+export const getMediaUrl = (url) => {
+    if (!url) return "";
+    
+    // If URL is already absolute (starts with http:// or https://), return as is
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+        return url;
+    }
+    
+    // For Arvan Object Storage URLs or other absolute URLs from backend
+    // Return as is if it's already a full URL
+    if (url.includes("://")) {
+        return url;
+    }
+    
+    // If URL starts with /assets/, it's a frontend public asset
+    // These should be served from the frontend, not dashboard
+    // For dashboard, we'll try to proxy through backend or return empty
+    // In production, these should be migrated to Arvan Object Storage
+    if (url.startsWith("/assets/")) {
+        // Try to get from backend media proxy if available
+        // Otherwise, return empty or placeholder
+        // TODO: Migrate these assets to Arvan Object Storage
+        return ""; // Return empty to prevent 404 errors in dashboard
+    }
+    
+    // If it's a relative URL (starts with /), it should be from backend media endpoint
+    // Construct full URL using API base URL
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api/v1";
+    // Remove /api/v1 from base URL to get the root
+    const baseUrl = apiBaseUrl.replace(/\/api\/v1$/, "");
+    
+    // Ensure URL starts with /
+    const cleanUrl = url.startsWith("/") ? url : `/${url}`;
+    
+    return `${baseUrl}${cleanUrl}`;
+};
+
+/**
  * Get Persian value from multi-language object
  * @param {Object} obj - Multi-language object with fa and en properties
  * @param {string} fallback - Fallback value if fa is not available

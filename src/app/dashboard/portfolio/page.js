@@ -9,7 +9,7 @@ import PortfolioForm from "@/components/forms/PortfolioForm";
 import { useApi } from "@/hooks/useApi";
 import { useDebounce } from "@/hooks/useDebounce";
 import { usePageActions } from "@/hooks/usePageActions";
-import { formatDate, getPersianValue } from "@/lib/utils";
+import { formatDate, getPersianValue, getMediaUrl } from "@/lib/utils";
 
 export default function PortfolioPage() {
     const [editingProject, setEditingProject] = useState(null);
@@ -66,7 +66,7 @@ export default function PortfolioPage() {
             headerName: "تصویر",
             width: 80,
             render: (row) => (
-                <Avatar src={row.featuredImage} variant="rounded" sx={{ width: 40, height: 40, mx: "auto" }}>
+                <Avatar src={getMediaUrl(row.featuredImage)} variant="rounded" sx={{ width: 40, height: 40, mx: "auto" }}>
                     <Work />
                 </Avatar>
             ),

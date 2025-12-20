@@ -1,11 +1,14 @@
 "use client";
 import { Autocomplete, TextField, Chip, Box, Typography, Paper, Avatar } from "@mui/material";
 import { Category, Add } from "@mui/icons-material";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Controller } from "react-hook-form";
 import { useApi } from "../../hooks/useApi";
+import { denormalizeCategories } from "../../lib/utils/formTransformers";
 
-export default function CategorySelector({
-    value = [],
+// Inner component that handles the actual Autocomplete logic
+function CategorySelectorInner({
+    value,
     onChange,
     label = "دسته‌بندی‌ها",
     multiple = true,
@@ -16,8 +19,6 @@ export default function CategorySelector({
     disabled = false,
 }) {
     const [categories, setCategories] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [normalizedValue, setNormalizedValue] = useState(multiple ? [] : null);
 
     const { useFetchData } = useApi();
 
@@ -35,44 +36,53 @@ export default function CategorySelector({
         }
     }, [categoriesData]);
 
-    // Normalize value prop: convert IDs to category objects
-    useEffect(() => {
-        if (!categories.length || !value) {
-            setNormalizedValue(multiple ? [] : null);
-            return;
+    // Convert value (array of IDs) to display format (array of objects) for Autocomplete
+    // This is memoized to avoid unnecessary recalculations
+    const displayValue = useMemo(() => {
+        if (!categories.length) {
+            return multiple ? [] : null;
         }
-
+        
+        if (!value) {
+            return multiple ? [] : null;
+        }
+        
+        // Handle both array of IDs and array of objects (for backward compatibility)
+        const valueIds = Array.isArray(value)
+            ? value.map(v => typeof v === 'object' && v !== null ? (v._id || v.id) : v).filter(Boolean)
+            : (typeof value === 'object' && value !== null ? [value._id || value.id] : value ? [value] : []);
+        
         if (multiple) {
-            // Handle array of values (IDs or objects)
-            const normalized = Array.isArray(value)
-                ? value.map(val => {
-                    // If it's already an object with _id, return it
-                    if (typeof val === 'object' && val !== null && val._id) {
-                        return val;
-                    }
-                    // If it's a string ID, find the category object
-                    const id = typeof val === 'string' ? val : (val?._id || val?.id);
-                    return categories.find(cat => cat._id === id || cat.id === id) || val;
-                }).filter(Boolean)
-                : [];
-            setNormalizedValue(normalized);
+            return denormalizeCategories(valueIds, categories);
         } else {
-            // Handle single value
-            if (typeof value === 'object' && value !== null && value._id) {
-                setNormalizedValue(value);
-            } else {
-                const id = typeof value === 'string' ? value : (value?._id || value?.id);
-                const found = categories.find(cat => cat._id === id || cat.id === id);
-                setNormalizedValue(found || null);
-            }
+            const id = valueIds[0] || (typeof value === 'string' ? value : (value?._id || value?.id));
+            return categories.find(cat => cat._id === id || cat.id === id) || null;
         }
     }, [value, categories, multiple]);
 
     const handleChange = (_, newValue) => {
+        if (!onChange) return;
+        
+        // Convert category objects to IDs (form expects array of IDs)
         if (multiple) {
-            onChange(newValue);
+            const ids = Array.isArray(newValue)
+                ? newValue.map(item => {
+                    if (typeof item === 'object' && item !== null) {
+                        return item._id || item.id || String(item);
+                    }
+                    return String(item);
+                }).filter(Boolean)
+                : [];
+            onChange(ids);
         } else {
-            onChange(newValue);
+            // Single selection
+            if (newValue && typeof newValue === 'object' && newValue !== null) {
+                onChange(newValue._id || newValue.id || String(newValue));
+            } else if (newValue) {
+                onChange(String(newValue));
+            } else {
+                onChange(null);
+            }
         }
     };
 
@@ -123,7 +133,7 @@ export default function CategorySelector({
     return (
         <Autocomplete
             multiple={multiple}
-            value={normalizedValue}
+            value={displayValue}
             onChange={handleChange}
             options={safeOptions}
             loading={isLoading}
@@ -158,7 +168,6 @@ export default function CategorySelector({
                         error={!!error} 
                         helperText={errorMessage} 
                         disabled={disabled}
-                        required={required}
                     />
                 );
             }}
@@ -178,3 +187,57 @@ export default function CategorySelector({
         />
     );
 }
+
+// Main component that wraps with Controller if needed
+export default function CategorySelector({
+    value,
+    onChange,
+    name,
+    control,
+    label = "دسته‌بندی‌ها",
+    multiple = true,
+    type = "general", // article, service, portfolio, etc.
+    error,
+    helperText,
+    required = false,
+    disabled = false,
+}) {
+    // If used with react-hook-form Controller, wrap with Controller
+    if (name && control) {
+        return (
+            <Controller
+                name={name}
+                control={control}
+                render={({ field, fieldState }) => (
+                    <CategorySelectorInner
+                        value={field.value}
+                        onChange={field.onChange}
+                        label={label}
+                        multiple={multiple}
+                        type={type}
+                        error={fieldState.error}
+                        helperText={fieldState.error?.message || helperText}
+                        required={required}
+                        disabled={disabled}
+                    />
+                )}
+            />
+        );
+    }
+
+    // Otherwise, use directly
+    return (
+        <CategorySelectorInner
+            value={value}
+            onChange={onChange}
+            label={label}
+            multiple={multiple}
+            type={type}
+            error={error}
+            helperText={helperText}
+            required={required}
+            disabled={disabled}
+        />
+    );
+}
+

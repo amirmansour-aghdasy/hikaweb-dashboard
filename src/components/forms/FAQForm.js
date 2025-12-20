@@ -155,7 +155,6 @@ export default function FAQForm({ faq, onSave, onCancel }) {
                                     <MultiLangTextField
                                         {...field}
                                         label="متن سوال"
-                                        required
                                         error={errors.question}
                                         placeholder={{
                                             fa: "سوال خود را به فارسی بنویسید...",

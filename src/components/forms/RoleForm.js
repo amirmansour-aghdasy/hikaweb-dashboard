@@ -204,7 +204,6 @@ export default function RoleForm({ role, onSave, onCancel }) {
                                             <MultiLangTextField
                                                 {...field}
                                                 label="نام نمایشی"
-                                                required
                                                 error={errors.displayName}
                                             />
                                         )}

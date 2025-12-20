@@ -25,6 +25,7 @@ import {
     CalendarToday,
     Person,
     Email,
+    VideoLibrary,
 } from "@mui/icons-material";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -56,6 +57,7 @@ const menuItems = [
         icon: <Article />,
         children: [
             { title: "مقالات", path: "/dashboard/articles" },
+            { title: "ویدئوها", path: "/dashboard/videos" },
             { title: "خدمات", path: "/dashboard/services" },
             { title: "نمونه کارها", path: "/dashboard/portfolio" },
             { title: "دسته‌بندی‌ها", path: "/dashboard/categories" },

@@ -26,6 +26,7 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
     const [editorLoaded, setEditorLoaded] = useState(false);
     const editorRef = useRef({ fa: null, en: null });
     const isInitialMount = useRef(true);
+    const previousValueRef = useRef({ fa: value?.fa || "", en: value?.en || "" });
     const [mediaPickerOpen, setMediaPickerOpen] = useState(false);
     const [currentLang, setCurrentLang] = useState("fa");
 
@@ -40,25 +41,57 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
         // Skip on initial mount to avoid overwriting user input
         if (isInitialMount.current) {
             isInitialMount.current = false;
+            // Initialize editorData with value on mount
+            if (value) {
+                const initialData = {
+                    fa: value.fa || "",
+                    en: value.en || ""
+                };
+                setEditorData(initialData);
+                previousValueRef.current = { ...initialData };
+            }
             return;
         }
 
-        // Only update if value actually changed and is different from current editorData
-        if (value && (value.fa !== editorData.fa || value.en !== editorData.en)) {
-            setEditorData({
-                fa: value.fa || "",
-                en: value.en || ""
-            });
+        // Get current value strings (handle null/undefined)
+        const currentValueFa = value?.fa || "";
+        const currentValueEn = value?.en || "";
+        const prevValueFa = previousValueRef.current.fa || "";
+        const prevValueEn = previousValueRef.current.en || "";
 
-            // Update editor content if editors are ready
-            if (editorRef.current.fa && value.fa) {
-                editorRef.current.fa.setData(value.fa);
-            }
-            if (editorRef.current.en && value.en) {
-                editorRef.current.en.setData(value.en);
-            }
+        // Only update if value actually changed (compare strings, not references)
+        // This prevents infinite loops when the value object reference changes but content is the same
+        if (currentValueFa !== prevValueFa || currentValueEn !== prevValueEn) {
+            // Update the ref first to prevent infinite loops
+            previousValueRef.current = {
+                fa: currentValueFa,
+                en: currentValueEn
+            };
+
+            // Use functional update to get current editorData state
+            setEditorData(prevEditorData => {
+                // Only update if there's an actual difference
+                if (currentValueFa !== prevEditorData.fa || currentValueEn !== prevEditorData.en) {
+                    // Update editor content if editors are ready and content is different
+                    // Use setTimeout to avoid disrupting user's current selection
+                    setTimeout(() => {
+                        if (editorRef.current.fa && currentValueFa && currentValueFa !== editorRef.current.fa.getData()) {
+                            editorRef.current.fa.setData(currentValueFa);
+                        }
+                        if (editorRef.current.en && currentValueEn && currentValueEn !== editorRef.current.en.getData()) {
+                            editorRef.current.en.setData(currentValueEn);
+                        }
+                    }, 0);
+
+                    return {
+                        fa: currentValueFa,
+                        en: currentValueEn
+                    };
+                }
+                return prevEditorData; // No change, return previous state
+            });
         }
-    }, [value?.fa, value?.en]); // Only depend on the actual content values
+    }, [value?.fa, value?.en]); // Only depend on the actual content values, not editorData
 
     const handleChange = (lang, newValue) => {
         const updatedData = {
@@ -70,7 +103,105 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
     };
 
     const getTabError = (lang) => {
-        return error && error[lang];
+        if (!error) return false;
+        
+        // Handle validation error object from react-hook-form v7+
+        if (error.types) {
+            const faError = error.types?.faRequired;
+            const enError = error.types?.enRequired;
+            if (lang === 'fa' && faError) return true;
+            if (lang === 'en' && enError) return true;
+        }
+        
+        // Handle validation error object from react-hook-form (legacy)
+        if (error.type) {
+            const isFaError = error.type === 'faRequired' && lang === 'fa';
+            const isEnError = error.type === 'enRequired' && lang === 'en';
+            return isFaError || isEnError;
+        }
+        
+        // Handle react-hook-form error structure
+        if (error[lang] !== undefined) {
+            // If it's a boolean true, it's an error
+            if (typeof error[lang] === 'boolean' && error[lang] === true) {
+                return true;
+            }
+            // If it's a string with error keywords, it's an error
+            if (typeof error[lang] === 'string') {
+                const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+                const isLikelyError = errorKeywords.some(keyword => error[lang].includes(keyword));
+                if (isLikelyError) {
+                    return true;
+                }
+            }
+            // If it's an object with message property, it's an error
+            if (error[lang]?.message) {
+                return true;
+            }
+        }
+        
+        // If error has message but no type, show for both languages (general error)
+        if (error.message && typeof error.message === 'string') {
+            const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+            const isLikelyError = errorKeywords.some(keyword => error.message.includes(keyword));
+            if (isLikelyError) {
+                return true;
+            }
+        }
+        
+        return false;
+    };
+
+    const getTabErrorMessage = (lang) => {
+        if (!error) return "";
+        
+        // Handle validation error object from react-hook-form v7+
+        if (error.types) {
+            const faError = error.types?.faRequired;
+            const enError = error.types?.enRequired;
+            if (lang === 'fa' && faError) {
+                return typeof faError === 'string' ? faError : (faError?.message || "توضیحات فارسی الزامی است");
+            }
+            if (lang === 'en' && enError) {
+                return typeof enError === 'string' ? enError : (enError?.message || "توضیحات انگلیسی الزامی است");
+            }
+        }
+        
+        // Handle validation error object from react-hook-form (legacy)
+        if (error.type) {
+            const isFaError = error.type === 'faRequired' && lang === 'fa';
+            const isEnError = error.type === 'enRequired' && lang === 'en';
+            if (isFaError || isEnError) {
+                return error.message || "";
+            }
+        }
+        
+        // Handle react-hook-form error structure
+        if (error[lang] !== undefined) {
+            // If it's a string with error keywords, return it
+            if (typeof error[lang] === 'string') {
+                const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+                const isLikelyError = errorKeywords.some(keyword => error[lang].includes(keyword));
+                if (isLikelyError) {
+                    return error[lang];
+                }
+            }
+            // If it's an object with message property, return the message
+            if (error[lang]?.message && typeof error[lang].message === 'string') {
+                return error[lang].message;
+            }
+        }
+        
+        // If error has message but no type, show for both languages (general error)
+        if (error.message && typeof error.message === 'string') {
+            const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+            const isLikelyError = errorKeywords.some(keyword => error.message.includes(keyword));
+            if (isLikelyError) {
+                return error.message;
+            }
+        }
+        
+        return "";
     };
 
     // Handle image selection from MediaPicker
@@ -117,7 +248,7 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
         fontFamily: {
             options: ["IRANSans, Arial, sans-serif", "Tahoma, sans-serif", "Times New Roman, serif"],
         },
-        language: lang,
+        language: lang === "fa" ? "fa" : "en",
         toolbar: ["heading", "|", "bold", "italic", "link", "bulletedList", "numberedList", "|", "outdent", "indent", "|", "blockQuote", "insertTable", "mediaEmbed", "|", "undo", "redo"],
         heading: {
             options: lang === "fa" ? [
@@ -138,8 +269,103 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
             viewportOffset: {
                 top: 0
             }
-        }
+        },
+        // Prevent content disruption
+        updateSourceElementOnDestroy: false
     });
+
+    // Add global styles for CKEditor link balloon to ensure it's visible and interactive
+    // Only apply to CKEditor elements, not MUI modals
+    useEffect(() => {
+        if (typeof document !== 'undefined') {
+            const style = document.createElement('style');
+            style.textContent = `
+                /* Only target CKEditor balloon elements */
+                .ck-balloon-panel {
+                    z-index: 100000 !important;
+                    position: fixed !important;
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    pointer-events: auto !important;
+                }
+                .ck-balloon {
+                    z-index: 100000 !important;
+                    position: fixed !important;
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    pointer-events: auto !important;
+                }
+                .ck-link-form {
+                    display: block !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                    pointer-events: auto !important;
+                }
+                .ck-link-form input,
+                .ck-link-form input[type="text"],
+                .ck-link-form input[type="url"],
+                .ck-link-form button {
+                    pointer-events: auto !important;
+                    z-index: 100001 !important;
+                    position: relative !important;
+                    cursor: text !important;
+                    user-select: text !important;
+                }
+                .ck-link-form input:disabled,
+                .ck-link-form input[disabled] {
+                    pointer-events: none !important;
+                }
+                /* Ensure no overlay blocks the input */
+                .ck-link-form::before,
+                .ck-link-form::after {
+                    display: none !important;
+                    pointer-events: none !important;
+                }
+                /* Make sure CKEditor dialogs are above MUI modals when they exist */
+                .ck-balloon-panel,
+                .ck-balloon {
+                    z-index: 100000 !important;
+                }
+                /* Make sure all children of link form are interactive */
+                .ck-link-form * {
+                    pointer-events: auto !important;
+                }
+                /* Remove any disabled state from inputs */
+                .ck-link-form input:not([disabled]) {
+                    pointer-events: auto !important;
+                    cursor: text !important;
+                }
+                /* Force enable inputs - remove readonly and disabled attributes */
+                .ck-link-form input[readonly] {
+                    pointer-events: auto !important;
+                    cursor: text !important;
+                }
+                /* Ensure input is focusable and editable */
+                .ck-link-form input {
+                    -webkit-user-select: text !important;
+                    -moz-user-select: text !important;
+                    -ms-user-select: text !important;
+                    user-select: text !important;
+                }
+                /* Remove any backdrop or overlay that might block interaction */
+                .ck-balloon-panel::before,
+                .ck-balloon-panel::after,
+                .ck-balloon::before,
+                .ck-balloon::after {
+                    display: none !important;
+                    pointer-events: none !important;
+                }
+            `;
+            document.head.appendChild(style);
+            return () => {
+                if (document.head.contains(style)) {
+                    document.head.removeChild(style);
+                }
+            };
+        }
+    }, []);
 
     return (
         <Box>
@@ -167,7 +393,7 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                 />
             </Box>
 
-            <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+            <Paper variant="outlined" sx={{ overflow: "visible", position: "relative" }}>
                 <Tabs
                     value={activeTab}
                     onChange={(_, newValue) => {
@@ -205,13 +431,17 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                     sx={{
                         minHeight: height,
                         position: "relative",
+                        overflow: "visible",
                         "& .ck-editor": {
                             minHeight: height,
+                            position: "relative",
+                            overflow: "visible",
                         },
                         "& .ck-editor__editable": {
                             minHeight: `${height - 100}px`,
                             maxHeight: `${height - 100}px`,
-                            overflow: "auto",
+                            overflowY: "auto",
+                            overflowX: "visible",
                             backgroundColor: theme.palette.mode === "dark" ? "#1E1E1E" : "#FFFFFF",
                             color: theme.palette.mode === "dark" ? "#E0E0E0" : "#000000",
                             "& p": {
@@ -243,6 +473,97 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                         "& .ck-button_on": {
                             backgroundColor: theme.palette.mode === "dark" ? "#3D3D3D" : "#E0E0E0",
                         },
+                        // Ensure link dialog and buttons work correctly - use fixed positioning for dialogs
+                        "& .ck-link-form": {
+                            zIndex: 100000,
+                            pointerEvents: "auto !important",
+                            "& input": {
+                                color: theme.palette.mode === "dark" ? "#E0E0E0" : "#000000",
+                                pointerEvents: "auto !important",
+                                zIndex: 100001,
+                                position: "relative",
+                                cursor: "text !important",
+                                userSelect: "text !important",
+                                "&:disabled": {
+                                    pointerEvents: "none !important",
+                                },
+                            },
+                            "& button": {
+                                pointerEvents: "auto !important",
+                                zIndex: 100001,
+                                cursor: "pointer !important",
+                            },
+                            "& *": {
+                                pointerEvents: "auto !important",
+                            },
+                        },
+                        "& .ck-link-actions": {
+                            zIndex: 100000,
+                            pointerEvents: "auto !important",
+                            "& button": {
+                                pointerEvents: "auto !important",
+                                cursor: "pointer !important",
+                            },
+                        },
+                        "& .ck-balloon-panel": {
+                            zIndex: "100000 !important",
+                            position: "fixed !important",
+                            display: "block !important",
+                            visibility: "visible !important",
+                            opacity: "1 !important",
+                            pointerEvents: "auto !important",
+                        },
+                        "& .ck-balloon": {
+                            zIndex: "100000 !important",
+                            position: "fixed !important",
+                            display: "block !important",
+                            visibility: "visible !important",
+                            opacity: "1 !important",
+                            pointerEvents: "auto !important",
+                        },
+                        "& .ck-balloon-arrow": {
+                            zIndex: "99999 !important",
+                        },
+                        "& .ck-link-form": {
+                            display: "block !important",
+                            visibility: "visible !important",
+                            opacity: "1 !important",
+                            pointerEvents: "auto !important",
+                            "& input": {
+                                pointerEvents: "auto !important",
+                                zIndex: 100001,
+                                position: "relative",
+                                cursor: "text !important",
+                                userSelect: "text !important",
+                                "&:not([disabled])": {
+                                    pointerEvents: "auto !important",
+                                },
+                            },
+                            "& button": {
+                                pointerEvents: "auto !important",
+                                zIndex: 100001,
+                                position: "relative",
+                                cursor: "pointer !important",
+                            },
+                            "& *": {
+                                pointerEvents: "auto !important",
+                            },
+                        },
+                        "& .ck-link-actions": {
+                            pointerEvents: "auto !important",
+                            "& button": {
+                                pointerEvents: "auto !important",
+                            },
+                        },
+                        // Ensure links in content are visible and clickable
+                        "& .ck-editor__editable a": {
+                            color: theme.palette.mode === "dark" ? "#4FC3F7" : "#1976D2",
+                            textDecoration: "underline",
+                            cursor: "pointer",
+                            "&:hover": {
+                                color: theme.palette.mode === "dark" ? "#81D4FA" : "#1565C0",
+                            },
+                        },
                     }}
                 >
                     {editorLoaded ? (
@@ -266,14 +587,34 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                                 <CKEditor
                                     editor={ClassicEditor}
                                     config={getEditorConfig("fa")}
-                                    data={editorData.fa || "<p>محتوای خود را اینجا بنویسید...</p>"}
+                                    data={editorData.fa || ""}
                                     disabled={disabled}
                                     onReady={(editor) => {
                                         editorRef.current.fa = editor;
+                                        // Set initial data if not already set
+                                        if (!editorData.fa && value?.fa) {
+                                            editor.setData(value.fa);
+                                        }
+                                        // Debug: Check if link plugin is available
+                                        if (editor.plugins.has('Link')) {
+                                            console.log('Link plugin is available');
+                                        } else {
+                                            console.warn('Link plugin is NOT available');
+                                        }
                                     }}
                                     onChange={(event, editor) => {
                                         const data = editor.getData();
-                                        handleChange("fa", data);
+                                        // Only update if data actually changed to prevent loops
+                                        if (data !== editorData.fa) {
+                                            handleChange("fa", data);
+                                        }
+                                    }}
+                                    onFocus={(event, editor) => {
+                                        // Preserve selection when editor gains focus
+                                        const selection = editor.model.document.selection;
+                                        if (selection.rangeCount > 0) {
+                                            // Selection is preserved automatically
+                                        }
                                     }}
                                 />
                             </Box>
@@ -297,14 +638,34 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                                 <CKEditor
                                     editor={ClassicEditor}
                                     config={getEditorConfig("en")}
-                                    data={editorData.en || "<p>Write your content here...</p>"}
+                                    data={editorData.en || ""}
                                     disabled={disabled}
                                     onReady={(editor) => {
                                         editorRef.current.en = editor;
+                                        // Set initial data if not already set
+                                        if (!editorData.en && value?.en) {
+                                            editor.setData(value.en);
+                                        }
+                                        // Debug: Check if link plugin is available
+                                        if (editor.plugins.has('Link')) {
+                                            console.log('Link plugin is available');
+                                        } else {
+                                            console.warn('Link plugin is NOT available');
+                                        }
                                     }}
                                     onChange={(event, editor) => {
                                         const data = editor.getData();
-                                        handleChange("en", data);
+                                        // Only update if data actually changed to prevent loops
+                                        if (data !== editorData.en) {
+                                            handleChange("en", data);
+                                        }
+                                    }}
+                                    onFocus={(event, editor) => {
+                                        // Preserve selection when editor gains focus
+                                        const selection = editor.model.document.selection;
+                                        if (selection.rangeCount > 0) {
+                                            // Selection is preserved automatically
+                                        }
                                     }}
                                 />
                             </Box>
@@ -320,7 +681,11 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                 </Box>
             </Paper>
 
-            {(error?.fa || error?.en || helperText) && <FormHelperText error={!!(error?.fa || error?.en)}>{error?.fa || error?.en || helperText}</FormHelperText>}
+            {(getTabError("fa") || getTabError("en") || helperText) && (
+                <FormHelperText error={!!(getTabError("fa") || getTabError("en"))}>
+                    {getTabErrorMessage("fa") || getTabErrorMessage("en") || helperText || ""}
+                </FormHelperText>
+            )}
         </Box>
     );
 }

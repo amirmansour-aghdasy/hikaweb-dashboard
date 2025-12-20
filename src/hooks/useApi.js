@@ -11,9 +11,17 @@ export const useApi = () => {
         // Extract params and other properties to avoid readonly issues
         const { params: optionsParams, ...restOptions } = options;
         
+        // If endpoint is null/undefined, disable the query
+        const isEnabled = endpoint != null && options.enabled !== false;
+        
         return useQuery({
             queryKey: Array.isArray(key) ? key : [key],
             queryFn: async () => {
+                // Skip if endpoint is null/undefined
+                if (!endpoint) {
+                    return null;
+                }
+                
                 // Create a new params object to avoid readonly issues
                 // Use Object.assign to ensure we create a completely new object
                 const params = optionsParams 
@@ -34,7 +42,7 @@ export const useApi = () => {
             staleTime: options.staleTime || 5 * 60 * 1000,
             cacheTime: options.cacheTime || 10 * 60 * 1000, // 10 minutes default cache
             refetchOnWindowFocus: false,
-            enabled: options.enabled !== false,
+            enabled: isEnabled,
             // Use select to transform data and prevent unnecessary re-renders
             select: options.select || undefined,
             onError: (error) => {

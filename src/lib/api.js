@@ -50,6 +50,8 @@ const ALLOWED_ENDPOINT_PATTERNS = [
     /^\/carousel(\/.*)?$/,
     // Calendar
     /^\/calendar(\/.*)?$/,
+    // Videos
+    /^\/videos(\/.*)?$/,
 ];
 
 /**
@@ -58,6 +60,12 @@ const ALLOWED_ENDPOINT_PATTERNS = [
  * @returns {boolean} True if endpoint is allowed
  */
 function isValidEndpoint(endpoint) {
+    // Handle null, undefined, or empty endpoints
+    if (!endpoint || typeof endpoint !== 'string' || endpoint.trim() === '') {
+        // Allow null/undefined/empty endpoints (they will be handled by the caller)
+        return true;
+    }
+    
     // Remove query string for pattern matching (we'll validate it separately)
     const endpointWithoutQuery = endpoint.split('?')[0];
     // Remove leading slash for pattern matching
@@ -74,10 +82,34 @@ function isValidEndpoint(endpoint) {
     // Validate query string if present (prevent injection attacks)
     if (endpoint.includes('?')) {
         const queryString = endpoint.split('?')[1];
-        // Allow only safe query parameters (alphanumeric, dash, underscore, equals, ampersand)
-        if (!/^[a-zA-Z0-9_\-=&]+$/.test(queryString)) {
-            console.error(`[SECURITY] Blocked suspicious query string: ${endpoint}`);
-            return false;
+        // Allow safe query parameters (alphanumeric, dash, underscore, equals, ampersand for key=value pairs)
+        // This allows values like "fileType=video", "limit=100", etc.
+        // Split by & to validate each parameter separately
+        const params = queryString.split('&');
+        for (const param of params) {
+            // Each parameter should be in format key=value or just key
+            if (param.includes('=')) {
+                const [key, ...valueParts] = param.split('=');
+                const value = valueParts.join('='); // Rejoin in case value contains =
+                // Key should only contain safe characters
+                if (!/^[a-zA-Z0-9_-]+$/.test(key)) {
+                    console.error(`[SECURITY] Blocked suspicious query parameter key: ${key}`);
+                    return false;
+                }
+                // Value should only contain safe characters
+                // Allow commas for legitimate use cases like role=admin,support
+                // Allow URL-encoded values (will be decoded by URLSearchParams)
+                if (!/^[a-zA-Z0-9_\-,%]+$/.test(value)) {
+                    console.error(`[SECURITY] Blocked suspicious query parameter value: ${param}`);
+                    return false;
+                }
+            } else {
+                // Single parameter without value
+                if (!/^[a-zA-Z0-9_-]+$/.test(param)) {
+                    console.error(`[SECURITY] Blocked suspicious query parameter: ${param}`);
+                    return false;
+                }
+            }
         }
     }
     
@@ -176,6 +208,12 @@ api.interceptors.request.use(
     async (config) => {
         // SECURITY: Validate endpoint before processing
         const endpoint = config.url || '';
+        
+        // Skip validation for null/undefined/empty endpoints (they will be handled by useQuery enabled option)
+        if (!endpoint || endpoint.trim() === '') {
+            return config;
+        }
+        
         if (!isValidEndpoint(endpoint)) {
             const error = new Error(`Unauthorized endpoint: ${endpoint}`);
             error.code = 'UNAUTHORIZED_ENDPOINT';

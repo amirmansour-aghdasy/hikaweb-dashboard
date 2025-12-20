@@ -22,8 +22,7 @@ import {
     MenuItem,
 } from "@mui/material";
 import { Save, Cancel, ExpandMore, Add, Delete, DragIndicator, BusinessCenter, MonetizationOn, Schedule, Star, Layers } from "@mui/icons-material";
-import { useState, useEffect } from "react";
-import { useForm, Controller, useFieldArray } from "react-hook-form";
+import { Controller, useFieldArray } from "react-hook-form";
 import MultiLangTextField from "./MultiLangTextField";
 import MultiLangEditor from "./MultiLangEditor";
 import CategorySelector from "./CategorySelector";
@@ -32,32 +31,19 @@ import MediaPicker from "../media/MediaPicker";
 import GalleryManager from "../media/GalleryManager";
 import PriceInput from "./PriceInput";
 import { useApi } from "../../hooks/useApi";
-import toast from "react-hot-toast";
+import { useFormSetup } from "../../hooks/useFormSetup";
+import { useFormSubmission } from "../../hooks/useFormSubmission";
+import { serviceValidation, serviceUpdateValidation } from "../../lib/validations";
+import { normalizeCategories, normalizeSEO, normalizeItems } from "../../lib/utils/formTransformers";
+import { normalizeMultiLang, normalizeCategoriesForForm, normalizeSEOForForm, normalizeItemsForForm } from "../../lib/utils/formNormalizers";
 
 export default function ServiceForm({ service, onSave, onCancel }) {
-    const [loading, setLoading] = useState(false);
-
-    const { useCreateData, useUpdateData, useFetchData } = useApi();
-
-    const createService = useCreateData("/services", {
-        queryKey: "services",
-    });
-    const updateService = useUpdateData("/services", {
-        queryKey: "services",
-    });
+    const { useFetchData } = useApi();
 
     // Fetch portfolio items for slides
     const { data: portfolioData } = useFetchData("portfolio-list", "/portfolio?status=active&limit=100");
 
-    const {
-        control,
-        handleSubmit,
-        watch,
-        setValue,
-        formState: { errors, isDirty },
-        reset,
-    } = useForm({
-        defaultValues: {
+    const defaultValues = {
             name: { fa: "", en: "" },
             slug: { fa: "", en: "" },
             description: { fa: "", en: "" },
@@ -114,7 +100,41 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                 metaDescription: { fa: "", en: "" },
                 metaKeywords: { fa: [], en: [] },
             },
-        },
+        };
+
+    const {
+        control,
+        handleSubmit,
+        watch,
+        setValue,
+        getValues,
+        formState: { errors, isDirty },
+    } = useFormSetup({
+        validationSchema: service ? serviceUpdateValidation : serviceValidation,
+        defaultValues,
+        existingItem: service,
+        normalizeItem: (item) => ({
+            name: normalizeMultiLang(item.name),
+            slug: normalizeMultiLang(item.slug),
+            description: normalizeMultiLang(item.description),
+            shortDescription: normalizeMultiLang(item.shortDescription),
+            icon: item.icon || "",
+            featuredImage: item.featuredImage || "",
+            gallery: item.gallery || [],
+            categories: normalizeCategoriesForForm(item.categories),
+            processSteps: item.processSteps || [],
+            features: item.features || [],
+            subServices: item.subServices || [],
+            pricing: item.pricing || defaultValues.pricing,
+            mainContent: item.mainContent || defaultValues.mainContent,
+            finalDesc: item.finalDesc || defaultValues.finalDesc,
+            technologies: item.technologies || [],
+            deliverables: item.deliverables || [],
+            duration: item.duration || defaultValues.duration,
+            orderIndex: item.orderIndex || 0,
+            isPopular: item.isPopular || false,
+            seo: normalizeSEOForForm(item.seo),
+        }),
     });
 
     // Field Arrays
@@ -172,287 +192,75 @@ export default function ServiceForm({ service, onSave, onCancel }) {
         name: "subServices",
     });
 
-    const watchedName = watch("name");
+    // Slug is now auto-generated in backend - no need for frontend generation
 
-    useEffect(() => {
-        if (service) {
-            // Handle categories - they might be populated objects or just ObjectIds
-            const categoriesValue = Array.isArray(service.categories)
-                ? service.categories.map(cat => 
-                    typeof cat === 'object' && cat._id ? cat._id : cat
-                  )
-                : [];
-            
-            reset({
-                name: service.name || { fa: "", en: "" },
-                slug: service.slug || { fa: "", en: "" },
-                description: service.description || { fa: "", en: "" },
-                shortDescription: service.shortDescription || { fa: "", en: "" },
-                icon: service.icon || "",
-                featuredImage: service.featuredImage || "",
-                gallery: service.gallery || [],
-                categories: categoriesValue,
-                processSteps: service.processSteps || [],
-                features: service.features || [],
-                subServices: service.subServices || [],
-                pricing: service.pricing || {
-                    startingPrice: "",
-                    currency: "IRR",
-                    isCustom: false,
-                    packages: [],
-                },
-                mainContent: service.mainContent || {
-                    firstSection: {
-                        content: {
-                            title: { fa: "", en: "" },
-                            description: { fa: "", en: "" },
-                            actionBtnText: { fa: "", en: "" },
-                        },
-                        slides: [],
-                    },
-                    secondSection: {
-                        content: {
-                            title: { fa: "", en: "" },
-                            description: { fa: "", en: "" },
-                            actionBtnText: { fa: "", en: "" },
-                        },
-                        slides: [],
-                    },
-                },
-                finalDesc: service.finalDesc || {
-                    content: {
-                        title: { fa: "", en: "" },
-                        text: { fa: "", en: "" },
-                    },
-                    image: "",
-                },
-                technologies: service.technologies || [],
-                deliverables: service.deliverables || [],
-                duration: service.duration || {
-                    min: "",
-                    max: "",
-                    description: { fa: "", en: "" },
-                },
-                orderIndex: service.orderIndex || 0,
-                isPopular: service.isPopular || false,
-                seo: service.seo || {
-                    metaTitle: { fa: "", en: "" },
-                    metaDescription: { fa: "", en: "" },
-                    metaKeywords: { fa: [], en: [] },
-                },
-            });
-        } else {
-            // Reset to default when no service
-            reset({
-                name: { fa: "", en: "" },
-                slug: { fa: "", en: "" },
-                description: { fa: "", en: "" },
-                shortDescription: { fa: "", en: "" },
-                icon: "",
-                featuredImage: "",
-                gallery: [],
-                categories: [],
-                processSteps: [],
-                features: [],
-                subServices: [],
-                pricing: {
-                    startingPrice: "",
-                    currency: "IRR",
-                    isCustom: false,
-                    packages: [],
-                },
-                mainContent: {
-                    firstSection: {
-                        content: {
-                            title: { fa: "", en: "" },
-                            description: { fa: "", en: "" },
-                            actionBtnText: { fa: "", en: "" },
-                        },
-                        slides: [],
-                    },
-                    secondSection: {
-                        content: {
-                            title: { fa: "", en: "" },
-                            description: { fa: "", en: "" },
-                            actionBtnText: { fa: "", en: "" },
-                        },
-                        slides: [],
-                    },
-                },
-                finalDesc: {
-                    content: {
-                        title: { fa: "", en: "" },
-                        text: { fa: "", en: "" },
-                    },
-                    image: "",
-                },
-                technologies: [],
-                deliverables: [],
-                duration: {
-                    min: "",
-                    max: "",
-                    description: { fa: "", en: "" },
-                },
-                orderIndex: 0,
-                isPopular: false,
-                seo: {
-                    metaTitle: { fa: "", en: "" },
-                    metaDescription: { fa: "", en: "" },
-                    metaKeywords: { fa: [], en: [] },
-                },
-            });
-        }
-    }, [service, reset]);
+    // Transform data before submission
+    const transformServiceData = (data) => {
+        const serviceData = { ...data };
+        
+        // Convert categories to array of strings (ObjectIds)
+        serviceData.categories = normalizeCategories(data.categories);
 
-    // Auto-generate slug from name (only in create mode)
-    useEffect(() => {
-        // Only auto-generate in create mode (not edit mode)
-        if (!service && watchedName?.fa) {
-            const newSlugFa = generateSlugFa(watchedName.fa);
-            const newSlugEn = watchedName.en ? generateSlugEn(watchedName.en) : "";
-            
-            // Get current slug value
-            const currentSlug = watch("slug");
-            const currentSlugFa = currentSlug?.fa || "";
-            
-            // Auto-generate if slug is empty or if it matches the auto-generated version
-            // This allows manual editing: if user manually changes slug, it won't be overwritten
-            if (newSlugFa && (!currentSlugFa || currentSlugFa === newSlugFa)) {
-                setValue("slug", {
-                    fa: newSlugFa,
-                    en: newSlugEn,
-                }, { shouldValidate: false, shouldDirty: false });
+        // Convert mainContent slides to ObjectIds
+        if (serviceData.mainContent) {
+            if (serviceData.mainContent.firstSection?.slides && Array.isArray(serviceData.mainContent.firstSection.slides)) {
+                serviceData.mainContent.firstSection.slides = normalizeItems(serviceData.mainContent.firstSection.slides);
+            }
+            if (serviceData.mainContent.secondSection?.slides && Array.isArray(serviceData.mainContent.secondSection.slides)) {
+                serviceData.mainContent.secondSection.slides = normalizeItems(serviceData.mainContent.secondSection.slides);
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [watchedName?.fa, watchedName?.en]);
 
-    // Generate slug for Persian (replace spaces with dash, remove dots and commas, keep Persian characters)
-    const generateSlugFa = (title) => {
-        if (!title) return "";
-        return title
-            .trim()
-            .replace(/[،,\.]/g, "") // Remove Persian comma (،), English comma, and dots
-            .replace(/\s+/g, "-") // Replace spaces with dash
-            .replace(/-+/g, "-") // Replace multiple dashes with single dash
-            .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
+        // Ensure pricing.packages.features is array of strings
+        if (serviceData.pricing?.packages && Array.isArray(serviceData.pricing.packages)) {
+            serviceData.pricing.packages = serviceData.pricing.packages.map(pkg => {
+                if (pkg.features && Array.isArray(pkg.features)) {
+                    pkg.features = pkg.features.map(f => typeof f === 'string' ? f : String(f)).filter(Boolean);
+                }
+                return pkg;
+            });
+        }
+        
+        // Limit shortDescription to 300 characters
+        if (serviceData.shortDescription) {
+            if (serviceData.shortDescription.fa && serviceData.shortDescription.fa.length > 300) {
+                serviceData.shortDescription.fa = serviceData.shortDescription.fa.substring(0, 300);
+            }
+            if (serviceData.shortDescription.en && serviceData.shortDescription.en.length > 300) {
+                serviceData.shortDescription.en = serviceData.shortDescription.en.substring(0, 300);
+            }
+        }
+        
+        // Slug is now auto-generated in backend - no need to process it here
+        
+        // Normalize SEO
+        const seo = normalizeSEO({
+            metaTitle: data.seo?.metaTitle,
+            metaDescription: data.seo?.metaDescription,
+            metaKeywords: data.seo?.metaKeywords,
+        });
+        
+        if (Object.keys(seo).length > 0) {
+            serviceData.seo = seo;
+        }
+
+        return serviceData;
     };
 
-    // Generate slug for English (only a-z, 0-9, -)
-    const generateSlugEn = (title) => {
-        if (!title) return "";
-        return title
-            .toLowerCase()
-            .trim()
-            .replace(/[^a-z0-9\s-]/g, "") // Only keep a-z, 0-9, spaces, and dashes
-            .replace(/[\s_-]+/g, "-") // Replace spaces and underscores with dash
-            .replace(/^-+|-+$/g, ""); // Remove leading/trailing dashes
-    };
+    const { submit, loading } = useFormSubmission({
+        endpoint: "/services",
+        queryKey: "services",
+        existingItem: service,
+        createMessage: "خدمت با موفقیت ایجاد شد",
+        updateMessage: "خدمت با موفقیت ویرایش شد",
+        onSuccess: onSave,
+        transformData: transformServiceData,
+        setValue,
+        getValues,
+    });
 
     const onSubmit = async (data) => {
-        setLoading(true);
-
-        try {
-            // Prepare service data
-            const serviceData = { ...data };
-            
-            // Convert categories to array of strings (ObjectIds)
-            if (serviceData.categories && Array.isArray(serviceData.categories)) {
-                serviceData.categories = serviceData.categories.map(cat => {
-                    return typeof cat === 'object' && cat !== null ? (cat._id || cat.id) : cat;
-                }).filter(Boolean); // Remove any null/undefined values
-            }
-
-            // Convert mainContent slides to ObjectIds
-            if (serviceData.mainContent) {
-                if (serviceData.mainContent.firstSection?.slides && Array.isArray(serviceData.mainContent.firstSection.slides)) {
-                    serviceData.mainContent.firstSection.slides = serviceData.mainContent.firstSection.slides.map(item => {
-                        return typeof item === 'object' && item !== null ? (item._id || item.id) : item;
-                    }).filter(Boolean);
-                }
-                if (serviceData.mainContent.secondSection?.slides && Array.isArray(serviceData.mainContent.secondSection.slides)) {
-                    serviceData.mainContent.secondSection.slides = serviceData.mainContent.secondSection.slides.map(item => {
-                        return typeof item === 'object' && item !== null ? (item._id || item.id) : item;
-                    }).filter(Boolean);
-                }
-            }
-
-            // Ensure pricing.packages.features is array of strings
-            if (serviceData.pricing?.packages && Array.isArray(serviceData.pricing.packages)) {
-                serviceData.pricing.packages = serviceData.pricing.packages.map(pkg => {
-                    if (pkg.features && Array.isArray(pkg.features)) {
-                        pkg.features = pkg.features.map(f => typeof f === 'string' ? f : String(f)).filter(Boolean);
-                    }
-                    return pkg;
-                });
-            }
-            
-            // Limit shortDescription to 300 characters
-            if (serviceData.shortDescription) {
-                if (serviceData.shortDescription.fa && serviceData.shortDescription.fa.length > 300) {
-                    serviceData.shortDescription.fa = serviceData.shortDescription.fa.substring(0, 300);
-                }
-                if (serviceData.shortDescription.en && serviceData.shortDescription.en.length > 300) {
-                    serviceData.shortDescription.en = serviceData.shortDescription.en.substring(0, 300);
-                }
-            }
-            
-            // Ensure slug.fa and slug.en are properly formatted
-            if (serviceData.slug) {
-                if (serviceData.slug.fa) {
-                    // For Persian slug: only replace spaces with dash, keep Persian characters
-                    serviceData.slug.fa = generateSlugFa(serviceData.slug.fa);
-                }
-                if (serviceData.slug.en) {
-                    // For English slug: only a-z, 0-9, -
-                    serviceData.slug.en = generateSlugEn(serviceData.slug.en);
-                }
-            }
-            
-            if (service) {
-                await updateService.mutateAsync({
-                    id: service._id,
-                    data: serviceData,
-                });
-            } else {
-                await createService.mutateAsync(serviceData);
-            }
-
-            toast.success(service ? "خدمت با موفقیت ویرایش شد" : "خدمت با موفقیت ایجاد شد");
-            onSave();
-        } catch (error) {
-            // Don't log to console - show user-friendly error message
-            
-            // Handle validation errors from backend
-            if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-                const firstError = error.response.data.errors[0];
-                if (firstError?.field && firstError?.message) {
-                    // Map field names to Persian labels
-                    const fieldLabels = {
-                        'name.fa': 'نام فارسی',
-                        'name.en': 'نام انگلیسی',
-                        'slug.fa': 'نامک فارسی',
-                        'slug.en': 'نامک انگلیسی',
-                        'description.fa': 'توضیحات فارسی',
-                        'description.en': 'توضیحات انگلیسی',
-                        'shortDescription.fa': 'توضیح کوتاه فارسی',
-                        'shortDescription.en': 'توضیح کوتاه انگلیسی',
-                        'categories': 'دسته‌بندی',
-                    };
-                    
-                    const fieldLabel = fieldLabels[firstError.field] || firstError.field;
-                    toast.error(`${fieldLabel}: ${firstError.message}`);
-                } else {
-                    toast.error(error.response.data.message || "خطا در ذخیره خدمت");
-                }
-            } else if (error?.response?.data?.message) {
-                toast.error(error.response.data.message);
-            } else {
-                toast.error("خطا در ذخیره خدمت");
-            }
-        } finally {
-            setLoading(false);
-        }
+        await submit(data);
     };
 
     const onError = (errors) => {
@@ -640,7 +448,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                                         <Controller
                                                             name={`processSteps.${index}.title`}
                                                             control={control}
-                                                            render={({ field }) => <TextField {...field} label="عنوان مرحله" size="small" fullWidth required />}
+                                                            render={({ field }) => <TextField {...field} label="عنوان مرحله" size="small" fullWidth />}
                                                         />
                                                     </Grid>
 
@@ -664,7 +472,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                                         <Controller
                                                             name={`processSteps.${index}.order`}
                                                             control={control}
-                                                            render={({ field }) => <TextField {...field} label="ترتیب" type="number" size="small" fullWidth required />}
+                                                            render={({ field }) => <TextField {...field} label="ترتیب" type="number" size="small" fullWidth />}
                                                         />
                                                     </Grid>
                                                 </Grid>
@@ -936,7 +744,7 @@ export default function ServiceForm({ service, onSave, onCancel }) {
                                             <Controller
                                                 name={`pricing.packages.${index}.value`}
                                                 control={control}
-                                                render={({ field }) => <TextField {...field} label="قیمت (مثال: 15.000.000 تومان)" size="small" fullWidth required />}
+                                                render={({ field }) => <TextField {...field} label="قیمت (مثال: 15.000.000 تومان)" size="small" fullWidth />}
                                             />
                                         </Grid>
 

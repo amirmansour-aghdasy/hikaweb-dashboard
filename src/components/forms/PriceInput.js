@@ -40,7 +40,6 @@ export default function PriceInput({ value = { amount: "", currency: "IRR" }, on
                     value={formatNumber(value.amount)}
                     onChange={handleAmountChange}
                     error={!!error}
-                    required={required}
                     disabled={disabled}
                     slotProps={{
                         input: {
