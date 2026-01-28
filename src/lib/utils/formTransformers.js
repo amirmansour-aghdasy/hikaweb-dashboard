@@ -97,12 +97,37 @@ export const generateSlug = (title, lang = 'fa') => {
 };
 
 /**
+ * Checks if a value is a Joi schema object
+ * @param {*} value - Value to check
+ * @returns {boolean} True if value is a Joi schema object
+ */
+const isJoiSchemaObject = (value) => {
+    if (!value || typeof value !== 'object') return false;
+    // Check for Joi schema object indicators (most reliable indicators)
+    return (
+        '$_root' in value ||
+        '$_temp' in value ||
+        '_ids' in value ||
+        '_preferences' in value ||
+        '_rules' in value ||
+        '_flags' in value ||
+        '$' in value ||
+        (value.type && typeof value.type === 'string' && value.type === 'array' && ('$_root' in value || '_root' in value))
+    );
+};
+
+/**
  * Normalizes categories from form format (objects or IDs) to API format (array of IDs)
  * @param {Array|Object|null|undefined} categories - Categories from form (can be objects with _id or string IDs)
  * @returns {Array<string>} Array of category IDs (sanitized and validated)
  */
 export const normalizeCategories = (categories) => {
     if (categories === null || categories === undefined) {
+        return [];
+    }
+    
+    // CRITICAL: Check if categories is a Joi schema object
+    if (isJoiSchemaObject(categories)) {
         return [];
     }
     
@@ -115,6 +140,10 @@ export const normalizeCategories = (categories) => {
         
         return categories
             .map(cat => {
+                // Skip Joi schema objects
+                if (isJoiSchemaObject(cat)) {
+                    return null;
+                }
                 if (typeof cat === 'object' && cat !== null) {
                     return safeExtractId(cat);
                 }
@@ -127,6 +156,10 @@ export const normalizeCategories = (categories) => {
     
     // Single category (shouldn't happen in multiple mode, but handle it)
     if (typeof categories === 'object' && categories !== null) {
+        // Skip Joi schema objects
+        if (isJoiSchemaObject(categories)) {
+            return [];
+        }
         const id = safeExtractId(categories);
         return id ? [id] : [];
     }

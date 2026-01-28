@@ -26,6 +26,7 @@ import {
     Person,
     Email,
     VideoLibrary,
+    ShoppingCart,
 } from "@mui/icons-material";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -61,6 +62,16 @@ const menuItems = [
             { title: "خدمات", path: "/dashboard/services" },
             { title: "نمونه کارها", path: "/dashboard/portfolio" },
             { title: "دسته‌بندی‌ها", path: "/dashboard/categories" },
+        ],
+    },
+    {
+        title: "فروشگاه",
+        icon: <ShoppingCart />,
+        children: [
+            { title: "محصولات", path: "/dashboard/products" },
+            { title: "سفارشات", path: "/dashboard/orders" },
+            { title: "موجودی", path: "/dashboard/inventory" },
+            { title: "کدهای تخفیف", path: "/dashboard/coupons" },
         ],
     },
     {

@@ -11,6 +11,15 @@ const nextConfig = {
     },
     // SECURITY: Disable powered-by header
     poweredByHeader: false,
+    // Image optimization configuration
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'picsum.photos',
+            },
+        ],
+    },
     // SECURITY: Additional security headers (complementary to middleware)
     async headers() {
         return [

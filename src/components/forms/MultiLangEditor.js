@@ -1,5 +1,5 @@
 "use client";
-import { Box, Tabs, Tab, Paper, Typography, FormHelperText, CircularProgress, useTheme, Button } from "@mui/material";
+import { Box, Tabs, Tab, Paper, Typography, FormHelperText, CircularProgress, useTheme, Button, Stack } from "@mui/material";
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import MediaPicker from "../media/MediaPicker";
@@ -120,29 +120,29 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
             return isFaError || isEnError;
         }
         
-        // Handle react-hook-form error structure
+        // Handle Joi validation errors - check if error[lang] is an error object
         if (error[lang] !== undefined) {
+            // If it's an object with message or type, it's an error
+            if (error[lang]?.message || error[lang]?.type) {
+                return true;
+            }
             // If it's a boolean true, it's an error
             if (typeof error[lang] === 'boolean' && error[lang] === true) {
                 return true;
             }
-            // If it's a string with error keywords, it's an error
+            // If it's a string, check if it's likely an error message
             if (typeof error[lang] === 'string') {
-                const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+                const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must', 'min', 'max', 'pattern'];
                 const isLikelyError = errorKeywords.some(keyword => error[lang].includes(keyword));
                 if (isLikelyError) {
                     return true;
                 }
             }
-            // If it's an object with message property, it's an error
-            if (error[lang]?.message) {
-                return true;
-            }
         }
         
-        // If error has message but no type, show for both languages (general error)
+        // If error has message but no type, check if it's an error message
         if (error.message && typeof error.message === 'string') {
-            const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+            const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must', 'min', 'max', 'pattern'];
             const isLikelyError = errorKeywords.some(keyword => error.message.includes(keyword));
             if (isLikelyError) {
                 return true;
@@ -176,25 +176,35 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
             }
         }
         
-        // Handle react-hook-form error structure
+        // Handle Joi validation errors - check error[lang] structure
         if (error[lang] !== undefined) {
-            // If it's a string with error keywords, return it
+            // If it's an object with message property, return the message
+            if (error[lang]?.message && typeof error[lang].message === 'string') {
+                return error[lang].message;
+            }
+            // If it's an object with type property, generate message
+            if (error[lang]?.type) {
+                const typeMessages = {
+                    required: "این فیلد الزامی است",
+                    min: `حداقل ${error[lang].min || ''} کاراکتر لازم است`,
+                    max: `حداکثر ${error[lang].max || ''} کاراکتر مجاز است`,
+                    pattern: "فرمت وارد شده صحیح نیست",
+                };
+                return typeMessages[error[lang].type] || error[lang].message || "مقدار وارد شده صحیح نیست";
+            }
+            // If it's a string, check if it's likely an error message
             if (typeof error[lang] === 'string') {
-                const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+                const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must', 'min', 'max', 'pattern'];
                 const isLikelyError = errorKeywords.some(keyword => error[lang].includes(keyword));
                 if (isLikelyError) {
                     return error[lang];
                 }
             }
-            // If it's an object with message property, return the message
-            if (error[lang]?.message && typeof error[lang].message === 'string') {
-                return error[lang].message;
-            }
         }
         
-        // If error has message but no type, show for both languages (general error)
+        // If error has message but no type, check if it's an error message
         if (error.message && typeof error.message === 'string') {
-            const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+            const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must', 'min', 'max', 'pattern'];
             const isLikelyError = errorKeywords.some(keyword => error.message.includes(keyword));
             if (isLikelyError) {
                 return error.message;
@@ -242,6 +252,7 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
 
         setMediaPickerOpen(false);
     };
+
 
     // CKEditor configuration base
     const getEditorConfig = (lang) => ({
@@ -373,24 +384,26 @@ export default function MultiLangEditor({ label, value = { fa: "", en: "" }, onC
                 <Typography variant="subtitle2">
                     {label} {required && <span style={{ color: "red" }}>*</span>}
                 </Typography>
-                <MediaPicker
-                    value={null}
-                    onChange={handleImageSelect}
-                    label="درج تصویر"
-                    accept="image/*"
-                    multiple={false}
-                    showPreview={false}
-                    showEdit={true}
-                    optimizeForWeb={true}
-                    compact={true}
-                    buttonProps={{
-                        size: "small",
-                        startIcon: <Box component="svg" viewBox="0 0 20 20" sx={{ width: 16, height: 16, fill: "currentColor" }}>
-                            <path d="M2 4v12h16V4H2zm14 10H4V6h12v8zM6 8l4 4 2-2 4 4H4l2-4z"/>
-                        </Box>,
-                        sx: { minWidth: "auto", px: 2 }
-                    }}
-                />
+                <Stack direction="row" spacing={1}>
+                    <MediaPicker
+                        value={null}
+                        onChange={handleImageSelect}
+                        label="درج تصویر"
+                        accept="image/*"
+                        multiple={false}
+                        showPreview={false}
+                        showEdit={true}
+                        optimizeForWeb={true}
+                        compact={true}
+                        buttonProps={{
+                            size: "small",
+                            startIcon: <Box component="svg" viewBox="0 0 20 20" sx={{ width: 16, height: 16, fill: "currentColor" }}>
+                                <path d="M2 4v12h16V4H2zm14 10H4V6h12v8zM6 8l4 4 2-2 4 4H4l2-4z"/>
+                            </Box>,
+                            sx: { minWidth: "auto", px: 2 }
+                        }}
+                    />
+                </Stack>
             </Box>
 
             <Paper variant="outlined" sx={{ overflow: "visible", position: "relative" }}>

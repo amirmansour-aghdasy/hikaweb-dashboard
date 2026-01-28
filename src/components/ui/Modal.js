@@ -1,9 +1,21 @@
 "use client";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, IconButton, Typography, Box } from "@mui/material";
-import { Close } from "@mui/icons-material";
-import { useEffect } from "react";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, IconButton, Typography, Box, Tooltip } from "@mui/material";
+import { Close, Fullscreen, FullscreenExit } from "@mui/icons-material";
+import { useEffect, useState } from "react";
 
-export default function Modal({ open, onClose, title, children, actions, maxWidth = "lg", fullWidth = true, showCloseButton = true }) {
+export default function Modal({ open, onClose, title, children, actions, maxWidth = "lg", fullWidth = true, showCloseButton = true, enableFullscreen = true }) {
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    const toggleFullscreen = () => {
+        setIsFullscreen(!isFullscreen);
+    };
+
+    // Reset fullscreen when modal closes
+    useEffect(() => {
+        if (!open) {
+            setIsFullscreen(false);
+        }
+    }, [open]);
 
     // Fix aria-hidden warning by removing aria-hidden from backdrop container when dialog is open
     useEffect(() => {
@@ -69,12 +81,14 @@ export default function Modal({ open, onClose, title, children, actions, maxWidt
         <Dialog
             open={open}
             onClose={onClose}
-            maxWidth={maxWidth}
+            maxWidth={isFullscreen ? false : maxWidth}
             fullWidth={fullWidth}
+            fullScreen={isFullscreen}
             slotProps={{
                 paper: {
                     sx: {
-                        borderRadius: 2,
+                        borderRadius: isFullscreen ? 0 : 2,
+                        m: isFullscreen ? 0 : 2,
                     },
                 },
             }}
@@ -85,11 +99,30 @@ export default function Modal({ open, onClose, title, children, actions, maxWidt
             {title && (
                 <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     {title}
-                    {showCloseButton && (
-                        <IconButton onClick={onClose} size="small">
-                            <Close />
-                        </IconButton>
-                    )}
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        {enableFullscreen && (
+                            <Tooltip title={isFullscreen ? "خروج از حالت تمام صفحه" : "حالت تمام صفحه"}>
+                                <IconButton 
+                                    onClick={toggleFullscreen} 
+                                    size="small"
+                                    aria-label={isFullscreen ? "خروج از حالت تمام صفحه" : "حالت تمام صفحه"}
+                                >
+                                    {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                        {showCloseButton && (
+                            <Tooltip title="بستن">
+                                <IconButton 
+                                    onClick={onClose} 
+                                    size="small"
+                                    aria-label="بستن"
+                                >
+                                    <Close />
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                    </Box>
                 </DialogTitle>
             )}
 

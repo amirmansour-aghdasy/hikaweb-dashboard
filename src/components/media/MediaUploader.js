@@ -304,7 +304,16 @@ export default function MediaUploader({
                             {value.map((file, index) => (
                                 <ImageListItem key={file.id || index}>
                                     {file.type?.startsWith("image/") ? (
-                                        <img src={file.url} alt={file.alt || file.name} style={{ objectFit: "cover", cursor: "pointer" }} onClick={() => openPreview(file)} />
+                                        <img 
+                                            src={file.url} 
+                                            alt={
+                                                typeof file.alt === 'object' && file.alt !== null
+                                                    ? (file.alt.fa || file.alt.en || file.name || "")
+                                                    : (file.alt || file.name || "")
+                                            } 
+                                            style={{ objectFit: "cover", cursor: "pointer" }} 
+                                            onClick={() => openPreview(file)} 
+                                        />
                                     ) : (
                                         <Box
                                             sx={{
@@ -319,13 +328,23 @@ export default function MediaUploader({
                                         >
                                             {getFileIcon(file.type)}
                                             <Typography variant="caption" sx={{ ml: 1 }}>
-                                                {file.name}
+                                                {typeof file.name === 'object' && file.name !== null
+                                                    ? (file.name.fa || file.name.en || file.originalName || "")
+                                                    : (file.name || file.originalName || "")}
                                             </Typography>
                                         </Box>
                                     )}
                                     <ImageListItemBar
-                                        title={file.name}
-                                        subtitle={file.caption}
+                                        title={
+                                            typeof file.name === 'object' && file.name !== null
+                                                ? (file.name.fa || file.name.en || file.originalName || "")
+                                                : (file.name || file.originalName || "")
+                                        }
+                                        subtitle={
+                                            typeof file.caption === 'object' && file.caption !== null
+                                                ? (file.caption.fa || file.caption.en || "")
+                                                : (file.caption || "")
+                                        }
                                         actionIcon={
                                             <Box>
                                                 <IconButton sx={{ color: "rgba(255, 255, 255, 0.54)" }} onClick={() => openPreview(file)}>
@@ -364,9 +383,15 @@ export default function MediaUploader({
                                                     textOverflow: "ellipsis",
                                                     whiteSpace: "nowrap"
                                                 }}
-                                                title={file.name || file.originalName || "فایل"}
+                                                title={
+                                                    typeof file.name === 'object' && file.name !== null
+                                                        ? (file.name.fa || file.name.en || file.originalName || "فایل")
+                                                        : (file.name || file.originalName || "فایل")
+                                                }
                                             >
-                                                {file.name || file.originalName || "فایل"}
+                                                {typeof file.name === 'object' && file.name !== null
+                                                    ? (file.name.fa || file.name.en || file.originalName || "فایل")
+                                                    : (file.name || file.originalName || "فایل")}
                                             </Typography>
                                             <IconButton 
                                                 size="small" 
@@ -394,7 +419,11 @@ export default function MediaUploader({
                                             >
                                                 <img 
                                                     src={file.url} 
-                                                    alt={file.alt || file.name || "تصویر"} 
+                                                    alt={
+                                                        typeof file.alt === 'object' && file.alt !== null
+                                                            ? (file.alt.fa || file.alt.en || file.name || "تصویر")
+                                                            : (file.alt || file.name || "تصویر")
+                                                    } 
                                                     style={{ 
                                                         width: "100%", 
                                                         height: "100%", 

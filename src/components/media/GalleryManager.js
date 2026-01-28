@@ -38,7 +38,7 @@ export default function GalleryManager({ value = [], onChange, showAltText = tru
 
                     <Grid container spacing={2}>
                         {value.map((item, index) => (
-                            <Grid item size={{ xs: 12, sm: 6, md: 4 }} key={item.id || item.url || index}>
+                            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={item.id || item.url || index}>
                                 <Paper 
                                     sx={{ 
                                         p: 2,
@@ -124,7 +124,7 @@ export default function GalleryManager({ value = [], onChange, showAltText = tru
                                             fullWidth
                                             size="small"
                                             label="متن جایگزین (Alt)"
-                                            value={item.alt || ""}
+                                            value={typeof item.alt === 'string' ? item.alt : (typeof item.alt === 'object' && item.alt !== null ? (item.alt.fa || item.alt.en || "") : "")}
                                             onChange={(e) => updateGalleryItem(index, { alt: e.target.value })}
                                             sx={{ mb: 1 }}
                                         />
@@ -136,7 +136,7 @@ export default function GalleryManager({ value = [], onChange, showAltText = tru
                                             fullWidth
                                             size="small"
                                             label="توضیحات"
-                                            value={item.caption || ""}
+                                            value={typeof item.caption === 'string' ? item.caption : (typeof item.caption === 'object' && item.caption !== null ? (item.caption.fa || item.caption.en || "") : "")}
                                             onChange={(e) => updateGalleryItem(index, { caption: e.target.value })}
                                             multiline
                                             rows={2}

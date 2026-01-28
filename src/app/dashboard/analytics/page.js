@@ -120,7 +120,7 @@ export default function AnalyticsPage() {
 
                 {/* Stats Cards */}
                 <Grid container spacing={3} sx={{ mb: 3 }}>
-                    <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatsCard 
                             title="بازدید کل" 
                             value={formatNumber(statsData?.data?.analytics?.pageViews || 0)} 
@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
                             color="primary" 
                         />
                     </Grid>
-                    <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatsCard 
                             title="کاربران جدید" 
                             value={formatNumber(statsData?.data?.overview?.totalUsers || 0)} 
@@ -138,7 +138,7 @@ export default function AnalyticsPage() {
                             color="success" 
                         />
                     </Grid>
-                    <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatsCard 
                             title="مقالات منتشر شده" 
                             value={formatNumber(statsData?.data?.overview?.publishedArticles || 0)} 
@@ -147,7 +147,7 @@ export default function AnalyticsPage() {
                             color="info" 
                         />
                     </Grid>
-                    <Grid item size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                         <StatsCard 
                             title="نظرات جدید" 
                             value={formatNumber(statsData?.data?.recent?.comments || 0)} 
@@ -160,7 +160,7 @@ export default function AnalyticsPage() {
 
                 <Grid container spacing={3}>
                     {/* Traffic Chart */}
-                    <Grid item size={{ xs: 12, lg: 8 }}>
+                    <Grid size={{ xs: 12, lg: 8 }}>
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>
@@ -190,7 +190,7 @@ export default function AnalyticsPage() {
                     </Grid>
 
                     {/* Content Distribution */}
-                    <Grid item size={{ xs: 12, lg: 4 }}>
+                    <Grid size={{ xs: 12, lg: 4 }}>
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>
@@ -226,7 +226,7 @@ export default function AnalyticsPage() {
                     </Grid>
 
                     {/* Top Articles */}
-                    <Grid item size={{ xs: 12, md: 6 }}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>
@@ -262,7 +262,7 @@ export default function AnalyticsPage() {
                     </Grid>
 
                     {/* Performance Metrics */}
-                    <Grid item size={{ xs: 12, md: 6 }}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <Card>
                             <CardContent>
                                 <Stack spacing={2}>
@@ -313,7 +313,7 @@ export default function AnalyticsPage() {
                     </Grid>
 
                     {/* Articles Performance */}
-                    <Grid item size={{ xs: 12 }}>
+                    <Grid size={{ xs: 12 }}>
                         <Card>
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>

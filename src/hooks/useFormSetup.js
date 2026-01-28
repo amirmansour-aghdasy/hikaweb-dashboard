@@ -75,7 +75,9 @@ export const useFormSetup = ({
         const normalizedItem = normalizeItemRef.current 
           ? normalizeItemRef.current(existingItem)
           : existingItem;
-        reset(normalizedItem, { keepDefaultValues: false });
+        // CRITICAL: Merge normalizedItem with defaultValues to ensure all fields are defined
+        const mergedValues = { ...defaultValuesRef.current, ...normalizedItem };
+        reset(mergedValues, { keepDefaultValues: false });
       }
       return;
     }
@@ -84,21 +86,23 @@ export const useFormSetup = ({
     const existingItemId = existingItem?._id || existingItem?.id;
     const previousItemId = previousExistingItemRef.current?._id || previousExistingItemRef.current?.id;
     
-    if (existingItemId !== previousItemId) {
-      previousExistingItemRef.current = existingItem;
-      
-      if (existingItem) {
-        // Normalize existing item if normalize function provided
-        const normalizedItem = normalizeItemRef.current 
-          ? normalizeItemRef.current(existingItem)
-          : existingItem;
+      if (existingItemId !== previousItemId) {
+        previousExistingItemRef.current = existingItem;
         
-        reset(normalizedItem, { keepDefaultValues: false });
-      } else {
-        // Reset to default values when no existing item
-        reset(defaultValuesRef.current, { keepDefaultValues: false });
+        if (existingItem) {
+          // Normalize existing item if normalize function provided
+          const normalizedItem = normalizeItemRef.current 
+            ? normalizeItemRef.current(existingItem)
+            : existingItem;
+          
+          // CRITICAL: Merge normalizedItem with defaultValues to ensure all fields are defined
+          const mergedValues = { ...defaultValuesRef.current, ...normalizedItem };
+          reset(mergedValues, { keepDefaultValues: false });
+        } else {
+          // Reset to default values when no existing item
+          reset(defaultValuesRef.current, { keepDefaultValues: false });
+        }
       }
-    }
   }, [existingItem, reset]); // Only depend on existingItem and reset
 
   return formMethods;

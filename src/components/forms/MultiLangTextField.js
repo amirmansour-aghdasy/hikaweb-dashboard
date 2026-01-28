@@ -49,30 +49,29 @@ export default function MultiLangTextField({
             return isFaError || isEnError;
         }
         
-        // Handle react-hook-form error structure - only if it's actually an error message
-        // Don't treat input values as errors
+        // Handle Joi validation errors - check if error[lang] is an error object
         if (error[lang] !== undefined) {
-            // Only return true if it's a validation error (string with error keywords or boolean true)
+            // If it's an object with message or type, it's an error
+            if (error[lang]?.message || error[lang]?.type) {
+                return true;
+            }
+            // If it's a boolean true, it's an error
             if (typeof error[lang] === 'boolean' && error[lang] === true) {
                 return true;
             }
+            // If it's a string, check if it's likely an error message
             if (typeof error[lang] === 'string') {
-                // Check if it's likely an error message (contains common error keywords)
-                const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+                const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must', 'min', 'max', 'pattern'];
                 const isLikelyError = errorKeywords.some(keyword => error[lang].includes(keyword));
                 if (isLikelyError) {
                     return true;
                 }
             }
-            // If it's an object with message property, it's an error
-            if (error[lang]?.message) {
-                return true;
-            }
         }
         
-        // If error has message but no type, show for both languages (general error)
+        // If error has message but no type, check if it's an error message
         if (error.message && typeof error.message === 'string') {
-            const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+            const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must', 'min', 'max', 'pattern'];
             const isLikelyError = errorKeywords.some(keyword => error.message.includes(keyword));
             if (isLikelyError) {
                 return true;
@@ -108,32 +107,35 @@ export default function MultiLangTextField({
             }
         }
         
-        // Handle react-hook-form error structure (only if it's actually an error, not input value)
-        // Check if error[lang] is a validation error message (not the input value)
+        // Handle Joi validation errors - check error[lang] structure
         if (error[lang] !== undefined) {
-            // Only return if it's a string that looks like an error message
-            // Error messages are typically short and don't match typical input patterns
+            // If it's an object with message property, return the message
+            if (error[lang]?.message && typeof error[lang].message === 'string') {
+                return error[lang].message;
+            }
+            // If it's an object with type property, generate message
+            if (error[lang]?.type) {
+                const typeMessages = {
+                    required: "این فیلد الزامی است",
+                    min: `حداقل ${error[lang].min || ''} کاراکتر لازم است`,
+                    max: `حداکثر ${error[lang].max || ''} کاراکتر مجاز است`,
+                    pattern: "فرمت وارد شده صحیح نیست",
+                };
+                return typeMessages[error[lang].type] || error[lang].message || "مقدار وارد شده صحیح نیست";
+            }
+            // If it's a string, check if it's likely an error message
             if (typeof error[lang] === 'string') {
-                // Check if it's likely an error message (contains common error keywords)
-                const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+                const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must', 'min', 'max', 'pattern'];
                 const isLikelyError = errorKeywords.some(keyword => error[lang].includes(keyword));
                 if (isLikelyError) {
                     return error[lang];
                 }
-                // If it doesn't contain error keywords, it's probably an input value, not an error
-                // Don't return it as error message
-                return "";
-            }
-            // If it's an object with message property, it's an error
-            if (error[lang]?.message) {
-                return error[lang].message;
             }
         }
         
-        // If error has message but no type, show for both languages (general error)
+        // If error has message but no type, check if it's an error message
         if (error.message && typeof error.message === 'string') {
-            // Check if it's likely an error message
-            const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must'];
+            const errorKeywords = ['الزامی', 'required', 'نامعتبر', 'invalid', 'باید', 'must', 'min', 'max', 'pattern'];
             const isLikelyError = errorKeywords.some(keyword => error.message.includes(keyword));
             if (isLikelyError) {
                 return error.message;

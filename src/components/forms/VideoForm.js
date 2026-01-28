@@ -1,42 +1,62 @@
 "use client";
+import React from "react";
 import { 
     Box, Button, Grid, Switch, FormControlLabel, Typography, 
-    Accordion, AccordionSummary, AccordionDetails, Alert, Stack
+    Stack, Alert, Divider
 } from "@mui/material";
 import { 
-    Save, Cancel, ExpandMore, Publish, Star, VideoLibrary, 
-    Tag, Category, Visibility
+    Save, Cancel, Publish, Star, VideoLibrary, 
+    Tag, Category, Visibility, Language, Image
 } from "@mui/icons-material";
-import { useState, useEffect } from "react";
-import { useForm, Controller, useWatch } from "react-hook-form";
+import { Controller } from "react-hook-form";
 import MultiLangTextField from "./MultiLangTextField";
 import MultiLangEditor from "./MultiLangEditor";
 import CategorySelector from "./CategorySelector";
 import TagInput from "./TagInput";
 import MediaPicker from "../media/MediaPicker";
-import { useApi } from "../../hooks/useApi";
-import { useJoiValidation } from "../../hooks/useJoiValidation";
-import { useFormErrorHandler } from "../../hooks/useFormErrorHandler";
+import { useFormSetup } from "../../hooks/useFormSetup";
+import { useFormSubmission } from "../../hooks/useFormSubmission";
 import { videoValidation, videoUpdateValidation } from "../../lib/validations";
+import { normalizeCategories, normalizeSEO, normalizeTags } from "../../lib/utils/formTransformers";
+import { normalizeMultiLang, normalizeCategoriesForForm, normalizeSEOForForm, normalizeTagsForForm } from "../../lib/utils/formNormalizers";
+import { useApi } from "../../hooks/useApi";
 import toast from "react-hot-toast";
 
 export default function VideoForm({ video, onSave, onCancel }) {
-    const [loading, setLoading] = useState(false);
-
-    const { useCreateData, useUpdateData, useFetchData } = useApi();
-
-    const createVideo = useCreateData("/videos", {
-        queryKey: "videos"
-    });
-    const updateVideo = useUpdateData("/videos", {
-        queryKey: "videos"
-    });
-
+    const { useFetchData } = useApi();
+    
     // Fetch media for video selection
     const { data: videoMediaData } = useFetchData("video-media", "/media?fileType=video&limit=100");
 
-    // Use joi resolver for validation
-    const resolver = useJoiValidation(video ? videoUpdateValidation : videoValidation);
+    const defaultValues = {
+        title: { fa: "", en: "" },
+        description: { fa: "", en: "" },
+        shortDescription: { fa: "", en: "" },
+        videoUrl: "",
+        videoMediaId: null, // Store Media ID for fetching metadata
+        thumbnailUrl: "",
+        duration: 0,
+        fileSize: 0,
+        quality: "auto",
+        format: "mp4",
+        categories: [],
+        tags: { fa: [], en: [] },
+        isPublished: false,
+        isFeatured: false,
+        metadata: {
+            width: 0,
+            height: 0,
+            fps: 0,
+            codec: "",
+            bitrate: 0
+        },
+        seo: {
+            metaTitle: { fa: "", en: "" },
+            metaDescription: { fa: "", en: "" },
+            metaKeywords: { fa: [], en: [] },
+            ogImage: ""
+        }
+    };
 
     const {
         control,
@@ -45,202 +65,45 @@ export default function VideoForm({ video, onSave, onCancel }) {
         setValue,
         getValues,
         formState: { errors, isDirty },
-        reset,
-    } = useForm({
-        resolver,
-        mode: "onChange", // Enable real-time validation
-        defaultValues: {
-            title: { fa: "", en: "" },
-            slug: { fa: "", en: "" },
-            description: { fa: "", en: "" },
-            shortDescription: { fa: "", en: "" },
-            videoUrl: "",
-            videoMediaId: null, // Store Media ID for fetching metadata
-            thumbnailUrl: "",
-            duration: 0, // Auto-calculated
-            fileSize: 0, // Auto-calculated
-            quality: "auto", // Auto-calculated
-            format: "mp4", // Auto-calculated
-            categories: [],
-            tags: { fa: [], en: [] },
-            isPublished: false,
-            isFeatured: false,
-            metadata: {
-                width: 0, // Auto-calculated
-                height: 0, // Auto-calculated
-                fps: 0, // Auto-calculated
-                codec: "", // Auto-calculated
-                bitrate: 0 // Auto-calculated
-            },
-            seo: {
-                metaTitle: { fa: "", en: "" },
-                metaDescription: { fa: "", en: "" },
-                metaKeywords: { fa: [], en: [] },
-                ogImage: ""
-            }
-        },
+    } = useFormSetup({
+        validationSchema: video ? videoUpdateValidation : videoValidation,
+        defaultValues,
+        existingItem: video,
+        normalizeItem: (item) => ({
+            title: normalizeMultiLang(item.title),
+            description: normalizeMultiLang(item.description),
+            shortDescription: normalizeMultiLang(item.shortDescription),
+            videoUrl: item.videoUrl || "",
+            thumbnailUrl: item.thumbnailUrl || "",
+            duration: item.duration || 0,
+            fileSize: item.fileSize || 0,
+            quality: item.quality || "auto",
+            format: item.format || "mp4",
+            videoMediaId: item.videoMediaId || null,
+            categories: normalizeCategoriesForForm(item.categories),
+            tags: normalizeTagsForForm(item.tags),
+            isPublished: item.isPublished || false,
+            isFeatured: item.isFeatured || false,
+            metadata: item.metadata || defaultValues.metadata,
+            seo: normalizeSEOForForm(item.seo),
+        }),
+        mode: "onChange",
     });
-
-    // Initialize form error handler after useForm
-    const handleFormError = useFormErrorHandler(setValue, getValues);
 
     // Watch videoMediaId to fetch metadata when video is selected
     const watchedVideoMediaId = watch("videoMediaId");
-
-    useEffect(() => {
-        if (video) {
-            const normalizeMultiLang = (value) => {
-                if (!value) return { fa: "", en: "" };
-                if (typeof value === 'string') return { fa: value, en: "" };
-                if (typeof value === 'object') {
-                    return {
-                        fa: value.fa || "",
-                        en: value.en || ""
-                    };
-                }
-                return { fa: "", en: "" };
-            };
-
-            const categoriesValue = Array.isArray(video.categories)
-                ? video.categories.map(cat => 
-                    typeof cat === 'object' && cat._id ? cat._id : cat
-                  )
-                : [];
-
-            const relatedServicesValue = Array.isArray(video.relatedServices)
-                ? video.relatedServices.map(s => typeof s === 'object' && s._id ? s._id : s)
-                : [];
-
-            const relatedPortfoliosValue = Array.isArray(video.relatedPortfolios)
-                ? video.relatedPortfolios.map(p => typeof p === 'object' && p._id ? p._id : p)
-                : [];
-
-            const relatedArticlesValue = Array.isArray(video.relatedArticles)
-                ? video.relatedArticles.map(a => typeof a === 'object' && a._id ? a._id : a)
-                : [];
-
-            reset({
-                title: normalizeMultiLang(video.title),
-                slug: normalizeMultiLang(video.slug),
-                description: normalizeMultiLang(video.description),
-                shortDescription: normalizeMultiLang(video.shortDescription),
-                videoUrl: video.videoUrl || "",
-                thumbnailUrl: video.thumbnailUrl || "",
-                duration: video.duration || 0,
-                fileSize: video.fileSize || 0,
-                quality: video.quality || "auto",
-                format: video.format || "mp4",
-                hlsUrl: video.hlsUrl || "",
-                dashUrl: video.dashUrl || "",
-                categories: categoriesValue,
-                tags: video.tags || { fa: [], en: [] },
-                videoMediaId: video.videoMediaId || null,
-                isPublished: video.isPublished || false,
-                isFeatured: video.isFeatured || false,
-                metadata: video.metadata || {
-                    width: 0,
-                    height: 0,
-                    fps: 0,
-                    codec: "",
-                    bitrate: 0
-                },
-                seo: video.seo || {
-                    metaTitle: { fa: "", en: "" },
-                    metaDescription: { fa: "", en: "" },
-                    metaKeywords: { fa: [], en: [] },
-                    ogImage: ""
-                },
-                duration: video.duration || 0,
-                fileSize: video.fileSize || 0,
-                quality: video.quality || "auto",
-                format: video.format || "mp4",
-                metadata: video.metadata || {
-                    width: 0,
-                    height: 0,
-                    fps: 0,
-                    codec: "",
-                    bitrate: 0
-                }
-            }, { keepDefaultValues: false });
-        }
-    }, [video, reset]);
-
-    // Watch title for slug generation - watch both fa and en separately for real-time reactivity
-    const watchedTitleFa = useWatch({
-        control,
-        name: "title.fa"
-    });
-    
-    const watchedTitleEn = useWatch({
-        control,
-        name: "title.en"
-    });
-
-    const generateSlugFa = (title) => {
-        if (!title) return "";
-        return title
-            .trim()
-            .replace(/[،,\.]/g, "")
-            .replace(/\s+/g, "-")
-            .replace(/-+/g, "-")
-            .replace(/^-+|-+$/g, "");
-    };
-
-    const generateSlugEn = (title) => {
-        if (!title) return "";
-        return title
-            .toLowerCase()
-            .trim()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/-+/g, "-")
-            .replace(/^-+|-+$/g, "");
-    };
-
-    // Auto-generate slug when title changes (only in create mode)
-    // Use useWatch for real-time reactivity - it will trigger on every change
-    useEffect(() => {
-        if (video) return; // Don't auto-generate in edit mode
-        
-        const titleFa = watchedTitleFa || "";
-        const titleEn = watchedTitleEn || "";
-        
-        if (titleFa && titleFa.trim()) {
-            const newSlugFa = generateSlugFa(titleFa);
-            const newSlugEn = titleEn && titleEn.trim() ? generateSlugEn(titleEn) : "";
-            
-            // Get current slug value
-            const currentSlug = getValues("slug") || { fa: "", en: "" };
-            const currentSlugFa = currentSlug.fa || "";
-            const currentSlugEn = currentSlug.en || "";
-            
-            // Auto-generate if slug is empty or if it matches the auto-generated version
-            // This allows manual editing: if user manually changes slug, it won't be overwritten
-            const shouldUpdateFa = !currentSlugFa || currentSlugFa === generateSlugFa(titleFa);
-            const shouldUpdateEn = !currentSlugEn || (titleEn && titleEn.trim() && currentSlugEn === generateSlugEn(titleEn));
-            
-            if (shouldUpdateFa || shouldUpdateEn) {
-                setValue("slug", {
-                    fa: shouldUpdateFa ? newSlugFa : currentSlugFa,
-                    en: shouldUpdateEn ? newSlugEn : currentSlugEn,
-                }, { 
-                    shouldValidate: false, 
-                    shouldDirty: false,
-                    shouldTouch: false 
-                });
-            }
-        }
-    }, [watchedTitleFa, watchedTitleEn, video, setValue, getValues]);
 
     // Fetch video metadata when videoMediaId changes
     const { data: videoMediaMetadata } = useFetchData(
         watchedVideoMediaId ? [`media-${watchedVideoMediaId}`] : ['media-null'],
         watchedVideoMediaId ? `/media/${watchedVideoMediaId}` : null,
         {
-            enabled: !!watchedVideoMediaId // Only fetch when videoMediaId is available
+            enabled: !!watchedVideoMediaId
         }
     );
 
-    useEffect(() => {
+    // Auto-populate video metadata when media is selected
+    React.useEffect(() => {
         if (videoMediaMetadata?.data?.media) {
             const media = videoMediaMetadata.data.media;
             
@@ -288,419 +151,582 @@ export default function VideoForm({ video, onSave, onCancel }) {
         }
     }, [videoMediaMetadata, setValue]);
 
-    const onSubmit = async (data, event) => {
-        // Prevent default form submission
-        if (event) {
-            event.preventDefault();
+    // Transform data before submission
+    const transformVideoData = (data) => {
+        // Normalize form data using utility functions
+        const categories = normalizeCategories(data.categories);
+        const seo = normalizeSEO({
+            metaTitle: data.seo?.metaTitle,
+            metaDescription: data.seo?.metaDescription,
+            metaKeywords: data.seo?.metaKeywords,
+        });
+        const tags = normalizeTags(data.tags);
+
+        const videoData = {
+            title: data.title || { fa: "", en: "" },
+            description: data.description || { fa: "", en: "" },
+            shortDescription: data.shortDescription || { fa: "", en: "" },
+            videoUrl: data.videoUrl || "",
+            thumbnailUrl: data.thumbnailUrl || "",
+            duration: data.duration || 0,
+            categories,
+            tags,
+            isPublished: data.isPublished || false,
+            isFeatured: data.isFeatured || false,
+        };
+
+        // Only include optional fields if they have values
+        if (data.fileSize && data.fileSize > 0) {
+            videoData.fileSize = data.fileSize;
         }
-        
-        setLoading(true);
 
+        if (data.quality && data.quality !== "auto") {
+            videoData.quality = data.quality;
+        }
+
+        if (data.format && data.format !== "mp4") {
+            videoData.format = data.format;
+        }
+
+        // Only include metadata if it has meaningful values
+        if (data.metadata && (data.metadata.width > 0 || data.metadata.height > 0)) {
+            const metadata = {};
+            if (data.metadata.width > 0) metadata.width = data.metadata.width;
+            if (data.metadata.height > 0) metadata.height = data.metadata.height;
+            if (data.metadata.fps > 0) metadata.fps = data.metadata.fps;
+            if (data.metadata.codec) metadata.codec = data.metadata.codec;
+            if (data.metadata.bitrate > 0) metadata.bitrate = data.metadata.bitrate;
+            
+            if (Object.keys(metadata).length > 0) {
+                videoData.metadata = metadata;
+            }
+        }
+
+        // Only add seo if it has at least one field
+        if (Object.keys(seo).length > 0) {
+            videoData.seo = seo;
+        }
+
+        // Remove videoMediaId (only used for fetching metadata)
+        delete videoData.videoMediaId;
+
+        // Auto-generate infoBox from video data (title and description)
+        videoData.infoBox = {
+            title: videoData.title || { fa: "", en: "" },
+            content: videoData.description || { fa: "", en: "" }
+        };
+
+        return videoData;
+    };
+
+    const { submit, loading } = useFormSubmission({
+        endpoint: "/videos",
+        queryKey: "videos",
+        existingItem: video,
+        createMessage: "ویدئو با موفقیت ایجاد شد",
+        updateMessage: "ویدئو با موفقیت به‌روزرسانی شد",
+        onSuccess: onSave,
+        transformData: transformVideoData,
+        setValue,
+        getValues,
+    });
+
+    const onSubmit = async (data) => {
         try {
-            // Clean up empty values
-            const cleanedData = { ...data };
-
-            // Remove videoMediaId (only used for fetching metadata)
-            delete cleanedData.videoMediaId;
-            
-            // Auto-generate infoBox from video data (title and description)
-            cleanedData.infoBox = {
-                title: cleanedData.title || { fa: "", en: "" },
-                content: cleanedData.description || { fa: "", en: "" }
-            };
-            
-            // Ensure auto-calculated fields are included (they're already set by useEffect)
-            // duration, fileSize, format, quality, metadata are already in cleanedData
-
-            // Remove empty metadata fields
-            if (cleanedData.metadata) {
-                Object.keys(cleanedData.metadata).forEach(key => {
-                    if (!cleanedData.metadata[key]) {
-                        delete cleanedData.metadata[key];
-                    }
-                });
-                if (Object.keys(cleanedData.metadata).length === 0) {
-                    delete cleanedData.metadata;
-                }
-            }
-
-            let result;
-            if (video?._id) {
-                result = await updateVideo.mutateAsync({
-                    id: video._id,
-                    data: cleanedData
-                });
-                toast.success("ویدئو با موفقیت به‌روزرسانی شد");
-            } else {
-                result = await createVideo.mutateAsync(cleanedData);
-                toast.success("ویدئو با موفقیت ایجاد شد");
-            }
-
-            if (onSave) {
-                onSave(result);
+            const result = await submit(data);
+            // If submit returns false, it means there was an error
+            if (result === false) {
+                // Error already displayed by useFormSubmission
+                return;
             }
         } catch (error) {
-            // Handle validation errors from backend - set them in form state
-            const hasValidationErrors = handleFormError(error);
-            if (!hasValidationErrors) {
-                // Show only non-validation errors
-                const errorMessage = error.response?.data?.message || error.message || "خطا در ذخیره ویدئو";
-                toast.error(errorMessage);
+            // Handle unexpected errors
+            if (error?.message) {
+                toast.error(error.message);
             } else {
-                // Show general message for validation errors
-                toast.error("لطفاً خطاهای اعتبارسنجی را برطرف کنید");
+                toast.error("خطا در ذخیره ویدئو");
             }
-        } finally {
-            setLoading(false);
         }
     };
 
-    const onError = (validationErrors) => {
-        // Errors are already shown in UI via error props under inputs
-        // Just scroll to the first error field for better UX
-        const firstErrorKey = Object.keys(validationErrors)[0];
-        if (firstErrorKey) {
-            const fieldName = firstErrorKey.split('.')[0];
-            const errorElement = document.querySelector(`[name="${firstErrorKey}"]`) || 
-                                document.querySelector(`[name="${fieldName}"]`) ||
-                                document.querySelector(`[id="${firstErrorKey}"]`) ||
-                                document.querySelector(`[id="${fieldName}"]`);
-            if (errorElement) {
-                setTimeout(() => {
-                    errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    errorElement.focus();
-                }, 100);
+    // Helper function to find first error in nested objects/arrays
+    const findFirstError = (errors, path = '') => {
+        for (const key in errors) {
+            if (!errors.hasOwnProperty(key)) continue;
+            
+            const currentPath = path ? `${path}.${key}` : key;
+            const error = errors[key];
+            
+            if (error && typeof error === 'object') {
+                // Check if it's a validation error object
+                if (error.message && typeof error.message === 'string') {
+                    return { path: currentPath, message: error.message, error };
+                }
+                // Check if it's an array of errors
+                if (Array.isArray(error)) {
+                    for (let i = 0; i < error.length; i++) {
+                        if (error[i] && typeof error[i] === 'object') {
+                            const nestedError = findFirstError(error[i], `${currentPath}[${i}]`);
+                            if (nestedError) return nestedError;
+                        }
+                    }
+                }
+                // Recursively search nested objects
+                const nestedError = findFirstError(error, currentPath);
+                if (nestedError) return nestedError;
+            } else if (error && typeof error === 'string') {
+                return { path: currentPath, message: error, error };
             }
+        }
+        return null;
+    };
+
+    const onError = (validationErrors) => {
+        // Handle validation errors
+        if (Object.keys(validationErrors).length > 0) {
+            // Find first error (including nested errors in arrays)
+            const firstError = findFirstError(validationErrors);
+            
+            // Extract error message safely
+            let errorMessage = "لطفاً خطاهای اعتبارسنجی را برطرف کنید";
+            let errorPath = '';
+            
+            if (firstError) {
+                errorMessage = firstError.message || errorMessage;
+                errorPath = firstError.path || '';
+            } else {
+                // Fallback: use first top-level error
+                const firstErrorKey = Object.keys(validationErrors)[0];
+                const firstErrorValue = validationErrors[firstErrorKey];
+                
+                if (firstErrorValue) {
+                    if (firstErrorValue.message && typeof firstErrorValue.message === 'string') {
+                        errorMessage = firstErrorValue.message;
+                    } else if (firstErrorValue.type) {
+                        const fieldLabels = {
+                            'title': 'عنوان',
+                            'description': 'توضیحات',
+                            'shortDescription': 'توضیحات کوتاه',
+                            'videoUrl': 'آدرس ویدئو',
+                            'thumbnailUrl': 'تصویر کاور',
+                            'duration': 'مدت زمان',
+                            'categories': 'دسته‌بندی',
+                            'tags': 'برچسب‌ها',
+                        };
+                        const fieldLabel = fieldLabels[firstErrorKey] || firstErrorKey;
+                        const typeMessages = {
+                            faRequired: `${fieldLabel} (فارسی) الزامی است`,
+                            enRequired: `${fieldLabel} (انگلیسی) الزامی است`,
+                            required: `${fieldLabel} الزامی است`,
+                        };
+                        errorMessage = typeMessages[firstErrorValue.type] || firstErrorValue.message || `${fieldLabel} الزامی است`;
+                    } else if (typeof firstErrorValue === 'string') {
+                        errorMessage = firstErrorValue;
+                    }
+                    errorPath = firstErrorKey;
+                }
+            }
+            
+            toast.error(errorMessage);
+            
+            // Scroll to the first error field for better UX
+            if (errorPath) {
+                const fieldName = errorPath.split('.')[0]; // Get base field name
+                const errorElement = document.querySelector(`[name="${errorPath}"]`) || 
+                                    document.querySelector(`[name="${fieldName}"]`) ||
+                                    document.querySelector(`[id="${errorPath}"]`) ||
+                                    document.querySelector(`[id="${fieldName}"]`);
+                if (errorElement) {
+                    setTimeout(() => {
+                        errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        errorElement.focus();
+                    }, 100);
+                }
+            }
+        } else {
+            toast.error("لطفاً تمام فیلدهای الزامی را پر کنید");
         }
     };
 
     return (
-        <Box component="form" onSubmit={handleSubmit(onSubmit, onError)} sx={{ p: 3 }}>
+        <Box component="form" onSubmit={handleSubmit(onSubmit, onError)}>
             <Grid container spacing={3}>
-                {/* Basic Information */}
-                <Grid size={12}>
-                    <Accordion defaultExpanded>
-                        <AccordionSummary expandIcon={<ExpandMore />}>
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <VideoLibrary />
-                                <Typography variant="h6">اطلاعات پایه</Typography>
-                            </Stack>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Grid container spacing={3}>
-                                <Grid size={{ xs: 12, md: 6 }}>
-                                    <Controller
-                                        name="title"
-                                        control={control}
-                                        rules={{
-                                            validate: {
-                                                faRequired: (value) => value?.fa?.trim() || "عنوان فارسی الزامی است",
-                                                enRequired: (value) => value?.en?.trim() || "عنوان انگلیسی الزامی است",
-                                            },
+                {/* Main Content */}
+                <Grid size={{ xs: 12, lg: 8 }}>
+                    <Stack spacing={3}>
+                        {/* Title Section */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Language /> عنوان ویدئو
+                            </Typography>
+                            <Controller
+                                name="title"
+                                control={control}
+                                rules={{
+                                    validate: {
+                                        faRequired: (value) => {
+                                            if (!value || typeof value !== 'object') return "عنوان فارسی الزامی است";
+                                            const trimmed = value.fa?.trim();
+                                            return trimmed ? true : "عنوان فارسی الزامی است";
+                                        },
+                                        enRequired: (value) => {
+                                            if (!value || typeof value !== 'object') return "عنوان انگلیسی الزامی است";
+                                            const trimmed = value.en?.trim();
+                                            return trimmed ? true : "عنوان انگلیسی الزامی است";
+                                        },
+                                    },
+                                }}
+                                render={({ field }) => (
+                                    <MultiLangTextField
+                                        {...field}
+                                        label="عنوان"
+                                        error={errors.title}
+                                        placeholder={{
+                                            fa: "عنوان ویدئو به فارسی...",
+                                            en: "Video title in English...",
                                         }}
-                                        render={({ field, fieldState }) => (
-                                            <MultiLangTextField
-                                                {...field}
-                                                label="عنوان"
-                                                error={fieldState.error}
-                                            />
-                                        )}
                                     />
-                                </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
-                                    <Controller
-                                        name="slug"
-                                        control={control}
-                                        rules={{
-                                            validate: {
-                                                faRequired: (value) => {
-                                                    if (!value || !value.fa || !value.fa.trim()) {
-                                                        return "آدرس یکتای فارسی الزامی است";
-                                                    }
-                                                    return true;
-                                                },
-                                                enRequired: (value) => {
-                                                    if (!value || !value.en || !value.en.trim()) {
-                                                        return "آدرس یکتای انگلیسی الزامی است";
-                                                    }
-                                                    return true;
-                                                },
-                                            },
-                                        }}
-                                        render={({ field, fieldState }) => (
-                                            <MultiLangTextField
-                                                {...field}
-                                                label="آدرس یکتا"
-                                                error={fieldState.error}
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-                                <Grid size={12}>
-                                    <Controller
-                                        name="shortDescription"
-                                        control={control}
-                                        render={({ field, fieldState }) => (
-                                            <MultiLangTextField
-                                                {...field}
-                                                label="توضیحات کوتاه"
-                                                multiline
-                                                rows={3}
-                                                error={fieldState.error}
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-                                <Grid size={12}>
-                                    <Controller
-                                        name="description"
-                                        control={control}
-                                        render={({ field, fieldState }) => (
-                                            <MultiLangEditor
-                                                {...field}
-                                                label="توضیحات کامل"
-                                                error={fieldState.error}
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-                            </Grid>
-                        </AccordionDetails>
-                    </Accordion>
-                </Grid>
+                                )}
+                            />
+                        </Box>
 
-                {/* Video Files */}
-                <Grid size={12}>
-                    <Accordion>
-                        <AccordionSummary expandIcon={<ExpandMore />}>
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <VideoLibrary />
-                                <Typography variant="h6">فایل‌های ویدئو</Typography>
-                            </Stack>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Grid container spacing={3}>
-                                <Grid size={12}>
-                                    <Controller
-                                        name="videoMediaId"
-                                        control={control}
-                                        rules={{ required: "فایل ویدئو الزامی است" }}
-                                        render={({ field }) => {
-                                            // Get media object from videoMediaData or use existing value
-                                            let mediaValue = field.value;
-                                            if (field.value && typeof field.value === 'string') {
-                                                const selectedMedia = videoMediaData?.data?.find(m => m._id === field.value);
-                                                if (selectedMedia) {
-                                                    mediaValue = selectedMedia;
+                        {/* Short Description Section */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom>
+                                توضیحات کوتاه
+                            </Typography>
+                            <Controller
+                                name="shortDescription"
+                                control={control}
+                                render={({ field }) => (
+                                    <MultiLangTextField
+                                        {...field}
+                                        label="توضیحات کوتاه"
+                                        multiline
+                                        rows={3}
+                                        error={errors.shortDescription}
+                                        placeholder={{
+                                            fa: "خلاصه‌ای از ویدئو...",
+                                            en: "Brief summary of the video...",
+                                        }}
+                                    />
+                                )}
+                            />
+                        </Box>
+
+                        {/* Description Section */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <VideoLibrary /> توضیحات کامل
+                            </Typography>
+                            <Controller
+                                name="description"
+                                control={control}
+                                render={({ field }) => (
+                                    <MultiLangEditor 
+                                        value={field.value || { fa: "", en: "" }} 
+                                        onChange={(newValue) => {
+                                            field.onChange(newValue);
+                                        }}
+                                        label="توضیحات" 
+                                        error={errors.description} 
+                                        height={300} 
+                                    />
+                                )}
+                            />
+                        </Box>
+
+                        {/* Video File Section */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <VideoLibrary /> فایل ویدئو
+                            </Typography>
+                            <Controller
+                                name="videoMediaId"
+                                control={control}
+                                rules={{ required: "فایل ویدئو الزامی است" }}
+                                render={({ field, fieldState }) => {
+                                    // Get media object from videoMediaData or use existing value
+                                    let mediaValue = field.value;
+                                    if (field.value && typeof field.value === 'string') {
+                                        const selectedMedia = videoMediaData?.data?.find(m => m._id === field.value);
+                                        if (selectedMedia) {
+                                            mediaValue = selectedMedia;
+                                        }
+                                    }
+                                    
+                                    return (
+                                        <MediaPicker
+                                            value={mediaValue}
+                                            onChange={(selected) => {
+                                                // Handle both object and string
+                                                let mediaId = null;
+                                                let mediaUrl = "";
+                                                
+                                                if (typeof selected === 'string') {
+                                                    // If it's a URL string, find the media by URL
+                                                    const media = videoMediaData?.data?.find(m => m.url === selected);
+                                                    if (media) {
+                                                        mediaId = media._id;
+                                                        mediaUrl = media.url;
+                                                    } else {
+                                                        mediaUrl = selected;
+                                                    }
+                                                } else if (selected && typeof selected === 'object') {
+                                                    // If it's an object, extract _id and url
+                                                    mediaId = selected._id || selected.id;
+                                                    mediaUrl = selected.url || selected;
                                                 }
-                                            }
-                                            
-                                            return (
-                                                <MediaPicker
-                                                    value={mediaValue}
-                                                    onChange={(selected) => {
-                                                        // Handle both object and string
-                                                        let mediaId = null;
-                                                        let mediaUrl = "";
-                                                        
-                                                        if (typeof selected === 'string') {
-                                                            // If it's a URL string, find the media by URL
-                                                            const media = videoMediaData?.data?.find(m => m.url === selected);
-                                                            if (media) {
-                                                                mediaId = media._id;
-                                                                mediaUrl = media.url;
-                                                            } else {
-                                                                mediaUrl = selected;
-                                                            }
-                                                        } else if (selected && typeof selected === 'object') {
-                                                            // If it's an object, extract _id and url
-                                                            mediaId = selected._id || selected.id;
-                                                            mediaUrl = selected.url || selected;
-                                                        }
-                                                        
-                                                        field.onChange(mediaId);
-                                                        if (mediaUrl) {
-                                                            setValue("videoUrl", mediaUrl);
-                                                        }
-                                                    }}
-                                                    label="فایل ویدئو"
-                                                    accept="video/*"
-                                                    showPreview={true}
-                                                    error={!!errors.videoMediaId}
-                                                    helperText={errors.videoMediaId?.message || "ویدئو را از کتابخانه رسانه انتخاب کنید"}
-                                                />
-                                            );
-                                        }}
-                                    />
-                                </Grid>
-                                <Grid size={12}>
-                                    <Controller
-                                        name="thumbnailUrl"
-                                        control={control}
-                                        rules={{ required: "تصویر کاور الزامی است" }}
-                                        render={({ field }) => (
-                                            <MediaPicker
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                label="تصویر کاور"
-                                                accept="image/*"
-                                                showPreview={true}
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-                            </Grid>
-                        </AccordionDetails>
-                    </Accordion>
-                </Grid>
+                                                
+                                                field.onChange(mediaId);
+                                                if (mediaUrl) {
+                                                    setValue("videoUrl", mediaUrl);
+                                                }
+                                            }}
+                                            label="انتخاب فایل ویدئو"
+                                            accept="video/*"
+                                            multiple={false}
+                                            showPreview={true}
+                                            error={fieldState.error}
+                                            helperText={fieldState.error?.message || "ویدئو را از کتابخانه رسانه انتخاب کنید"}
+                                        />
+                                    );
+                                }}
+                            />
+                        </Box>
 
-                {/* Categories & Tags */}
-                <Grid size={12}>
-                    <Accordion>
-                        <AccordionSummary expandIcon={<ExpandMore />}>
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <Category />
-                                <Typography variant="h6">دسته‌بندی و تگ‌ها</Typography>
-                            </Stack>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Grid container spacing={3}>
-                                <Grid size={12}>
-                                    <CategorySelector
-                                        name="categories"
-                                        control={control}
-                                        type="video"
+                        {/* Thumbnail Section */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Image /> تصویر کاور
+                            </Typography>
+                            <Controller
+                                name="thumbnailUrl"
+                                control={control}
+                                rules={{ required: "تصویر کاور الزامی است" }}
+                                render={({ field, fieldState }) => (
+                                    <MediaPicker
+                                        value={field.value || null}
+                                        onChange={(selected) => {
+                                            const imageUrl = typeof selected === 'object' && selected.url ? selected.url : selected;
+                                            field.onChange(imageUrl);
+                                        }}
+                                        label="انتخاب تصویر کاور"
+                                        accept="image/*"
+                                        multiple={false}
+                                        showPreview={true}
+                                        error={fieldState.error}
+                                        helperText={fieldState.error?.message || "تصویر کاور ویدئو را انتخاب کنید"}
+                                    />
+                                )}
+                            />
+                        </Box>
+
+                        {/* Categories */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Category /> دسته‌بندی
+                            </Typography>
+                            <Controller 
+                                name="categories" 
+                                control={control} 
+                                render={({ field, fieldState }) => (
+                                    <CategorySelector 
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        onBlur={field.onBlur}
+                                        type="video" 
+                                        label="انتخاب دسته‌بندی" 
+                                        error={fieldState.error}
                                         multiple
                                     />
-                                </Grid>
-                                <Grid size={12}>
-                                    <TagInput
-                                        name="tags"
-                                        control={control}
-                                        label="تگ‌ها"
+                                )} 
+                            />
+                        </Box>
+
+                        {/* Tags */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Tag /> برچسب‌ها
+                            </Typography>
+                            <Controller 
+                                name="tags.fa" 
+                                control={control} 
+                                render={({ field }) => (
+                                    <TagInput 
+                                        {...field} 
+                                        label="برچسب‌های فارسی" 
+                                        placeholder="برچسب فارسی اضافه کنید..." 
+                                        error={errors.tags?.fa}
                                     />
-                                </Grid>
-                            </Grid>
-                        </AccordionDetails>
-                    </Accordion>
-                </Grid>
+                                )} 
+                            />
+                            <Box sx={{ mt: 2 }}>
+                                <Controller 
+                                    name="tags.en" 
+                                    control={control} 
+                                    render={({ field }) => (
+                                        <TagInput 
+                                            {...field} 
+                                            label="برچسب‌های انگلیسی" 
+                                            placeholder="Add English tags..." 
+                                            error={errors.tags?.en}
+                                        />
+                                    )} 
+                                />
+                            </Box>
+                        </Box>
 
-                {/* Related Content - Auto-populated based on categories and tags */}
-                <Grid size={12}>
-                    <Alert severity="info">
-                        محتواهای مرتبط (خدمات، نمونه کارها، مقالات و ویدئوهای مرتبط) به صورت خودکار بر اساس دسته‌بندی و تگ‌ها محاسبه می‌شوند.
-                    </Alert>
-                </Grid>
-
-
-                {/* SEO */}
-                <Grid size={12}>
-                    <Accordion>
-                        <AccordionSummary expandIcon={<ExpandMore />}>
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <Visibility />
-                                <Typography variant="h6">بهینه‌سازی موتور جستجو (SEO)</Typography>
+                        {/* SEO Section */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Visibility /> بهینه‌سازی موتور جستجو (SEO)
+                            </Typography>
+                            <Stack spacing={2}>
+                                <Controller
+                                    name="seo.metaTitle"
+                                    control={control}
+                                    render={({ field, fieldState }) => (
+                                        <MultiLangTextField
+                                            {...field}
+                                            label="عنوان متا"
+                                            error={fieldState.error}
+                                        />
+                                    )}
+                                />
+                                <Controller
+                                    name="seo.metaDescription"
+                                    control={control}
+                                    render={({ field, fieldState }) => (
+                                        <MultiLangTextField
+                                            {...field}
+                                            label="توضیحات متا"
+                                            multiline
+                                            rows={3}
+                                            error={fieldState.error}
+                                        />
+                                    )}
+                                />
+                                <Controller
+                                    name="seo.metaKeywords"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <TagInput
+                                            {...field}
+                                            label="کلمات کلیدی متا"
+                                        />
+                                    )}
+                                />
+                                <Controller
+                                    name="seo.ogImage"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <MediaPicker
+                                            value={field.value || null}
+                                            onChange={(selected) => {
+                                                const imageUrl = typeof selected === 'object' && selected.url ? selected.url : selected;
+                                                field.onChange(imageUrl);
+                                            }}
+                                            label="تصویر Open Graph"
+                                            accept="image/*"
+                                            multiple={false}
+                                            showPreview={true}
+                                        />
+                                    )}
+                                />
                             </Stack>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Grid container spacing={3}>
-                                <Grid size={12}>
-                                    <Controller
-                                        name="seo.metaTitle"
-                                        control={control}
-                                        render={({ field, fieldState }) => (
-                                            <MultiLangTextField
-                                                {...field}
-                                                label="عنوان متا"
-                                                error={fieldState.error}
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-                                <Grid size={12}>
-                                    <Controller
-                                        name="seo.metaDescription"
-                                        control={control}
-                                        render={({ field, fieldState }) => (
-                                            <MultiLangTextField
-                                                {...field}
-                                                label="توضیحات متا"
-                                                multiline
-                                                rows={3}
-                                                error={fieldState.error}
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-                                <Grid size={12}>
-                                    <TagInput
-                                        name="seo.metaKeywords"
-                                        control={control}
-                                        label="کلمات کلیدی متا"
-                                    />
-                                </Grid>
-                                <Grid size={12}>
-                                    <Controller
-                                        name="seo.ogImage"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <MediaPicker
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                label="تصویر Open Graph"
-                                                accept="image/*"
-                                                showPreview={true}
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-                            </Grid>
-                        </AccordionDetails>
-                    </Accordion>
+                        </Box>
+                    </Stack>
                 </Grid>
 
-                {/* Publishing */}
-                <Grid size={12}>
-                    <Accordion>
-                        <AccordionSummary expandIcon={<ExpandMore />}>
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <Publish />
-                                <Typography variant="h6">انتشار</Typography>
+                {/* Sidebar */}
+                <Grid size={{ xs: 12, lg: 4 }}>
+                    <Stack spacing={3}>
+                        {/* Publication Settings */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Publish /> تنظیمات انتشار
+                            </Typography>
+                            <Stack spacing={2}>
+                                <Controller
+                                    name="isPublished"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <FormControlLabel 
+                                            control={<Switch {...field} checked={field.value} />} 
+                                            label="انتشار فوری" 
+                                        />
+                                    )}
+                                />
+                                <Controller 
+                                    name="isFeatured" 
+                                    control={control} 
+                                    render={({ field }) => (
+                                        <FormControlLabel 
+                                            control={<Switch {...field} checked={field.value} />} 
+                                            label="ویدئو ویژه" 
+                                        />
+                                    )} 
+                                />
                             </Stack>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                            <Grid container spacing={3}>
-                                <Grid size={{ xs: 12, md: 6 }}>
-                                    <Controller
-                                        name="isPublished"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <FormControlLabel
-                                                control={<Switch {...field} checked={field.value} />}
-                                                label="منتشر شده"
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
-                                    <Controller
-                                        name="isFeatured"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <FormControlLabel
-                                                control={<Switch {...field} checked={field.value} />}
-                                                label="ویژه"
-                                            />
-                                        )}
-                                    />
-                                </Grid>
-                            </Grid>
-                        </AccordionDetails>
-                    </Accordion>
+                        </Box>
+
+                        {/* Related Content Info */}
+                        <Box>
+                            <Alert severity="info">
+                                محتواهای مرتبط (خدمات، نمونه کارها، مقالات و ویدئوهای مرتبط) به صورت خودکار بر اساس دسته‌بندی و تگ‌ها محاسبه می‌شوند.
+                            </Alert>
+                        </Box>
+
+                        {/* Video Metadata Info */}
+                        <Box>
+                            <Typography variant="h6" gutterBottom>
+                                اطلاعات ویدئو
+                            </Typography>
+                            <Alert severity="info" sx={{ mb: 2 }}>
+                                اطلاعات ویدئو (مدت زمان، اندازه فایل، کیفیت و فرمت) به صورت خودکار از فایل ویدئو استخراج می‌شود.
+                            </Alert>
+                            <Stack spacing={1}>
+                                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        مدت زمان:
+                                    </Typography>
+                                    <Typography variant="body2" fontWeight="bold">
+                                        {watch("duration") ? `${Math.floor(watch("duration") / 60)}:${String(watch("duration") % 60).padStart(2, '0')}` : "0:00"}
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        اندازه فایل:
+                                    </Typography>
+                                    <Typography variant="body2" fontWeight="bold">
+                                        {watch("fileSize") ? `${(watch("fileSize") / 1024 / 1024).toFixed(2)} MB` : "0 MB"}
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        کیفیت:
+                                    </Typography>
+                                    <Typography variant="body2" fontWeight="bold">
+                                        {watch("quality") || "auto"}
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        فرمت:
+                                    </Typography>
+                                    <Typography variant="body2" fontWeight="bold">
+                                        {watch("format") || "mp4"}
+                                    </Typography>
+                                </Box>
+                            </Stack>
+                        </Box>
+                    </Stack>
                 </Grid>
 
                 {/* Actions */}
                 <Grid size={12}>
+                    <Divider sx={{ my: 2 }} />
                     <Stack direction="row" spacing={2} justifyContent="flex-end">
                         <Button
                             variant="outlined"
@@ -724,4 +750,3 @@ export default function VideoForm({ video, onSave, onCancel }) {
         </Box>
     );
 }
-

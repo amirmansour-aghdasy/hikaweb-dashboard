@@ -54,6 +54,14 @@ export const articleValidation = Joi.object({
 
     featuredImage: Joi.string().allow("").optional(),
 
+    introVideo: Joi.object({
+        url: Joi.string().uri().allow("").optional(),
+        thumbnailUrl: Joi.string().uri().allow("").optional(),
+        duration: Joi.number().min(0).optional(),
+        fileSize: Joi.number().min(0).optional(),
+        format: Joi.string().valid("mp4", "webm", "m3u8").default("mp4").optional(),
+    }).optional(),
+
     categories: Joi.array()
         .items(
             Joi.string()
@@ -76,6 +84,18 @@ export const articleValidation = Joi.object({
 
     isPublished: Joi.boolean().default(false),
     isFeatured: Joi.boolean().default(false),
+    isPremium: Joi.boolean().default(false),
+    relatedProduct: Joi.alternatives()
+        .try(
+            Joi.string()
+                .pattern(/^[0-9a-fA-F]{24}$/)
+                .messages({
+                    "string.pattern.base": "شناسه محصول مرتبط نامعتبر است",
+                }),
+            Joi.string().allow("").empty(""),
+            Joi.valid(null)
+        )
+        .optional(),
     allowComments: Joi.boolean().default(true),
 
     metaTitle: Joi.object({
@@ -107,6 +127,62 @@ export const articleValidation = Joi.object({
         fileSize: Joi.number().min(0).optional(),
         fileType: Joi.string().allow("").optional(),
         isActive: Joi.boolean().default(false),
+    }).optional(),
+
+    digitalContent: Joi.object({
+        mainPdf: Joi.object({
+            url: Joi.string().uri().allow("").optional(),
+            fileName: Joi.string().allow("").optional(),
+            fileSize: Joi.number().min(0).optional(),
+            mimeType: Joi.string().default("application/pdf").optional(),
+        }).optional(),
+        videos: Joi.array()
+            .items(
+                Joi.object({
+                    _id: Joi.any().optional().strip(), // Remove _id if present (from MongoDB)
+                    title: Joi.object({
+                        fa: Joi.string().allow("").optional(),
+                        en: Joi.string().allow("").optional(),
+                    }).optional(),
+                    url: Joi.alternatives()
+                        .try(
+                            Joi.string().uri().messages({
+                                "string.uri": "آدرس ویدئو باید یک URL معتبر باشد",
+                            }),
+                            Joi.string().allow("").empty("")
+                        )
+                        .optional(),
+                    thumbnailUrl: Joi.alternatives()
+                        .try(
+                            Joi.string().uri().messages({
+                                "string.uri": "آدرس تصویر بندانگشتی باید یک URL معتبر باشد",
+                            }),
+                            Joi.string().allow("").empty("")
+                        )
+                        .optional(),
+                    duration: Joi.number().min(0).optional(),
+                    fileSize: Joi.number().min(0).optional(),
+                    format: Joi.string().valid("mp4", "webm", "m3u8").default("mp4").optional(),
+                    order: Joi.number().default(0).optional(),
+                })
+                    .unknown(true) // Allow unknown fields (like _id, __v) but they will be stripped
+            )
+            .optional(),
+        attachments: Joi.array()
+            .items(
+                Joi.object({
+                    title: Joi.object({
+                        fa: Joi.string().allow("").optional(),
+                        en: Joi.string().allow("").optional(),
+                    }).optional(),
+                    url: Joi.string().uri().required(),
+                    fileName: Joi.string().allow("").optional(),
+                    fileSize: Joi.number().min(0).optional(),
+                    mimeType: Joi.string().default("application/pdf").optional(),
+                    order: Joi.number().default(0).optional(),
+                })
+            )
+            .optional(),
     }).optional(),
 });
 
@@ -692,6 +768,219 @@ export const categoryUpdateValidation = categoryValidation.fork(
 });
 
 // Validation helper function
+// Product validation schema - matches backend schema
+export const productValidation = Joi.object({
+    name: Joi.object({
+        fa: Joi.string().required().trim().min(3).max(200).messages({
+            "string.empty": "نام محصول (فارسی) الزامی است",
+            "string.min": "نام محصول (فارسی) باید حداقل ۳ کاراکتر باشد",
+            "string.max": "نام محصول (فارسی) نمی‌تواند بیش از ۲۰۰ کاراکتر باشد",
+            "any.required": "نام محصول (فارسی) الزامی است",
+        }),
+        en: Joi.string().required().trim().min(3).max(200).messages({
+            "string.empty": "نام محصول (انگلیسی) الزامی است",
+            "string.min": "نام محصول (انگلیسی) باید حداقل ۳ کاراکتر باشد",
+            "any.required": "نام محصول (انگلیسی) الزامی است",
+        }),
+    }).required(),
+
+    slug: Joi.object({
+        fa: Joi.string()
+            .optional()
+            .trim()
+            .pattern(/^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-z0-9-]+$/)
+            .messages({
+                "string.pattern.base": "آدرس یکتا فارسی فقط می‌تواند شامل حروف فارسی، حروف انگلیسی کوچک، اعداد و خط تیره باشد",
+            }),
+        en: Joi.string()
+            .optional()
+            .trim()
+            .lowercase()
+            .pattern(/^[a-z0-9-]+$/)
+            .messages({
+                "string.pattern.base": "آدرس یکتا انگلیسی فقط می‌تواند شامل حروف کوچک، اعداد و خط تیره باشد",
+            }),
+    }).optional(),
+
+    sku: Joi.string()
+        .trim()
+        .uppercase()
+        .pattern(/^[A-Z0-9-]+$/)
+        .max(50)
+        .optional()
+        .messages({
+            "string.pattern.base": "SKU فقط می‌تواند شامل حروف انگلیسی، اعداد و خط تیره باشد",
+        }),
+
+    type: Joi.string()
+        .valid("digital", "physical")
+        .required()
+        .messages({
+            "any.only": "نوع محصول باید digital یا physical باشد",
+            "any.required": "نوع محصول الزامی است",
+        }),
+
+    digitalProduct: Joi.object({
+        contentType: Joi.string()
+            .valid("article", "file", "course", "ebook", "software", "other")
+            .default("file"),
+        downloadUrl: Joi.string().uri().optional(),
+        downloadLimit: Joi.number().integer().min(0).allow(null).optional(),
+        downloadExpiry: Joi.number().integer().min(0).allow(null).optional(),
+        fileSize: Joi.number().min(0).optional(),
+        fileType: Joi.string().optional(),
+    }).when("type", {
+        is: "digital",
+        then: Joi.optional(),
+        otherwise: Joi.forbidden(),
+    }),
+
+    physicalProduct: Joi.object({
+        weight: Joi.number().min(0).optional(),
+        dimensions: Joi.object({
+            length: Joi.number().min(0).optional(),
+            width: Joi.number().min(0).optional(),
+            height: Joi.number().min(0).optional(),
+        }).optional(),
+        shippingClass: Joi.string()
+            .valid("standard", "express", "fragile", "heavy")
+            .default("standard"),
+        requiresShipping: Joi.boolean().default(true),
+    }).when("type", {
+        is: "physical",
+        then: Joi.optional(),
+        otherwise: Joi.forbidden(),
+    }),
+
+    shortDescription: Joi.object({
+        fa: Joi.string().allow("").max(500),
+        en: Joi.string().allow("").max(500),
+    }).optional(),
+
+    description: Joi.object({
+        fa: Joi.string().required().min(20).messages({
+            "string.empty": "توضیحات (فارسی) الزامی است",
+            "string.min": "توضیحات (فارسی) باید حداقل ۲۰ کاراکتر باشد",
+            "any.required": "توضیحات (فارسی) الزامی است",
+        }),
+        en: Joi.string().required().min(20).messages({
+            "string.empty": "توضیحات (انگلیسی) الزامی است",
+            "string.min": "توضیحات (انگلیسی) باید حداقل ۲۰ کاراکتر باشد",
+            "any.required": "توضیحات (انگلیسی) الزامی است",
+        }),
+    }).required(),
+
+    fullDescription: Joi.object({
+        fa: Joi.string().allow("").optional(),
+        en: Joi.string().allow("").optional(),
+    }).optional(),
+
+    featuredImage: Joi.string().uri().required().messages({
+        "any.required": "تصویر شاخص الزامی است",
+        "string.uri": "آدرس تصویر معتبر نیست",
+    }),
+
+    gallery: Joi.array()
+        .items(
+            Joi.object({
+                url: Joi.string().uri().required(),
+                alt: Joi.object({
+                    fa: Joi.string().allow("").optional(),
+                    en: Joi.string().allow("").optional(),
+                }).optional(),
+                caption: Joi.object({
+                    fa: Joi.string().allow("").optional(),
+                    en: Joi.string().allow("").optional(),
+                }).optional(),
+                order: Joi.number().integer().min(0).default(0),
+            })
+        )
+        .optional(),
+
+    videoUrl: Joi.string().uri().optional(),
+
+    pricing: Joi.object({
+        basePrice: Joi.number().min(0).required().messages({
+            "any.required": "قیمت پایه الزامی است",
+            "number.min": "قیمت نمی‌تواند منفی باشد",
+        }),
+        compareAtPrice: Joi.number().min(0).optional(),
+        currency: Joi.string().valid("IRR", "USD", "EUR").default("IRR"),
+        isOnSale: Joi.boolean().default(false),
+        salePrice: Joi.number().min(0).optional(),
+        saleStartDate: Joi.date().optional(),
+        saleEndDate: Joi.date().optional(),
+    }).required(),
+
+    inventory: Joi.object({
+        trackInventory: Joi.boolean().default(true),
+        quantity: Joi.number().integer().min(0).default(0),
+        lowStockThreshold: Joi.number().integer().min(0).default(10),
+        allowBackorder: Joi.boolean().default(false),
+    }).optional(),
+
+    categories: Joi.array().items(Joi.string().pattern(/^[0-9a-fA-F]{24}$/)).optional(),
+
+    tags: Joi.object({
+        fa: Joi.array().items(Joi.string().trim()).optional(),
+        en: Joi.array().items(Joi.string().trim()).optional(),
+    }).optional(),
+
+    specifications: Joi.array()
+        .items(
+            Joi.object({
+                name: Joi.object({
+                    fa: Joi.string().required(),
+                    en: Joi.string().required(),
+                }).required(),
+                value: Joi.object({
+                    fa: Joi.string().required(),
+                    en: Joi.string().required(),
+                }).required(),
+                group: Joi.object({
+                    fa: Joi.string().allow("").optional(),
+                    en: Joi.string().allow("").optional(),
+                }).optional(),
+            })
+        )
+        .optional(),
+
+    suitableFor: Joi.object({
+        fa: Joi.array().items(Joi.string().trim()).optional(),
+        en: Joi.array().items(Joi.string().trim()).optional(),
+    }).optional(),
+
+    seo: Joi.object({
+        metaTitle: Joi.object({
+            fa: Joi.string().allow("").optional(),
+            en: Joi.string().allow("").optional(),
+        }).optional(),
+        metaDescription: Joi.object({
+            fa: Joi.string().allow("").optional(),
+            en: Joi.string().allow("").optional(),
+        }).optional(),
+        metaKeywords: Joi.object({
+            fa: Joi.array().items(Joi.string().trim()).optional(),
+            en: Joi.array().items(Joi.string().trim()).optional(),
+        }).optional(),
+        ogImage: Joi.string().uri().optional(),
+    }).optional(),
+
+    loyaltyPoints: Joi.object({
+        earnOnPurchase: Joi.number().integer().min(0).default(0),
+        requiredForDiscount: Joi.number().integer().min(0).allow(null).optional(),
+    }).optional(),
+
+    isPublished: Joi.boolean().default(false),
+    isFeatured: Joi.boolean().default(false),
+    orderIndex: Joi.number().integer().default(0),
+});
+
+export const productUpdateValidation = productValidation.fork(
+    ["name", "slug", "sku", "type", "featuredImage", "pricing.basePrice"],
+    (schema) => schema.optional()
+);
+
 export const validateData = (schema, data, options = {}) => {
     const { error, value } = schema.validate(data, {
         abortEarly: false,
