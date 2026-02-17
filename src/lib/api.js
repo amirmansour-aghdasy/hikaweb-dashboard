@@ -62,6 +62,8 @@ const ALLOWED_ENDPOINT_PATTERNS = [
     /^\/shipping(\/.*)?$/,
     // Coupons
     /^\/coupons(\/.*)?$/,
+    // Email accounts & sending
+    /^\/email-accounts(\/.*)?$/,
 ];
 
 /**

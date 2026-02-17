@@ -119,6 +119,16 @@ const menuItems = [
         path: "/dashboard/calendar",
     },
     {
+        title: "مدیریت ایمیل",
+        icon: <Email />,
+        children: [
+            { title: "صندوق ورودی", path: "/dashboard/email" },
+            { title: "ارسال شده", path: "/dashboard/email/sent" },
+            { title: "نوشتن ایمیل", path: "/dashboard/email/compose" },
+            { title: "حساب‌های ایمیل", path: "/dashboard/email/accounts" },
+        ],
+    },
+    {
         title: "تنظیمات",
         icon: <Settings />,
         path: "/dashboard/settings",
