@@ -54,7 +54,7 @@ export default function EmailInboxPage() {
     const { data: inboxData, isLoading } = useFetchData(
         ["email-inbox", accountId, page, limit],
         inboxQuery,
-        { enabled: !!accountId }
+        { enabled: !!accountId, retry: 0 }
     );
 
     const items = inboxData?.data?.items ?? [];

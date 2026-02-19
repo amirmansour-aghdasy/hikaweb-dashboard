@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
     Box,
     Typography,
@@ -45,6 +45,7 @@ export default function EmailAccountsPage() {
     const [editId, setEditId] = useState(null);
     const [form, setForm] = useState(defaultForm);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const passwordInputRef = useRef(null);
 
     const { useFetchData, useCreateData, useUpdateData, useDeleteData } = useApi();
 
@@ -111,11 +112,22 @@ export default function EmailAccountsPage() {
             toast.error("آدرس ایمیل، سرور SMTP و نام کاربری را پر کنید.");
             return;
         }
-        if (!editId && !form.smtpPassword) {
+        // در حالت ویرایش مقدار واقعی فیلد رمز را از DOM بخوان (autofill مرورگر در state نمی‌آید)
+        const passwordFromInput = editId && passwordInputRef.current
+            ? (passwordInputRef.current.value || "").trim()
+            : "";
+        const effectivePassword = (form.smtpPassword?.trim() || passwordFromInput) || "";
+        if (!editId && !effectivePassword) {
             toast.error("رمز عبور SMTP را وارد کنید.");
             return;
         }
+        const hasImap = !!(form.imapHost && form.imapHost.trim());
+        if (editId && hasImap && !effectivePassword) {
+            toast.error("برای استفاده از صندوق ورودی باید رمز عبور را در این فرم وارد کنید.");
+            return;
+        }
         const payload = { ...form };
+        payload.smtpPassword = effectivePassword || undefined;
         if (!payload.smtpPassword) delete payload.smtpPassword;
         if (editId) {
             updateAccount.mutate({ id: editId, data: payload });
@@ -259,7 +271,9 @@ export default function EmailAccountsPage() {
                         fullWidth
                         size="small"
                         type="password"
-                        label={editId ? "رمز عبور SMTP (خالی = بدون تغییر)" : "رمز عبور SMTP"}
+                        inputRef={passwordInputRef}
+                        label={editId ? "رمز عبور SMTP (برای صندوق ورودی الزامی است)" : "رمز عبور SMTP"}
+                        placeholder={editId && form.imapHost ? "وارد کنید تا صندوق ورودی کار کند" : ""}
                         value={form.smtpPassword}
                         onChange={(e) => setForm((f) => ({ ...f, smtpPassword: e.target.value }))}
                         sx={{ mb: 2 }}
