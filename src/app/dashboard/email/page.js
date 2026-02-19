@@ -196,7 +196,14 @@ export default function EmailInboxPage() {
                     {!loadingDetail && messageDetail && (
                         <Box>
                             <Typography variant="body2" color="text.secondary" gutterBottom>
-                                از: {messageDetail.envelope?.fromName || messageDetail.envelope?.from} &lt;{messageDetail.envelope?.from}&gt;
+                                از: {(() => {
+                                    const from = messageDetail.envelope?.from ?? "";
+                                    const fromName = messageDetail.envelope?.fromName ?? "";
+                                    if (from && fromName && fromName !== from) return `${fromName} <${from}>`;
+                                    if (from) return from;
+                                    if (fromName) return fromName;
+                                    return "—";
+                                })()}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                                 تاریخ: {messageDetail.envelope?.date ? formatDate(messageDetail.envelope.date) : "—"}
