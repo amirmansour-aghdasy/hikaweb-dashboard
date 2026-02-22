@@ -27,6 +27,7 @@ import {
     Email,
     VideoLibrary,
     ShoppingCart,
+    Chat,
 } from "@mui/icons-material";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -117,6 +118,11 @@ const menuItems = [
         title: "تقویم اجرایی",
         icon: <CalendarToday />,
         path: "/dashboard/calendar",
+    },
+    {
+        title: "چت تیم",
+        icon: <Chat />,
+        path: "/dashboard/chat",
     },
     {
         title: "مدیریت ایمیل",

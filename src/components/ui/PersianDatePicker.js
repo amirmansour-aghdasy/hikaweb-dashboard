@@ -1,19 +1,16 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { InputAdornment, IconButton } from "@mui/material";
 import { CalendarToday } from "@mui/icons-material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { faIR } from "date-fns/locale";
-import {
-    dateToPersianInput,
-} from "../../lib/dateUtils";
+import { AdapterDateFnsJalali } from "@mui/x-date-pickers/AdapterDateFnsJalali";
 
 /**
- * Persian Date Picker Component
- * A wrapper around MUI DatePicker that displays dates in Persian (Jalaali) format
- * but stores them as Gregorian dates for backend compatibility
+ * Persian (Jalali) Date Picker
+ * - باز شدن پاپ‌آپ با کلیک روی اینپوت یا آیکن تقویم
+ * - تقویم شمسی (جلالی) و اعداد و متن فارسی
+ * - مقدار به صورت Date (میلادی) به onChange داده می‌شود برای سازگاری با بک‌اند
  */
 export default function PersianDatePicker({
     value,
@@ -27,11 +24,10 @@ export default function PersianDatePicker({
     ...props
 }) {
     const [internalValue, setInternalValue] = useState(null);
-    const containerRef = useRef(null);
+    const [open, setOpen] = useState(false);
 
-    // Convert incoming value (Date or string) to internal Date format
     useEffect(() => {
-        if (value) {
+        if (value != null && value !== "") {
             const dateObj = value instanceof Date ? value : new Date(value);
             if (!isNaN(dateObj.getTime())) {
                 setInternalValue(dateObj);
@@ -45,80 +41,52 @@ export default function PersianDatePicker({
 
     const handleDateChange = (newDate) => {
         setInternalValue(newDate);
-        
-        // Call onChange with Gregorian date (for backend)
-        if (onChange) {
-            onChange(newDate);
-        }
+        if (onChange) onChange(newDate);
     };
 
-    // Update input value to show Persian date
-    useEffect(() => {
-        if (!internalValue || !containerRef.current) return;
-
-        const updateToPersian = () => {
-            const input = containerRef.current?.querySelector('input[type="text"]');
-            if (input) {
-                const persianDate = dateToPersianInput(internalValue);
-                if (input.value && input.value !== persianDate) {
-                    input.value = persianDate;
-                }
-            }
-        };
-
-        // Update after DatePicker finishes its update
-        const timer = setTimeout(updateToPersian, 100);
-        
-        // Also set up an observer to catch when DatePicker updates the value
-        const input = containerRef.current?.querySelector('input[type="text"]');
-        if (input) {
-            const observer = new MutationObserver(() => {
-                updateToPersian();
-            });
-            
-            observer.observe(input, {
-                attributes: true,
-                attributeFilter: ['value'],
-            });
-
-            return () => {
-                clearTimeout(timer);
-                observer.disconnect();
-            };
-        }
-
-        return () => clearTimeout(timer);
-    }, [internalValue]);
-
     return (
-        <div ref={containerRef}>
-            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={faIR}>
-                <DatePicker
-                    label={label}
-                    value={internalValue}
-                    onChange={handleDateChange}
-                    disabled={disabled}
-                    slotProps={{
-                        textField: {
-                            fullWidth,
-                            error,
-                            helperText: helperText || "فرمت: ۱۴۰۳/۰۱/۰۱",
-                            required,
-                            InputProps: {
-                                endAdornment: (
-                                    <InputAdornment position="end">
-                                        <IconButton edge="end" disabled={disabled}>
-                                            <CalendarToday />
-                                        </IconButton>
-                                    </InputAdornment>
-                                ),
-                            },
-                            ...props,
+        <LocalizationProvider dateAdapter={AdapterDateFnsJalali}>
+            <DatePicker
+                label={label}
+                value={internalValue}
+                onChange={handleDateChange}
+                onOpen={() => setOpen(true)}
+                onClose={() => setOpen(false)}
+                open={open}
+                disabled={disabled}
+                format="yyyy/MM/dd"
+                slotProps={{
+                    textField: {
+                        fullWidth,
+                        error,
+                        helperText: helperText || "کلیک کنید و از تقویم تاریخ انتخاب کنید",
+                        required,
+                        onClick: () => !disabled && setOpen(true),
+                        InputProps: {
+                            readOnly: false,
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        edge="end"
+                                        disabled={disabled}
+                                        aria-label="باز کردن تقویم"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (!disabled) setOpen(true);
+                                        }}
+                                    >
+                                        <CalendarToday />
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
                         },
-                    }}
-                    format="yyyy/MM/dd"
-                />
-            </LocalizationProvider>
-        </div>
+                        ...props,
+                    },
+                }}
+                enableAccessibleFieldDOMStructure={false}
+                {...props}
+            />
+        </LocalizationProvider>
     );
 }

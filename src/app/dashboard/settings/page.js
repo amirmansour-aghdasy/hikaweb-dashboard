@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Box, Typography, Card, CardContent, Grid, Tab, Tabs, Button, Alert, Fab, TextField, Switch, FormControlLabel, MenuItem, Divider, Paper, Slider, IconButton, FormControl, InputLabel, Select, Chip, Stack, Accordion, AccordionSummary, AccordionDetails } from "@mui/material";
-import { Settings as SettingsIcon, Save, Business, Email, Security, Storage, Notifications, Palette, WhatsApp, Add, Delete, ExpandMore, Phone, Schedule, Message, Settings as SettingsIconSmall, Search } from "@mui/icons-material";
+import { Settings as SettingsIcon, Save, Business, Email, Security, Storage, Notifications, Palette, WhatsApp, Add, Delete, ExpandMore, Phone, Schedule, Message, Settings as SettingsIconSmall, Search, Campaign } from "@mui/icons-material";
 import Layout from "@/components/layout/Layout";
 import MultiLangTextField from "@/components/forms/MultiLangTextField";
 import WhatsAppSettings from "@/components/settings/WhatsAppSettings";
@@ -68,6 +68,13 @@ export default function SettingsPage() {
                         autoCloseTimer: 0,
                         notificationBadge: null
                     }
+                },
+                announcementBar: settingsObj.announcementBar ?? {
+                    enabled: true,
+                    text: "تخفیف ویژه نوروز — تا ۲۰٪ برای خدمات منتخب",
+                    link: "/pricing",
+                    durationDays: 7,
+                    autoRenew: true,
                 },
             };
             
@@ -185,6 +192,7 @@ export default function SettingsPage() {
                 system: settings.system,
                 seo: settings.seo || {},
                 whatsapp: settings.whatsapp,
+                announcementBar: settings.announcementBar,
             };
             
             // Remove undefined values before sending to backend
@@ -232,6 +240,13 @@ export default function SettingsPage() {
                 theme: settingsObj.theme || {},
                 system: settingsObj.system || {},
                 seo: settingsObj.seo || {},
+                announcementBar: settingsObj.announcementBar || {
+                    enabled: true,
+                    text: "تخفیف ویژه نوروز — تا ۲۰٪ برای خدمات منتخب",
+                    link: "/pricing",
+                    durationDays: 7,
+                    autoRenew: true,
+                },
             };
             
             setSettings(organizedSettings);
@@ -249,6 +264,7 @@ export default function SettingsPage() {
         { label: "ظاهر", icon: <Palette /> },
         { label: "سئو", icon: <Search /> },
         { label: "واتساپ", icon: <WhatsApp /> },
+        { label: "نوار اعلان", icon: <Campaign /> },
     ];
 
     if (isLoading) {
@@ -360,6 +376,9 @@ export default function SettingsPage() {
 
                                 {/* WhatsApp Settings */}
                                 {activeTab === 8 && <WhatsAppSettings settings={settings.whatsapp || {}} onChange={(data) => handleSettingsChange("whatsapp", data)} />}
+
+                                {/* Announcement Bar Settings */}
+                                {activeTab === 9 && <AnnouncementBarSettings settings={settings.announcementBar || {}} onChange={(data) => handleSettingsChange("announcementBar", data)} />}
                             </CardContent>
                         </Card>
                     </Grid>
@@ -1247,6 +1266,117 @@ function ThemeSettings({ settings, onChange }) {
                             </Button>
                         </Box>
                     </Paper>
+                </Grid>
+            </Grid>
+        </Box>
+    );
+}
+
+// Announcement Bar Settings Component
+function AnnouncementBarSettings({ settings, onChange }) {
+    const [formData, setFormData] = useState({
+        enabled: true,
+        text: "تخفیف ویژه نوروز — تا ۲۰٪ برای خدمات منتخب",
+        link: "/pricing",
+        durationDays: 7,
+        autoRenew: true,
+    });
+
+    const defaults = {
+        enabled: true,
+        text: "تخفیف ویژه نوروز — تا ۲۰٪ برای خدمات منتخب",
+        link: "/pricing",
+        durationDays: 7,
+        autoRenew: true,
+    };
+    useEffect(() => {
+        setFormData({
+            enabled: settings?.enabled ?? defaults.enabled,
+            text: settings?.text ?? defaults.text,
+            link: settings?.link ?? defaults.link,
+            durationDays: settings?.durationDays ?? defaults.durationDays,
+            autoRenew: settings?.autoRenew ?? defaults.autoRenew,
+        });
+    }, [
+        settings?.enabled,
+        settings?.text,
+        settings?.link,
+        settings?.durationDays,
+        settings?.autoRenew,
+    ]);
+
+    const handleChange = (field, value) => {
+        const newData = { ...formData, [field]: value };
+        setFormData(newData);
+        onChange(newData);
+    };
+
+    return (
+        <Box>
+            <Typography variant="h6" gutterBottom>
+                نوار اعلان (بالای صفحه)
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                متن و لینک نوار اعلان بالای سایت و مدت زمان شمارش‌معکوس را تنظیم کنید.
+            </Typography>
+
+            <Grid container spacing={3}>
+                <Grid size={{ xs: 12 }}>
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={formData.enabled}
+                                onChange={(e) => handleChange("enabled", e.target.checked)}
+                            />
+                        }
+                        label="نمایش نوار اعلان"
+                    />
+                </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                    <TextField
+                        fullWidth
+                        label="متن سمت راست نوار"
+                        value={formData.text}
+                        onChange={(e) => handleChange("text", e.target.value)}
+                        placeholder="مثال: تخفیف ویژه نوروز — تا ۲۰٪ برای خدمات منتخب"
+                        helperText="این متن در سمت راست نوار (در چیدمان RTL) نمایش داده می‌شود."
+                    />
+                </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                    <TextField
+                        fullWidth
+                        label="لینک کلی نوار"
+                        value={formData.link}
+                        onChange={(e) => handleChange("link", e.target.value)}
+                        placeholder="/pricing"
+                        helperText="با کلیک روی کل نوار کاربر به این آدرس هدایت می‌شود. مثال: /pricing برای صفحه تعرفه خدمات"
+                    />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                        fullWidth
+                        type="number"
+                        label="مدت زمان نمایش (روز)"
+                        value={formData.durationDays}
+                        onChange={(e) => handleChange("durationDays", Math.max(1, parseInt(e.target.value, 10) || 7))}
+                        inputProps={{ min: 1, max: 365 }}
+                        helperText="مدت زمان شمارش‌معکوس تایمر به روز (۱ تا ۳۶۵)"
+                    />
+                </Grid>
+
+                <Grid size={{ xs: 12 }}>
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={formData.autoRenew}
+                                onChange={(e) => handleChange("autoRenew", e.target.checked)}
+                            />
+                        }
+                        label="تمدید خودکار (پس از اتمام زمان، شمارش‌معکوس دوباره از همین مدت شروع شود)"
+                    />
                 </Grid>
             </Grid>
         </Box>

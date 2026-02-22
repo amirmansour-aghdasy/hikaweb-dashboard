@@ -64,6 +64,8 @@ const ALLOWED_ENDPOINT_PATTERNS = [
     /^\/coupons(\/.*)?$/,
     // Email accounts & sending
     /^\/email-accounts(\/.*)?$/,
+    // Chat (dashboard team chat)
+    /^\/chat(\/.*)?$/,
 ];
 
 /**
